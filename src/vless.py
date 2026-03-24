@@ -14,6 +14,7 @@ def build_vless_url(
     flow: str = "xtls-rprx-vision",
 ) -> str:
     params = {
+        "encryption": "none",
         "type": "tcp",
         "security": "reality",
         "pbk": public_key,
