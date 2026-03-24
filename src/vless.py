@@ -21,6 +21,7 @@ def build_vless_url(
         "fp": fingerprint,
         "sni": sni,
         "sid": short_id,
+        "spx": "/",
     }
     if flow:
         params["flow"] = flow

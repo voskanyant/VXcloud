@@ -65,7 +65,7 @@ class XUIClient:
         client_uuid: str,
         email: str,
         expiry: datetime,
-        limit_ip: int = 2,
+        limit_ip: int = 0,
     ) -> None:
         expiry_ms = int(expiry.timestamp() * 1000)
         client = {
@@ -86,7 +86,7 @@ class XUIClient:
         client_uuid: str,
         email: str,
         expiry: datetime,
-        limit_ip: int = 2,
+        limit_ip: int = 0,
     ) -> None:
         expiry_ms = int(expiry.timestamp() * 1000)
         client = {
