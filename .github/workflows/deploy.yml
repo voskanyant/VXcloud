@@ -1,0 +1,31 @@
+name: Deploy VPnBot
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vpnbot
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd /opt/vpnbot
+            git pull --ff-only origin main
+            /opt/vpnbot/.venv/bin/pip install -r requirements.txt
+            systemctl restart vpnbot
+            systemctl --no-pager --full status vpnbot | head -n 30
