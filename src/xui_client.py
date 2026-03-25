@@ -77,6 +77,7 @@ class XUIClient:
         email: str,
         expiry: datetime,
         limit_ip: int = 0,
+        comment: str | None = None,
     ) -> None:
         expiry_ms = int(expiry.timestamp() * 1000)
         client = {
@@ -88,6 +89,8 @@ class XUIClient:
             "enable": True,
             "flow": "",
         }
+        if comment:
+            client["comment"] = comment[:64]
         settings = json.dumps({"clients": [client]}, separators=(",", ":"))
         await self._post("/panel/api/inbounds/addClient", {"id": inbound_id, "settings": settings})
 

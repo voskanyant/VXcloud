@@ -53,3 +53,45 @@ python -m src.main
 - `XUI_SUB_PORT` is used for subscription links (`/sub/<subId>`), usually `2096`.
 - Use a secret manager or environment variables in production.
 - Rotate panel credentials before production launch.
+
+## Optional CMS (Directus)
+
+You can edit bot texts and button labels from Directus without redeploy.
+
+1. Configure `.env`:
+   - `CMS_BASE_URL` (for example `https://cms.example.com`)
+   - `CMS_TOKEN` (static token with read access to your collections)
+   - optionally collection names (`CMS_CONTENT_COLLECTION`, `CMS_BUTTON_COLLECTION`)
+
+2. Create collection for content (default `bot_content`) with fields:
+   - `key` (string, unique)
+   - `value` (text)
+
+3. Create collection for buttons (default `bot_buttons`) with fields:
+   - `key` (string, unique)
+   - `label` (string)
+
+4. Supported button keys:
+   - `menu_buy`
+   - `menu_mysub`
+   - `contact_share`
+   - `contact_cancel`
+
+5. Supported content keys (main):
+   - `start_message`
+   - `buy_intro_message`
+   - `menu_unknown_message`
+   - `cancel_message`
+   - `phone_missing_message`
+   - `sending_invoice_message`
+   - `share_contact_hint_message`
+   - `contact_missing_message`
+   - `contact_self_only_message`
+   - `phone_invalid_message`
+   - `phone_saved_message` (supports `{phone}` placeholder)
+   - `invoice_title`
+   - `invoice_description`
+   - `no_subscription_message`
+
+6. Force refresh from Telegram (admin only):
+   - `/admin_reload`

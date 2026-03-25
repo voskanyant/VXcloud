@@ -14,6 +14,14 @@ def _get(name: str, default: str | None = None) -> str:
     return value
 
 
+def _get_optional(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    trimmed = value.strip()
+    return trimmed if trimmed else None
+
+
 @dataclass(frozen=True)
 class Settings:
     telegram_bot_token: str
@@ -31,6 +39,11 @@ class Settings:
     plan_price_stars: int
     price_text: str
     timezone: str
+    cms_base_url: str | None
+    cms_token: str | None
+    cms_content_collection: str
+    cms_button_collection: str
+    cms_cache_ttl_seconds: int
 
 
 def load_settings() -> Settings:
@@ -50,4 +63,9 @@ def load_settings() -> Settings:
         plan_price_stars=int(_get("PLAN_PRICE_STARS", "250")),
         price_text=_get("PRICE_TEXT", "Monthly plan"),
         timezone=_get("TIMEZONE", "UTC"),
+        cms_base_url=_get_optional("CMS_BASE_URL"),
+        cms_token=_get_optional("CMS_TOKEN"),
+        cms_content_collection=_get("CMS_CONTENT_COLLECTION", "bot_content"),
+        cms_button_collection=_get("CMS_BUTTON_COLLECTION", "bot_buttons"),
+        cms_cache_ttl_seconds=int(_get("CMS_CACHE_TTL_SECONDS", "60")),
     )
