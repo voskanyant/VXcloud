@@ -718,6 +718,7 @@ class VPNBot:
         subscription_url: str | None = None,
     ) -> None:
         action_markup: InlineKeyboardMarkup | None = None
+        link_for_copy = subscription_url or vless_url
 
         if subscription_url:
             sub_img = self._build_styled_qr(subscription_url, "Subscription QR")
@@ -726,18 +727,18 @@ class VPNBot:
             sub_buff.seek(0)
             await update.message.reply_photo(photo=sub_buff)
 
-            if len(self._copy_links) > 500:
-                self._copy_links.clear()
-            copy_token = uuid.uuid4().hex[:12]
-            self._copy_links[copy_token] = subscription_url
+        if len(self._copy_links) > 500:
+            self._copy_links.clear()
+        copy_token = uuid.uuid4().hex[:12]
+        self._copy_links[copy_token] = link_for_copy
 
-            action_markup = InlineKeyboardMarkup(
-                [
-                    [InlineKeyboardButton(text="\U0001f517 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443", url=subscription_url)],
-                    [InlineKeyboardButton(text="\U0001f4cb \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443", callback_data=f"copy|{copy_token}|_")],
-                    [InlineKeyboardButton(text="\U0001f34f Streisand \u0432 App Store", url=STREISAND_APPSTORE_URL)],
-                ]
-            )
+        buttons: list[list[InlineKeyboardButton]] = [
+            [InlineKeyboardButton(text="\U0001f4cb \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443", callback_data=f"copy|{copy_token}|_")],
+            [InlineKeyboardButton(text="\U0001f34f Streisand \u0432 App Store", url=STREISAND_APPSTORE_URL)],
+        ]
+        if subscription_url:
+            buttons.insert(0, [InlineKeyboardButton(text="\U0001f517 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443", url=subscription_url)])
+        action_markup = InlineKeyboardMarkup(buttons)
 
         vless_img = self._build_styled_qr(vless_url, "Direct VLESS QR")
         vless_buff = io.BytesIO()
