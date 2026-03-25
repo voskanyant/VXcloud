@@ -48,7 +48,7 @@ class VPNBot:
     def _menu_keyboard() -> ReplyKeyboardMarkup:
         return ReplyKeyboardMarkup(
             [
-                [KeyboardButton("Buy VPN"), KeyboardButton("My Subscription")],
+                [KeyboardButton("Купить VPN"), KeyboardButton("Моя подписка")],
             ],
             resize_keyboard=True,
             is_persistent=True,
@@ -62,28 +62,31 @@ class VPNBot:
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._ensure_user(update)
         msg = (
-            "VPN bot is ready.\n\n"
-            "Use buttons below or commands:\n"
+            "VPN бот готов к работе.\n\n"
+            "Используйте кнопки ниже или команды:\n"
             "/buy, /mysub"
         )
         await update.message.reply_text(msg, reply_markup=self._menu_keyboard())
 
     async def menu_click(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         text = (update.message.text or "").strip().lower()
-        if text == "buy vpn":
+        if text == "купить vpn":
             await self.buy(update, context)
             return
-        if text == "my subscription":
+        if text == "моя подписка":
             await self.mysub(update, context)
             return
-        await update.message.reply_text("Use menu buttons: Buy VPN or My Subscription.", reply_markup=self._menu_keyboard())
+        await update.message.reply_text(
+            "Используйте кнопки меню: Купить VPN или Моя подписка.",
+            reply_markup=self._menu_keyboard(),
+        )
 
     async def buy(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = await self._ensure_user(update)
         await update.message.reply_text(
-            f"Plan: {self.settings.plan_days} days\n"
-            f"Price: {self.settings.plan_price_stars} Stars\n"
-            "After successful payment, VPN will activate automatically."
+            f"Тариф: {self.settings.plan_days} дней\n"
+            f"Стоимость: {self.settings.plan_price_stars} Stars\n"
+            "После успешной оплаты VPN активируется автоматически."
         )
         await self._send_stars_invoice(update, user_id)
 
@@ -95,7 +98,7 @@ class VPNBot:
         user_id = await self._ensure_user(update)
         sub = await self.db.get_active_subscription(user_id)
         if not sub:
-            await update.message.reply_text("No active subscription.\nUse Buy VPN to purchase.")
+            await update.message.reply_text("У вас нет активной подписки.\nНажмите «Купить VPN».")
             return
 
         now = datetime.now(timezone.utc)
@@ -105,14 +108,14 @@ class VPNBot:
             if (expires_at - now).total_seconds() % 86400:
                 days_left += 1
             await update.message.reply_text(
-                "Subscription: ACTIVE\n"
-                f"Expires: {expires_at:%Y-%m-%d %H:%M UTC}\n"
-                f"Days left: {days_left}"
+                "Подписка: АКТИВНА\n"
+                f"Действует до: {expires_at:%Y-%m-%d %H:%M UTC}\n"
+                f"Осталось дней: {days_left}"
             )
         else:
             await update.message.reply_text(
-                "Subscription: EXPIRED\n"
-                f"Expired at: {expires_at:%Y-%m-%d %H:%M UTC}"
+                "Подписка: ИСТЕКЛА\n"
+                f"Дата окончания: {expires_at:%Y-%m-%d %H:%M UTC}"
             )
 
     async def _send_stars_invoice(self, update: Update, user_id: int) -> None:
@@ -120,8 +123,8 @@ class VPNBot:
         await self.db.create_order(user_id=user_id, amount_stars=self.settings.plan_price_stars, payload=payload)
         prices = [LabeledPrice(label=f"VPN {self.settings.plan_days} days", amount=self.settings.plan_price_stars)]
         await update.message.reply_invoice(
-            title=f"VPN {self.settings.plan_days} Days",
-            description=f"Access for {self.settings.plan_days} days",
+            title=f"VPN на {self.settings.plan_days} дней",
+            description=f"Доступ к VPN на {self.settings.plan_days} дней",
             payload=payload,
             provider_token="",
             currency="XTR",
@@ -132,13 +135,13 @@ class VPNBot:
         query = update.pre_checkout_query
         order = await self.db.get_order_by_payload(query.invoice_payload)
         if not order:
-            await query.answer(ok=False, error_message="Order not found. Please try again.")
+            await query.answer(ok=False, error_message="Заказ не найден. Попробуйте снова.")
             return
         if order["status"] != "pending":
-            await query.answer(ok=False, error_message="Order already processed.")
+            await query.answer(ok=False, error_message="Заказ уже обработан.")
             return
         if int(query.total_amount) != int(order["amount_stars"]):
-            await query.answer(ok=False, error_message="Amount mismatch. Please retry.")
+            await query.answer(ok=False, error_message="Сумма не совпадает. Попробуйте снова.")
             return
         await query.answer(ok=True)
 
@@ -146,7 +149,7 @@ class VPNBot:
         payment = update.message.successful_payment
         order = await self.db.get_order_by_payload(payment.invoice_payload)
         if not order:
-            await update.message.reply_text("Payment received, but order not found. Contact support.")
+            await update.message.reply_text("Оплата получена, но заказ не найден. Обратитесь в поддержку.")
             return
 
         charge_id = payment.telegram_payment_charge_id
@@ -158,14 +161,14 @@ class VPNBot:
             telegram_payment_charge_id=charge_id,
             provider_payment_charge_id=payment.provider_payment_charge_id,
         )
-        await update.message.reply_text("Payment successful. Activating your VPN...")
+        await update.message.reply_text("Оплата прошла успешно. Активирую ваш VPN...")
         await self._create_or_extend_for_user(update, int(order["user_id"]))
 
     async def myvpn(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = await self._ensure_user(update)
         sub = await self.db.get_active_subscription(user_id)
         if not sub:
-            await update.message.reply_text("No subscription found. Use /buy first.")
+            await update.message.reply_text("Подписка не найдена. Используйте /buy.")
             return
         client_uuid = str(sub["client_uuid"])
         sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
@@ -261,9 +264,9 @@ class VPNBot:
         vless_img.save(vless_buff, format="PNG")
         vless_buff.seek(0)
 
-        text = f"Plan active until: {expires_at.strftime('%Y-%m-%d %H:%M UTC')}"
+        text = f"Подписка активна до: {expires_at.strftime('%Y-%m-%d %H:%M UTC')}"
         if subscription_url:
-            text += f"\n\nSubscription URL:\n{subscription_url}"
+            text += f"\n\nСсылка подписки:\n{subscription_url}"
         await update.message.reply_photo(photo=vless_buff)
         await update.message.reply_text(text)
 
@@ -300,13 +303,13 @@ class VPNBot:
             tg_id = int(item["telegram_id"])
             sub_id = int(item["id"])
             if expires_at <= now:
-                msg = "Your VPN subscription has expired. Use /renew to reactivate."
+                msg = "Ваша подписка VPN истекла. Используйте /buy для продления."
                 tag = "expired"
             elif expires_at <= now + timedelta(days=1):
-                msg = f"Reminder: your VPN expires in less than 24h ({expires_at:%Y-%m-%d %H:%M UTC}). Use /renew."
+                msg = f"Напоминание: подписка VPN истекает менее чем через 24 часа ({expires_at:%Y-%m-%d %H:%M UTC})."
                 tag = "1d"
             else:
-                msg = f"Reminder: your VPN expires in less than 3 days ({expires_at:%Y-%m-%d %H:%M UTC})."
+                msg = f"Напоминание: подписка VPN истекает менее чем через 3 дня ({expires_at:%Y-%m-%d %H:%M UTC})."
                 tag = "3d"
 
             try:
