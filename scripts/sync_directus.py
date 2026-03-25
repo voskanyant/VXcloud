@@ -150,6 +150,30 @@ def upsert_rows(
     return created, updated, unchanged
 
 
+def prune_rows(
+    cfg: Config,
+    collection: str,
+    desired_keys: set[str],
+    value_field: str,
+    should_prune_key: callable,
+    dry_run: bool,
+) -> int:
+    existing = fetch_existing(cfg.base_url, cfg.token, collection, f"id,key,{value_field}")
+    deleted = 0
+    for key, row in existing.items():
+        if key in desired_keys:
+            continue
+        if not should_prune_key(key):
+            continue
+        deleted += 1
+        if not dry_run:
+            row_id = row.get("id")
+            if row_id is None:
+                raise RuntimeError(f"Missing id for existing key '{key}' in {collection}")
+            http_json("DELETE", f"{cfg.base_url}/items/{collection}/{row_id}", cfg.token)
+    return deleted
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Sync Directus content from repo seed files")
     parser.add_argument("--env-file", default=".env")
@@ -194,11 +218,28 @@ def main() -> int:
         value_field="value",
         dry_run=args.dry_run,
     )
+    b_deleted = prune_rows(
+        cfg,
+        cfg.buttons_collection,
+        desired_keys={r["key"] for r in buttons_rows},
+        value_field="label",
+        should_prune_key=lambda k: k.startswith("menu_"),
+        dry_run=args.dry_run,
+    )
+    c_deleted = prune_rows(
+        cfg,
+        cfg.content_collection,
+        desired_keys={r["key"] for r in content_rows},
+        value_field="value",
+        should_prune_key=lambda k: k.endswith("_response") or k.endswith("_buttons"),
+        dry_run=args.dry_run,
+    )
 
     mode = "DRY-RUN" if args.dry_run else "APPLIED"
     print(
         f"[{mode}] buttons: created={b_created}, updated={b_updated}, unchanged={b_unchanged}; "
-        f"content: created={c_created}, updated={c_updated}, unchanged={c_unchanged}"
+        f"content: created={c_created}, updated={c_updated}, unchanged={c_unchanged}; "
+        f"deleted: buttons={b_deleted}, content={c_deleted}"
     )
     return 0
 

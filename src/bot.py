@@ -97,28 +97,15 @@ class VPNBot:
         return value if value else default
 
     def _menu_buttons(self) -> list[tuple[str, str]]:
-        buttons: list[tuple[str, str]] = []
-        seen: set[str] = set()
-
-        for key, default_label in (
-            ("menu_buy", "Купить VPN"),
-            ("menu_mysub", "Моя подписка"),
-        ):
-            label = self._button_label(key, default_label).strip()
-            if label:
-                buttons.append((key, label))
-                seen.add(key)
-
-        for key, label in self._cms_buttons.items():
-            if not key.startswith("menu_") or key in seen:
-                continue
-            cleaned = label.strip()
-            if not cleaned:
-                continue
-            buttons.append((key, cleaned))
-            seen.add(key)
-
-        return buttons
+        return [
+            ("menu_trial", self._button_label("menu_trial", "🎁 Try Free").strip() or "🎁 Try Free"),
+            ("menu_buy", self._button_label("menu_buy", "💳 Buy VPN").strip() or "💳 Buy VPN"),
+            ("menu_mysub", self._button_label("menu_mysub", "📊 My Subscription").strip() or "📊 My Subscription"),
+            (
+                "menu_instructions",
+                self._button_label("menu_instructions", "💬 Instructions").strip() or "💬 Instructions",
+            ),
+        ]
 
     def _node_response_text(self, node_key: str) -> str:
         response_key = f"{node_key}_response"
@@ -316,6 +303,12 @@ class VPNBot:
         if selected_menu_key == "menu_mysub":
             await self.mysub(update, context)
             return
+        if selected_menu_key == "menu_trial":
+            await self.trial(update, context)
+            return
+        if selected_menu_key == "menu_instructions":
+            await self._send_menu_node(update, selected_menu_key)
+            return
 
         if selected_menu_key:
             await self._send_menu_node(update, selected_menu_key)
@@ -338,6 +331,27 @@ class VPNBot:
             ),
             reply_markup=self._contact_keyboard(),
         )
+
+    async def trial(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        await self._refresh_cms()
+        assert update.message is not None
+        user_id = await self._ensure_user(update)
+
+        if await self.db.has_any_subscription(user_id):
+            await update.message.reply_text(
+                self._content_text(
+                    "trial_unavailable_message",
+                    "Trial is available only once for new users.",
+                ),
+                reply_markup=self._menu_keyboard(),
+            )
+            return
+
+        await update.message.reply_text(
+            self._content_text("trial_activating_message", "Activating your 7-day trial..."),
+            reply_markup=self._menu_keyboard(),
+        )
+        await self._create_trial_for_user(update, user_id=user_id, days=7)
 
     async def handle_contact(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
@@ -537,6 +551,49 @@ class VPNBot:
             else None
         )
         await self._send_config(update, sub["vless_url"], sub["expires_at"], sub_url)
+
+    async def _create_trial_for_user(self, update: Update, user_id: int, days: int) -> None:
+        now = datetime.now(timezone.utc)
+        inbound = await self.xui.get_inbound(self.settings.xui_inbound_id)
+        reality = self.xui.parse_reality(inbound)
+        inbound_port = int(inbound["port"])
+
+        client_uuid = str(uuid.uuid4())
+        client_email = f"trial_{user_id}_{int(now.timestamp())}"
+        new_exp = now + timedelta(days=days)
+        await self.xui.add_client(
+            self.settings.xui_inbound_id,
+            client_uuid,
+            client_email,
+            new_exp,
+            comment="trial",
+        )
+
+        vless_url = build_vless_url(
+            uuid=client_uuid,
+            host=self.settings.vpn_public_host,
+            port=self.settings.vpn_public_port or inbound_port,
+            tag=self.settings.vpn_tag,
+            public_key=reality.public_key,
+            short_id=reality.short_id,
+            sni=reality.sni,
+            fingerprint=reality.fingerprint,
+        )
+        await self.db.create_subscription(
+            user_id=user_id,
+            inbound_id=self.settings.xui_inbound_id,
+            client_uuid=client_uuid,
+            client_email=client_email,
+            vless_url=vless_url,
+            expires_at=new_exp,
+        )
+        sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
+        sub_url = (
+            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
+            if sub_id
+            else None
+        )
+        await self._send_config(update, vless_url, new_exp, sub_url)
 
     async def _create_or_extend_for_user(
         self,

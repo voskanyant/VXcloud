@@ -1,2 +1,7 @@
-﻿[]
-
+[
+  { "key": "menu_trial_response", "value": "Get a free 7-day trial. It is available only once for new users." },
+  { "key": "menu_instructions_response", "value": "Instructions: choose app, import subscription link, and connect." },
+  { "key": "trial_unavailable_message", "value": "Trial is available only once for new users." },
+  { "key": "trial_activating_message", "value": "Activating your 7-day trial..." },
+  { "key": "menu_unknown_message", "value": "Use menu buttons below." }
+]

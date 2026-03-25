@@ -48,6 +48,19 @@ class DB:
         )
         return dict(row) if row else None
 
+    async def has_any_subscription(self, user_id: int) -> bool:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            SELECT 1
+            FROM subscriptions
+            WHERE user_id = $1
+            LIMIT 1
+            """,
+            user_id,
+        )
+        return row is not None
+
     async def create_subscription(
         self,
         user_id: int,
