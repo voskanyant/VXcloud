@@ -6,8 +6,8 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import qrcode
-from telegram import Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram import KeyboardButton, ReplyKeyboardMarkup, Update
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
 
 from .config import Settings
 from .db import DB
@@ -27,9 +27,22 @@ class VPNBot:
 
     def register(self) -> None:
         self.app.add_handler(CommandHandler("start", self.start))
+        self.app.add_handler(CommandHandler("menu", self.start))
         self.app.add_handler(CommandHandler("buy", self.buy))
         self.app.add_handler(CommandHandler("myvpn", self.myvpn))
         self.app.add_handler(CommandHandler("renew", self.renew))
+        self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.menu_click))
+
+    @staticmethod
+    def _menu_keyboard() -> ReplyKeyboardMarkup:
+        return ReplyKeyboardMarkup(
+            [
+                [KeyboardButton("Buy 30 Days"), KeyboardButton("My VPN")],
+                [KeyboardButton("Renew 30 Days"), KeyboardButton("Help")],
+            ],
+            resize_keyboard=True,
+            is_persistent=True,
+        )
 
     async def _ensure_user(self, update: Update) -> int:
         assert update.effective_user is not None
@@ -40,12 +53,27 @@ class VPNBot:
         await self._ensure_user(update)
         msg = (
             "VPN bot is ready.\n\n"
-            "Commands:\n"
-            "/buy - Buy 30-day plan\n"
-            "/myvpn - Show your current config and QR\n"
-            "/renew - Extend your plan"
+            "Use buttons below or commands:\n"
+            "/buy, /myvpn, /renew"
         )
-        await update.message.reply_text(msg)
+        await update.message.reply_text(msg, reply_markup=self._menu_keyboard())
+
+    async def menu_click(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        text = (update.message.text or "").strip().lower()
+        if text == "buy 30 days":
+            await self.buy(update, context)
+            return
+        if text == "my vpn":
+            await self.myvpn(update, context)
+            return
+        if text == "renew 30 days":
+            await self.renew(update, context)
+            return
+        if text == "help":
+            await update.message.reply_text(
+                "Buttons:\nBuy 30 Days\nMy VPN\nRenew 30 Days\n\nCommands:\n/buy\n/myvpn\n/renew",
+                reply_markup=self._menu_keyboard(),
+            )
 
     async def buy(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._create_or_extend(update)
