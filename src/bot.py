@@ -66,9 +66,11 @@ class VPNBot:
     def _menu_keyboard(self) -> ReplyKeyboardMarkup:
         buy_label = self._button_label("menu_buy", "Купить VPN")
         mysub_label = self._button_label("menu_mysub", "Моя подписка")
+        support_label = self._button_label("menu_support", "💬 Support")
         return ReplyKeyboardMarkup(
             [
                 [KeyboardButton(buy_label), KeyboardButton(mysub_label)],
+                [KeyboardButton(support_label)],
             ],
             resize_keyboard=True,
             is_persistent=True,
@@ -160,6 +162,7 @@ class VPNBot:
         text = raw_text.lower()
         buy_label = self._button_label("menu_buy", "Купить VPN").strip().lower()
         sub_label = self._button_label("menu_mysub", "Моя подписка").strip().lower()
+        support_label = self._button_label("menu_support", "💬 Support").strip().lower()
         cancel_label = self._button_label("contact_cancel", "Cancel").strip().lower()
 
         if text in {"cancel", "отмена", cancel_label}:
@@ -204,6 +207,12 @@ class VPNBot:
             return
         if text == sub_label:
             await self.mysub(update, context)
+            return
+        if text == support_label:
+            await update.message.reply_text(
+                self._content_text("support_response", "Support: @your_support"),
+                reply_markup=self._menu_keyboard(),
+            )
             return
         await update.message.reply_text(
             self._content_text("menu_unknown_message", "Используйте кнопки меню: Купить VPN или Моя подписка."),
