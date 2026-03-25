@@ -719,13 +719,8 @@ class VPNBot:
     ) -> None:
         action_markup: InlineKeyboardMarkup | None = None
         link_for_copy = subscription_url or vless_url
-
-        if subscription_url:
-            sub_img = self._build_styled_qr(subscription_url, "Subscription QR")
-            sub_buff = io.BytesIO()
-            sub_img.save(sub_buff, format="PNG")
-            sub_buff.seek(0)
-            await update.message.reply_photo(photo=sub_buff)
+        qr_payload = subscription_url or vless_url
+        qr_title = "Subscription QR" if subscription_url else "Direct VLESS QR"
 
         if len(self._copy_links) > 500:
             self._copy_links.clear()
@@ -740,16 +735,16 @@ class VPNBot:
             buttons.insert(0, [InlineKeyboardButton(text="\U0001f517 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443", url=subscription_url)])
         action_markup = InlineKeyboardMarkup(buttons)
 
-        vless_img = self._build_styled_qr(vless_url, "Direct VLESS QR")
-        vless_buff = io.BytesIO()
-        vless_img.save(vless_buff, format="PNG")
-        vless_buff.seek(0)
+        qr_img = self._build_styled_qr(qr_payload, qr_title)
+        qr_buff = io.BytesIO()
+        qr_img.save(qr_buff, format="PNG")
+        qr_buff.seek(0)
 
         text = f"\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0430\u043a\u0442\u0438\u0432\u043d\u0430 \u0434\u043e: {self._format_local_dt(expires_at)}"
         if subscription_url:
             text += f"\\n\\n\u0421\u0441\u044b\u043b\u043a\u0430 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438:\\n{subscription_url}"
 
-        await update.message.reply_photo(photo=vless_buff)
+        await update.message.reply_photo(photo=qr_buff)
         await update.message.reply_text(text, reply_markup=action_markup)
 
     @staticmethod
@@ -757,7 +752,7 @@ class VPNBot:
         qr = qrcode.QRCode(
             version=None,
             error_correction=qrcode.constants.ERROR_CORRECT_M,
-            box_size=9,
+            box_size=8,
             border=2,
         )
         qr.add_data(data)
@@ -775,10 +770,6 @@ class VPNBot:
 
         qr_with_border = ImageOps.expand(qr_img, border=8, fill="#F4F7FF")
         card.paste(qr_with_border, ((card_w - qr_with_border.width) // 2, 68))
-        max_width = 460
-        if card.width > max_width:
-            ratio = max_width / float(card.width)
-            card = card.resize((max_width, int(card.height * ratio)), Image.Resampling.LANCZOS)
         return card
 
     async def reminder_tick(self) -> None:
