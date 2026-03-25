@@ -512,16 +512,20 @@ class VPNBot:
         await update.message.reply_text(
             self._content_text(
                 "stars_only_notice",
-                "Оплата в боте доступна только через Telegram Stars ⭐",
+                "Оплата в боте доступна только через Telegram Stars ⭐\nДля iPhone обычно используется способ оплаты через мобильный баланс МТС.",
             )
         )
         payload = f"buy:{user_id}:{int(datetime.now(timezone.utc).timestamp())}"
         await self.db.create_order(user_id=user_id, amount_stars=self.settings.plan_price_stars, payload=payload)
         if phone:
             self._pending_profiles[payload] = {"phone": phone, "name": (customer_name or "").strip()}
-        prices = [LabeledPrice(label=f"VPN {self.settings.plan_days} days", amount=self.settings.plan_price_stars)]
-        title = self._content_text("invoice_title", f"VPN на {self.settings.plan_days} дней")
-        description = self._content_text("invoice_description", f"Доступ к VPN на {self.settings.plan_days} дней")
+        price_label = self._content_text("invoice_price_label", "Оплата в Stars")
+        prices = [LabeledPrice(label=price_label, amount=self.settings.plan_price_stars)]
+        title = self._content_text("invoice_title", "Оплата VPN через Stars")
+        description = self._content_text(
+            "invoice_description",
+            "Оплата подписки выполняется только Telegram Stars. Для iPhone чаще всего — через мобильный баланс МТС.",
+        )
         await update.message.reply_invoice(
             title=title,
             description=description,
