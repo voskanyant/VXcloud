@@ -735,7 +735,6 @@ class VPNBot:
 
         buttons: list[list[InlineKeyboardButton]] = [
             [InlineKeyboardButton(text="\U0001f4cb \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443", callback_data=f"copy|{copy_token}|_")],
-            [InlineKeyboardButton(text="\U0001f34f Streisand \u0432 App Store", url=STREISAND_APPSTORE_URL)],
         ]
         if subscription_url:
             buttons.insert(0, [InlineKeyboardButton(text="\U0001f517 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443", url=subscription_url)])
