@@ -25,7 +25,8 @@ def parse_env_file(path: Path) -> dict[str, str]:
     out: dict[str, str] = {}
     if not path.exists():
         return out
-    for line in path.read_text(encoding="utf-8").splitlines():
+    # utf-8-sig tolerates accidental BOM from editors/Windows tooling.
+    for line in path.read_text(encoding="utf-8-sig").splitlines():
         raw = line.strip()
         if not raw or raw.startswith("#") or "=" not in raw:
             continue
@@ -37,7 +38,8 @@ def parse_env_file(path: Path) -> dict[str, str]:
 def load_json_rows(path: Path, required_fields: tuple[str, ...]) -> list[dict[str, str]]:
     if not path.exists():
         raise FileNotFoundError(f"Seed file not found: {path}")
-    data = json.loads(path.read_text(encoding="utf-8"))
+    # utf-8-sig tolerates accidental BOM in seed files.
+    data = json.loads(path.read_text(encoding="utf-8-sig"))
     if not isinstance(data, list):
         raise ValueError(f"Seed file must be a JSON array: {path}")
 
