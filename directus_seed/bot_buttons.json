@@ -1,8 +1,30 @@
 [
-  { "key": "menu_trial", "label": "🎁 Try Free" },
-  { "key": "menu_buy", "label": "💳 Buy VPN" },
-  { "key": "menu_mysub", "label": "📊 My Subscription" },
-  { "key": "menu_instructions", "label": "💬 Instructions" },
-  { "key": "contact_share", "label": "Share phone number" },
-  { "key": "contact_cancel", "label": "Cancel" }
+  {
+    "key": "menu_trial",
+    "label": "\ud83c\udf81 Try Free"
+  },
+  {
+    "key": "menu_buy",
+    "label": "\ud83d\udcb3 Buy VPN"
+  },
+  {
+    "key": "menu_renew",
+    "label": "\ud83d\udd04 Renew"
+  },
+  {
+    "key": "menu_mysub",
+    "label": "\ud83d\udcca My Subscription"
+  },
+  {
+    "key": "menu_instructions",
+    "label": "\ud83d\udcac Instructions"
+  },
+  {
+    "key": "contact_share",
+    "label": "Share phone number"
+  },
+  {
+    "key": "contact_cancel",
+    "label": "Cancel"
+  }
 ]

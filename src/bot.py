@@ -66,8 +66,8 @@ class VPNBot:
         self.app.add_handler(MessageHandler(filters.CONTACT, self.handle_contact))
         self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.menu_click))
 
-    def _menu_keyboard(self) -> ReplyKeyboardMarkup:
-        buttons = self._menu_buttons()
+    def _menu_keyboard(self, has_active_subscription: bool = False) -> ReplyKeyboardMarkup:
+        buttons = self._menu_buttons(has_active_subscription=has_active_subscription)
         rows: list[list[KeyboardButton]] = []
         row: list[KeyboardButton] = []
         for _, label in buttons:
@@ -96,14 +96,25 @@ class VPNBot:
         value = self._cms_buttons.get(key)
         return value if value else default
 
-    def _menu_buttons(self) -> list[tuple[str, str]]:
+    async def _has_active_subscription(self, user_id: int) -> bool:
+        sub = await self.db.get_active_subscription(user_id)
+        if not sub:
+            return False
+        return sub["expires_at"] > datetime.now(timezone.utc)
+
+    async def _menu_keyboard_for_user(self, user_id: int) -> ReplyKeyboardMarkup:
+        return self._menu_keyboard(has_active_subscription=await self._has_active_subscription(user_id))
+
+    def _menu_buttons(self, has_active_subscription: bool = False) -> list[tuple[str, str]]:
+        buy_key = "menu_renew" if has_active_subscription else "menu_buy"
+        buy_default = "\U0001f504 Renew" if has_active_subscription else "\U0001f4b3 Buy VPN"
         return [
-            ("menu_trial", self._button_label("menu_trial", "🎁 Try Free").strip() or "🎁 Try Free"),
-            ("menu_buy", self._button_label("menu_buy", "💳 Buy VPN").strip() or "💳 Buy VPN"),
-            ("menu_mysub", self._button_label("menu_mysub", "📊 My Subscription").strip() or "📊 My Subscription"),
+            ("menu_trial", self._button_label("menu_trial", "\U0001f381 Try Free").strip() or "\U0001f381 Try Free"),
+            (buy_key, self._button_label(buy_key, buy_default).strip() or buy_default),
+            ("menu_mysub", self._button_label("menu_mysub", "\U0001f4ca My Subscription").strip() or "\U0001f4ca My Subscription"),
             (
                 "menu_instructions",
-                self._button_label("menu_instructions", "💬 Instructions").strip() or "💬 Instructions",
+                self._button_label("menu_instructions", "\U0001f4ac Instructions").strip() or "\U0001f4ac Instructions",
             ),
         ]
 
@@ -239,66 +250,69 @@ class VPNBot:
         return await self.db.upsert_user(u.id, u.username, u.first_name)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        await self._ensure_user(update)
+        user_id = await self._ensure_user(update)
         await self._refresh_cms()
         default_msg = (
-            "Добро пожаловать в VPN X.\n\n"
-            "Мы предлагаем быстрый, легкий и стабильный VPN для России.\n"
-            "Подходит для повседневного использования: соцсети, мессенджеры, сайты и приложения.\n\n"
-            "Нажмите «Купить VPN», чтобы оформить подписку, или «Моя подписка», чтобы проверить статус."
+            "Welcome to VPN X.\n\n"
+            "Fast and stable VPN access.\n\n"
+            "Use menu buttons below."
         )
         msg = self._content_text("start_message", default_msg)
-        await update.message.reply_text(msg, reply_markup=self._menu_keyboard())
+        await update.message.reply_text(msg, reply_markup=await self._menu_keyboard_for_user(user_id))
 
     async def menu_click(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
         raw_text = (update.message.text or "").strip()
         text = raw_text.lower()
         cancel_label = self._button_label("contact_cancel", "Cancel").strip().lower()
+        user_id = await self._ensure_user(update)
+        menu_keyboard = await self._menu_keyboard_for_user(user_id)
 
-        if text in {"cancel", "отмена", cancel_label}:
+        if text in {"cancel", "\u043e\u0442\u043c\u0435\u043d\u0430", cancel_label}:
             context.user_data.pop("buy_wait_phone", None)
             context.user_data.pop("buy_wait_name", None)
             context.user_data.pop("buy_phone", None)
             await update.message.reply_text(
-                self._content_text("cancel_message", "Операция отменена."),
-                reply_markup=self._menu_keyboard(),
+                self._content_text("cancel_message", "Operation canceled."),
+                reply_markup=menu_keyboard,
             )
             return
 
         if context.user_data.get("buy_wait_name"):
-            user_id = await self._ensure_user(update)
             phone = context.user_data.get("buy_phone")
             if not phone:
                 context.user_data.pop("buy_wait_name", None)
                 await update.message.reply_text(
-                    self._content_text("phone_missing_message", "Номер не сохранен. Нажмите Купить VPN еще раз."),
-                    reply_markup=self._menu_keyboard(),
+                    self._content_text("phone_missing_message", "Phone is missing. Press Buy VPN again."),
+                    reply_markup=menu_keyboard,
                 )
                 return
             customer_name = raw_text[:64]
             context.user_data.pop("buy_wait_name", None)
             context.user_data.pop("buy_phone", None)
             await update.message.reply_text(
-                self._content_text("sending_invoice_message", "Высылаю счет..."),
-                reply_markup=self._menu_keyboard(),
+                self._content_text("sending_invoice_message", "Sending invoice..."),
+                reply_markup=menu_keyboard,
             )
             await self._send_stars_invoice(update, user_id, phone=phone, customer_name=customer_name)
             return
 
         if context.user_data.get("buy_wait_phone"):
             await update.message.reply_text(
-                self._content_text("share_contact_hint_message", "Нажмите кнопку и поделитесь контактом."),
+                self._content_text("share_contact_hint_message", "Press the button and share your contact."),
                 reply_markup=self._contact_keyboard(),
             )
             return
 
-        menu_buttons = self._menu_buttons()
+        menu_buttons = self._menu_buttons(has_active_subscription=await self._has_active_subscription(user_id))
         label_to_key = {label.strip().lower(): key for key, label in menu_buttons}
         selected_menu_key = label_to_key.get(text)
 
         if selected_menu_key == "menu_buy":
             await self.buy(update, context)
+            return
+        if selected_menu_key == "menu_renew":
+            await self.renew(update, context)
             return
         if selected_menu_key == "menu_mysub":
             await self.mysub(update, context)
@@ -314,8 +328,8 @@ class VPNBot:
             await self._send_menu_node(update, selected_menu_key)
             return
         await update.message.reply_text(
-            self._content_text("menu_unknown_message", "Используйте кнопки меню: Купить VPN или Моя подписка."),
-            reply_markup=self._menu_keyboard(),
+            self._content_text("menu_unknown_message", "Use menu buttons below."),
+            reply_markup=menu_keyboard,
         )
 
     async def buy(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -343,13 +357,13 @@ class VPNBot:
                     "trial_unavailable_message",
                     "Trial is available only once for new users.",
                 ),
-                reply_markup=self._menu_keyboard(),
+                reply_markup=await self._menu_keyboard_for_user(user_id),
             )
             return
 
         await update.message.reply_text(
             self._content_text("trial_activating_message", "Activating your 7-day trial..."),
-            reply_markup=self._menu_keyboard(),
+            reply_markup=await self._menu_keyboard_for_user(user_id),
         )
         await self._create_trial_for_user(update, user_id=user_id, days=7)
 
@@ -391,7 +405,7 @@ class VPNBot:
         )
         await update.message.reply_text(
             phone_saved_template.replace("{phone}", normalized_phone),
-            reply_markup=self._menu_keyboard(),
+            reply_markup=await self._menu_keyboard_for_user(await self._ensure_user(update)),
         )
 
     async def renew(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
