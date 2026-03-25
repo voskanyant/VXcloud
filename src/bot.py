@@ -8,6 +8,7 @@ import re
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import qrcode
 from PIL import Image, ImageDraw, ImageOps
@@ -104,6 +105,15 @@ class VPNBot:
 
     async def _menu_keyboard_for_user(self, user_id: int) -> ReplyKeyboardMarkup:
         return self._menu_keyboard(has_active_subscription=await self._has_active_subscription(user_id))
+
+    def _display_tz(self) -> ZoneInfo:
+        try:
+            return ZoneInfo(self.settings.timezone)
+        except ZoneInfoNotFoundError:
+            return ZoneInfo("UTC")
+
+    def _format_local_dt(self, dt: datetime) -> str:
+        return dt.astimezone(self._display_tz()).strftime("%d/%m/%Y %H:%M")
 
     def _menu_buttons(self, has_active_subscription: bool = False) -> list[tuple[str, str]]:
         buy_key = "menu_renew" if has_active_subscription else "menu_buy"
@@ -465,14 +475,6 @@ class VPNBot:
         now = datetime.now(timezone.utc)
         expires_at = sub["expires_at"]
         if expires_at > now:
-            days_left = int((expires_at - now).total_seconds() // 86400)
-            if (expires_at - now).total_seconds() % 86400:
-                days_left += 1
-            await update.message.reply_text(
-                "Подписка: АКТИВНА\n"
-                f"Действует до: {expires_at:%Y-%m-%d %H:%M UTC}\n"
-                f"Осталось дней: {days_left}"
-            )
             client_uuid = str(sub["client_uuid"])
             sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
             sub_url = (
@@ -484,7 +486,7 @@ class VPNBot:
         else:
             await update.message.reply_text(
                 "Подписка: ИСТЕКЛА\n"
-                f"Дата окончания: {expires_at:%Y-%m-%d %H:%M UTC}"
+                f"Дата окончания: {self._format_local_dt(expires_at)}"
             )
 
     async def _send_stars_invoice(
@@ -707,7 +709,7 @@ class VPNBot:
         vless_img.save(vless_buff, format="PNG")
         vless_buff.seek(0)
 
-        text = f"Подписка активна до: {expires_at.strftime('%Y-%m-%d %H:%M UTC')}"
+        text = f"Подписка активна до: {self._format_local_dt(expires_at)}"
         if subscription_url:
             text += f"\n\nСсылка подписки:\n{subscription_url}"
         await update.message.reply_photo(photo=vless_buff)
@@ -749,10 +751,10 @@ class VPNBot:
                 msg = "Ваша подписка VPN истекла. Используйте /buy для продления."
                 tag = "expired"
             elif expires_at <= now + timedelta(days=1):
-                msg = f"Напоминание: подписка VPN истекает менее чем через 24 часа ({expires_at:%Y-%m-%d %H:%M UTC})."
+                msg = f"Напоминание: подписка VPN истекает менее чем через 24 часа ({self._format_local_dt(expires_at)})."
                 tag = "1d"
             else:
-                msg = f"Напоминание: подписка VPN истекает менее чем через 3 дня ({expires_at:%Y-%m-%d %H:%M UTC})."
+                msg = f"Напоминание: подписка VPN истекает менее чем через 3 дня ({self._format_local_dt(expires_at)})."
                 tag = "3d"
 
             try:
