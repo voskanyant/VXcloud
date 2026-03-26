@@ -1,30 +1,30 @@
 {% extends 'base.html' %}
 
-{% block title %}??????? - VXcloud{% endblock %}
+{% block title %}Кабинет - VXcloud{% endblock %}
 
 {% block content %}
 <article class="section-card">
-  <h1 class="h2 mb-3">?????? ???????</h1>
-  <p class="mb-1">????????????: <strong>{{ request.user.username }}</strong></p>
+  <h1 class="h2 mb-3">Личный кабинет</h1>
+  <p class="mb-1">Пользователь: <strong>{{ request.user.username }}</strong></p>
   {% if linked %}
     <p class="mb-3">Telegram ID: <code>{{ linked.telegram_id }}</code></p>
   {% else %}
-    <p class="mb-3">Telegram ?? ????????. <a href="/account/link/">?????????</a></p>
+    <p class="mb-3">Telegram не привязан. <a href="/account/link/">Привязать</a></p>
   {% endif %}
 
   {% if subscription %}
     <hr />
-    <p class="mb-1">??????: {% if has_active %}<strong class="text-success">???????</strong>{% else %}<strong class="text-danger">???????</strong>{% endif %}</p>
-    <p class="mb-2">????????? ??: {{ subscription.expires_at|date:'d.m.Y H:i' }}</p>
-    <p><a href="/account/config/">??????? ?????? ? QR</a></p>
+    <p class="mb-1">Статус: {% if has_active %}<strong class="text-success">Активна</strong>{% else %}<strong class="text-danger">Истекла</strong>{% endif %}</p>
+    <p class="mb-2">Действует до: {{ subscription.expires_at|date:'d.m.Y H:i' }}</p>
+    <p><a href="/account/config/">Открыть конфиг и QR</a></p>
   {% else %}
-    <p>???????? ?? ???????.</p>
+    <p>Подписка не найдена.</p>
   {% endif %}
 
   <div class="d-flex gap-2 flex-wrap mt-3">
-    <a class="btn btn-outline-primary" href="/account/renew/">???????? (??????? ?????)</a>
-    <a class="btn btn-outline-secondary" href="/account/link/">????????? Telegram</a>
-    <a class="btn btn-outline-danger" href="/accounts/logout/">?????</a>
+    <a class="btn btn-outline-primary" href="/account/renew/">Продлить (создать заказ)</a>
+    <a class="btn btn-outline-secondary" href="/account/link/">Привязать Telegram</a>
+    <a class="btn btn-outline-danger" href="/accounts/logout/">Выйти</a>
   </div>
 </article>
 {% endblock %}

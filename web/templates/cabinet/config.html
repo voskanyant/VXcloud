@@ -1,18 +1,18 @@
 {% extends 'base.html' %}
 
-{% block title %}?????? - VXcloud{% endblock %}
+{% block title %}Конфиг - VXcloud{% endblock %}
 
 {% block content %}
 <article class="section-card" style="max-width:760px;">
-  <h1 class="h2 mb-2">?????? ? QR</h1>
-  <p class="text-secondary mb-3">????????? ??: {{ subscription.expires_at|date:'d.m.Y H:i' }}</p>
+  <h1 class="h2 mb-2">Конфиг и QR</h1>
+  <p class="text-secondary mb-3">Действует до: {{ subscription.expires_at|date:'d.m.Y H:i' }}</p>
   <img class="img-fluid border rounded p-2 bg-white" style="max-width: 360px;" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
 
-  <label class="form-label mt-3" for="cfg">?????? ????????????</label>
+  <label class="form-label mt-3" for="cfg">Ссылка конфигурации</label>
   <textarea id="cfg" rows="5" readonly>{{ copy_text }}</textarea>
   <div class="d-flex gap-2 flex-wrap mt-3">
-    <button class="btn" type="button" onclick="copyCfg()">??????????? ??????</button>
-    <a class="btn btn-outline-secondary" href="/account/">????? ? ???????</a>
+    <button class="btn" type="button" onclick="copyCfg()">Скопировать ссылку</button>
+    <a class="btn btn-outline-secondary" href="/account/">Назад в кабинет</a>
   </div>
 </article>
 
@@ -22,7 +22,7 @@ function copyCfg() {
   box.select();
   box.setSelectionRange(0, 99999);
   navigator.clipboard.writeText(box.value).then(() => {
-    alert('?????? ???????????. ???????? Streisand, ??????? + ? Import from Clipboard.');
+    alert('Ссылка скопирована. Откройте Streisand, нажмите + и Import from Clipboard.');
   });
 }
 </script>
