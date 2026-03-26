@@ -1,0 +1,98 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>VXcloud - Инструкция</title>
+  <meta name="description" content="Подробная инструкция VXcloud: подключение, оплата Stars, оплата картой и поддержка." />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <p class="eyebrow">VXcloud</p>
+      <h1>Подробная инструкция</h1>
+      <p class="lead">Мини-сайт для клиентов: как подключиться, как оплатить и что делать, если что-то не работает.</p>
+    </header>
+
+    <nav class="toc" aria-label="Навигация по разделам">
+      <a href="#ios">iOS (Streisand)</a>
+      <a href="#android">Android (Hiddify)</a>
+      <a href="#stars">Оплата Stars</a>
+      <a href="#card">Оплата картой</a>
+      <a href="#troubleshoot">Проблемы</a>
+      <a href="#support">Поддержка</a>
+    </nav>
+
+    <section id="ios" class="card">
+      <h2>iOS (Streisand)</h2>
+      <ol>
+        <li>Установите Streisand из App Store.</li>
+        <li>В боте нажмите <strong>«Моя подписка»</strong>.</li>
+        <li>Нажмите <strong>«Скопировать ссылку»</strong>.</li>
+        <li>Откройте Streisand, нажмите <strong>+</strong>.</li>
+        <li>Выберите <strong>Import from Clipboard</strong>.</li>
+        <li>Нажмите <strong>Connect</strong>.</li>
+      </ol>
+      <p class="note">Если выдан QR, можно импортировать и через сканирование QR.</p>
+    </section>
+
+    <section id="android" class="card">
+      <h2>Android (Hiddify)</h2>
+      <ol>
+        <li>Установите Hiddify из Google Play.</li>
+        <li>В боте нажмите <strong>«Моя подписка»</strong>.</li>
+        <li>Откройте ссылку подписки или импортируйте из буфера.</li>
+        <li>Нажмите <strong>Connect</strong>.</li>
+      </ol>
+    </section>
+
+    <section id="stars" class="card">
+      <h2>Оплата через Telegram Stars</h2>
+      <p>Внутри бота оплата подписки выполняется только через <strong>Telegram Stars</strong>.</p>
+      <ul>
+        <li>Нажмите <strong>«Купить VPN»</strong> в боте.</li>
+        <li>Подтвердите оплату Stars.</li>
+        <li>После оплаты бот автоматически активирует подписку.</li>
+      </ul>
+      <p class="note">Для iPhone часто используется оплата через мобильный баланс МТС (в зависимости от настроек Apple ID).</p>
+    </section>
+
+    <section id="card" class="card">
+      <h2>Оплата картой</h2>
+      <p>Если хотите принимать оплату картой напрямую, обычно это делается вне Telegram Stars:</p>
+      <ul>
+        <li>подключается отдельный платежный провайдер;</li>
+        <li>бот отправляет ссылку на оплату;</li>
+        <li>после webhook подписка активируется автоматически.</li>
+      </ul>
+      <p class="note">В текущей версии бота встроенная оплата - только Stars.</p>
+    </section>
+
+    <section id="troubleshoot" class="card">
+      <h2>Если не подключается</h2>
+      <ul>
+        <li>Нажмите в боте <strong>«Моя подписка»</strong> и получите свежую ссылку/QR.</li>
+        <li>Удалите старый профиль в приложении и импортируйте заново.</li>
+        <li>Проверьте, что подписка активна и не истекла.</li>
+        <li>Если после оплаты не выдался конфиг: нажмите <strong>«Моя подписка»</strong> еще раз через 10-20 секунд.</li>
+      </ul>
+    </section>
+
+    <section id="support" class="card">
+      <h2>Поддержка</h2>
+      <p>Если не удалось решить проблему, напишите в поддержку и приложите:</p>
+      <ul>
+        <li>скрин ошибки;</li>
+        <li>ваш Telegram ID/username;</li>
+        <li>время оплаты (если проблема после оплаты).</li>
+      </ul>
+      <p class="note">Контакт поддержки подставьте здесь: <code>@your_support</code>.</p>
+    </section>
+
+    <footer class="footer">
+      <p>VXcloud • Последнее обновление: 26.03.2026</p>
+    </footer>
+  </main>
+</body>
+</html>

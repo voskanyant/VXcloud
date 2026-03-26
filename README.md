@@ -141,3 +141,33 @@ You can edit bot texts and button labels from Directus without redeploy.
 
 6. Force refresh from Telegram (admin only):
    - `/admin_reload`
+
+## Lightweight Help Site
+
+A minimal static instruction site is included in `guide/`:
+
+- `guide/index.html`
+- `guide/styles.css`
+
+### Quick Deploy (Nginx)
+
+```bash
+sudo mkdir -p /var/www/vxcloud-help
+sudo cp -r guide/* /var/www/vxcloud-help/
+```
+
+Example Nginx location:
+
+```nginx
+server {
+    listen 80;
+    server_name help.your-domain.com;
+
+    root /var/www/vxcloud-help;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
+```
