@@ -871,19 +871,15 @@ class VPNBot:
         buttons: list[list[InlineKeyboardButton]] = [
             [
                 InlineKeyboardButton(
+                    text=self._button_label("open_in_app", "\U0001f680 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438"),
+                    url=self._open_app_url(vless_url),
+                ),
+                InlineKeyboardButton(
                     text="\U0001f4cb \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443",
                     api_kwargs={"copy_text": {"text": link_for_copy}},
                 ),
             ],
         ]
-        if subscription_url:
-            buttons[0].insert(
-                0,
-                InlineKeyboardButton(
-                    text=self._button_label("open_in_app", "\U0001f680 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438"),
-                    url=self._open_app_url(vless_url),
-                ),
-            )
         if subscription_url:
             buttons.insert(0, [InlineKeyboardButton(text="\U0001f517 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443", url=subscription_url)])
         buttons.append(
