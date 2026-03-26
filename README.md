@@ -195,3 +195,14 @@ Open:
 - Admin: `http://127.0.0.1:8088/admin/`
 
 Add posts in admin (`Post`) and they appear on the public guide page.
+
+### Account Cabinet
+
+After login, users can open:
+
+- `/account/` - subscription status
+- `/account/link/` - link Telegram ID to bot user
+- `/account/config/` - show config link + QR + copy button
+
+Note: payment on site is currently a lightweight stub (`/account/renew/`) to create an order record.
+Real card payment requires payment provider webhook integration.

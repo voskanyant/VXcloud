@@ -1,0 +1,30 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Кабинет - VXcloud{% endblock %}
+
+{% block content %}
+<article class="article">
+  <h1>Личный кабинет</h1>
+  <p>Пользователь: <strong>{{ request.user.username }}</strong></p>
+  {% if linked %}
+    <p>Telegram ID: <code>{{ linked.telegram_id }}</code></p>
+  {% else %}
+    <p>Telegram не привязан. <a href="/account/link/">Привязать</a></p>
+  {% endif %}
+
+  {% if subscription %}
+    <hr />
+    <p>Статус: {% if has_active %}<strong>Активна</strong>{% else %}<strong>Истекла</strong>{% endif %}</p>
+    <p>Действует до: {{ subscription.expires_at|date:'d.m.Y H:i' }}</p>
+    <p><a href="/account/config/">Открыть конфиг и QR</a></p>
+  {% else %}
+    <p>Подписка не найдена.</p>
+  {% endif %}
+
+  <div class="actions">
+    <a class="btn" href="/account/renew/">Продлить (создать заказ)</a>
+    <a class="btn" href="/account/link/">Привязать Telegram</a>
+    <a class="btn" href="/accounts/logout/">Выйти</a>
+  </div>
+</article>
+{% endblock %}

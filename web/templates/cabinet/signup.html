@@ -1,0 +1,15 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Регистрация - VXcloud{% endblock %}
+
+{% block content %}
+<article class="article">
+  <h1>Регистрация</h1>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Создать аккаунт</button>
+  </form>
+  <p>Уже есть аккаунт? <a href="/accounts/login/">Войти</a></p>
+</article>
+{% endblock %}

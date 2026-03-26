@@ -1,0 +1,29 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Конфиг - VXcloud{% endblock %}
+
+{% block content %}
+<article class="article">
+  <h1>Конфиг и QR</h1>
+  <p>Действует до: {{ subscription.expires_at|date:'d.m.Y H:i' }}</p>
+  <img class="qr" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
+
+  <label for="cfg">Ссылка конфигурации</label>
+  <textarea id="cfg" rows="5" readonly>{{ copy_text }}</textarea>
+  <div class="actions">
+    <button class="btn" type="button" onclick="copyCfg()">Скопировать ссылку</button>
+    <a class="btn" href="/account/">Назад в кабинет</a>
+  </div>
+</article>
+
+<script>
+function copyCfg() {
+  const box = document.getElementById('cfg');
+  box.select();
+  box.setSelectionRange(0, 99999);
+  navigator.clipboard.writeText(box.value).then(() => {
+    alert('Ссылка скопирована. Откройте Streisand, нажмите + и Import from Clipboard.');
+  });
+}
+</script>
+{% endblock %}

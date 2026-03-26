@@ -11,8 +11,18 @@
   <main class="container">
     <header class="top">
       <a href="/" class="brand">VXcloud</a>
-      <a href="/admin/" class="admin-link">Admin</a>
+      <div class="top-links">
+        <a href="/account/" class="admin-link">Кабинет</a>
+        <a href="/admin/" class="admin-link">Admin</a>
+      </div>
     </header>
+    {% if messages %}
+      <section class="alerts">
+        {% for message in messages %}
+          <p class="alert {{ message.tags }}">{{ message }}</p>
+        {% endfor %}
+      </section>
+    {% endif %}
     {% block content %}{% endblock %}
   </main>
 </body>

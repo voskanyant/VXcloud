@@ -1,0 +1,15 @@
+﻿{% extends 'base.html' %}
+
+{% block title %}Привязка Telegram - VXcloud{% endblock %}
+
+{% block content %}
+<article class="article">
+  <h1>Привязка Telegram</h1>
+  <p>Введите ваш Telegram ID из бота. После этого сайт покажет вашу подписку и конфиг.</p>
+  <form method="post" class="form">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">Привязать</button>
+  </form>
+</article>
+{% endblock %}
