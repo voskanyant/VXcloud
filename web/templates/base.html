@@ -53,8 +53,12 @@
     document.querySelectorAll('button[type="submit"], button.btn').forEach((el) => {
       el.classList.add('btn', 'btn-primary');
     });
-    // Hard guard: never show admin link in sidebar menu.
-    document.querySelectorAll('.side-nav a[href^="/admin/"]').forEach((el) => el.remove());
+    // Hard guard: keep only allowed sidebar links.
+    const allowedLinks = new Set(['/', '/account/']);
+    document.querySelectorAll('.side-nav a').forEach((el) => {
+      const href = (el.getAttribute('href') || '').trim();
+      if (!allowedLinks.has(href)) el.remove();
+    });
   </script>
 </body>
 </html>
