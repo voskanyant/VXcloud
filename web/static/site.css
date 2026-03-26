@@ -29,7 +29,7 @@ body {
   height: 100vh;
   background: transparent;
   color: #0f172a;
-  border-right: 0;
+  border-right: 1px solid #cfd6e3;
   padding: 24px 18px;
 }
 
@@ -54,9 +54,7 @@ body {
   top: 6px;
   bottom: 6px;
   width: 2px;
-  background-image: radial-gradient(circle, #8a94a3 1.5px, transparent 2px);
-  background-size: 2px 12px;
-  background-repeat: repeat-y;
+  background: #8a94a3;
 }
 
 .side-link {
@@ -265,6 +263,7 @@ code {
   .sidebar {
     position: static;
     height: auto;
+    border-right: 0;
     border-bottom: 1px solid #d9dfe8;
     padding-bottom: 14px;
   }
