@@ -549,7 +549,9 @@ class VPNBot:
             return
         await query.answer(ok=True)
 
+
     async def successful_payment(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        assert update.message is not None
         payment = update.message.successful_payment
         order = await self.db.get_order_by_payload(payment.invoice_payload)
         if not order:
@@ -558,6 +560,14 @@ class VPNBot:
 
         charge_id = payment.telegram_payment_charge_id
         if await self.db.is_charge_processed(charge_id):
+            # Recover path for duplicate callbacks: try to return config immediately.
+            await update.message.reply_text(
+                self._content_text(
+                    "payment_already_processed_message",
+                    "Платеж уже обработан. Отправляю вашу подписку...",
+                )
+            )
+            await self.mysub(update, context)
             return
 
         await self.db.mark_order_paid(
@@ -569,12 +579,36 @@ class VPNBot:
         phone = profile.get("phone")
         customer_name = profile.get("name")
         await update.message.reply_text("Оплата прошла успешно. Активирую ваш VPN...")
-        await self._create_or_extend_for_user(
-            update,
-            int(order["user_id"]),
-            phone=phone,
-            customer_name=customer_name,
-        )
+
+        try:
+            await asyncio.wait_for(
+                self._create_or_extend_for_user(
+                    update,
+                    int(order["user_id"]),
+                    phone=phone,
+                    customer_name=customer_name,
+                ),
+                timeout=45,
+            )
+        except Exception:
+            LOGGER.exception("Post-payment provisioning failed for user_id=%s order_id=%s", order["user_id"], order["id"])
+            await update.message.reply_text(
+                self._content_text(
+                    "provision_delay_message",
+                    "Платеж получен, но активация задерживается. Нажмите «Моя подписка» через 10-20 секунд. Если не появится, напишите в поддержку.",
+                )
+            )
+            if self.settings.telegram_admin_id:
+                try:
+                    await self.app.bot.send_message(
+                        chat_id=self.settings.telegram_admin_id,
+                        text=(
+                            "⚠️ Ошибка активации после оплаты.\n"
+                            f"user_id={order['user_id']} order_id={order['id']}"
+                        ),
+                    )
+                except Exception:
+                    LOGGER.exception("Failed to notify admin about provisioning issue")
 
     async def myvpn(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = await self._ensure_user(update)
