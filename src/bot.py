@@ -8,6 +8,7 @@ import re
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from urllib.parse import quote
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import qrcode
@@ -145,6 +146,9 @@ class VPNBot:
         if explicit:
             return explicit
         return self._site_url().rstrip("/") + "/account/"
+
+    def _open_app_url(self, config_url: str) -> str:
+        return f"{self._site_url().rstrip('/')}/open-app/?u={quote(config_url, safe='')}"
 
     def _node_response_text(self, node_key: str) -> str:
         response_key = f"{node_key}_response"
@@ -877,7 +881,7 @@ class VPNBot:
                 0,
                 InlineKeyboardButton(
                     text=self._button_label("open_in_app", "\U0001f680 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438"),
-                    url=subscription_url,
+                    url=self._open_app_url(vless_url),
                 ),
             )
         if subscription_url:

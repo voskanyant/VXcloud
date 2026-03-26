@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}Открытие в приложении - VXcloud{% endblock %}
+
+{% block content %}
+<article class="section-card" style="max-width: 760px;">
+  <h1 class="h2 mb-3">Открытие в приложении</h1>
+  {% if deeplink %}
+    <p class="text-secondary mb-3">
+      Сейчас откроем конфиг в приложении автоматически.
+      Если не открылось, нажмите кнопку ниже.
+    </p>
+    <div class="d-flex gap-2 flex-wrap">
+      <a class="btn btn-primary" href="{{ deeplink }}">Открыть конфиг</a>
+      <button class="btn btn-outline-secondary" type="button" onclick="copyLink()">Скопировать ссылку</button>
+    </div>
+    <textarea id="deeplink-box" class="form-control mt-3" rows="4" readonly>{{ deeplink }}</textarea>
+    <script>
+      (function () {
+        const url = "{{ deeplink|escapejs }}";
+        setTimeout(function () {
+          window.location.href = url;
+        }, 50);
+      })();
+      function copyLink() {
+        const box = document.getElementById('deeplink-box');
+        box.select();
+        box.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(box.value);
+      }
+    </script>
+  {% else %}
+    <p class="text-danger mb-0">Некорректная ссылка. Вернитесь в бот и нажмите «Моя подписка» снова.</p>
+  {% endif %}
+</article>
+{% endblock %}

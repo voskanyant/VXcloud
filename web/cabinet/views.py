@@ -7,6 +7,7 @@ import secrets
 import string
 import uuid
 from datetime import datetime, timedelta
+from urllib.parse import unquote
 
 import qrcode
 from django.contrib import messages
@@ -19,6 +20,9 @@ from django.utils import timezone
 
 from .forms import SignUpForm
 from .models import BotOrder, BotSubscription, BotUser, LinkedAccount, TelegramLinkToken
+
+
+ALLOWED_DEEPLINK_SCHEMES = ("vless://", "vmess://", "trojan://", "ss://", "hysteria2://", "tuic://")
 
 
 def signup_view(request: HttpRequest) -> HttpResponse:
@@ -175,3 +179,11 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
         "Заявка на оплату создана. Сейчас оплата на сайте не подключена: завершите оплату через Telegram-бота.",
     )
     return redirect("account_dashboard")
+
+
+def open_app_link(request: HttpRequest) -> HttpResponse:
+    raw = (request.GET.get("u") or "").strip()
+    deeplink = unquote(raw)
+    if not any(deeplink.startswith(prefix) for prefix in ALLOWED_DEEPLINK_SCHEMES):
+        deeplink = ""
+    return render(request, "cabinet/open_app.html", {"deeplink": deeplink})
