@@ -134,7 +134,7 @@ class VPNBot:
             ),
             (
                 "menu_site",
-                self._button_label("menu_site", "\U0001f310 \u0421\u0430\u0439\u0442").strip() or "\U0001f310 \u0421\u0430\u0439\u0442",
+                self._button_label("menu_site", "\U0001f310 VXcloud.ru").strip() or "\U0001f310 VXcloud.ru",
             ),
         ]
 
