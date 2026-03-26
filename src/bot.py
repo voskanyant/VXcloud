@@ -265,7 +265,7 @@ class VPNBot:
         user_id = await self._ensure_user(update)
         await self._refresh_cms()
         default_msg = (
-            "\u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c \u0432 VPN X.\n\n"
+            "\u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c \u0432 VXcloud.\n\n"
             "\u041c\u044b \u043f\u0440\u0435\u0434\u043b\u0430\u0433\u0430\u0435\u043c \u0431\u044b\u0441\u0442\u0440\u044b\u0439, \u043b\u0435\u0433\u043a\u0438\u0439 \u0438 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u044b\u0439 VPN \u0434\u043b\u044f \u0420\u043e\u0441\u0441\u0438\u0438.\n"
             "\u041f\u043e\u0434\u0445\u043e\u0434\u0438\u0442 \u0434\u043b\u044f \u043f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u043e\u0433\u043e \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u044f: \u0441\u043e\u0446\u0441\u0435\u0442\u0438, \u043c\u0435\u0441\u0441\u0435\u043d\u0434\u0436\u0435\u0440\u044b, \u0441\u0430\u0439\u0442\u044b \u0438 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f.\n\n"
             "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u043a\u043d\u043e\u043f\u043a\u0438 \u043c\u0435\u043d\u044e \u043d\u0438\u0436\u0435."
@@ -561,7 +561,7 @@ class VPNBot:
             self._pending_profiles[payload] = {"phone": phone, "name": (customer_name or "").strip()}
         price_label = self._content_text("invoice_price_label", "Оплата в Stars")
         prices = [LabeledPrice(label=price_label, amount=self.settings.plan_price_stars)]
-        title = self._content_text("invoice_title", "Оплата VPN через Stars")
+        title = self._content_text("invoice_title", "Оплата VXcloud через Stars")
         description = self._content_text(
             "invoice_description",
             "Оплата подписки выполняется только Telegram Stars. Для iPhone чаще всего — через мобильный баланс МТС.",
@@ -861,13 +861,13 @@ class VPNBot:
             tg_id = int(item["telegram_id"])
             sub_id = int(item["id"])
             if expires_at <= now:
-                msg = "Ваша подписка VPN истекла. Используйте /buy для продления."
+                msg = "Ваша подписка VXcloud истекла. Используйте /buy для продления."
                 tag = "expired"
             elif expires_at <= now + timedelta(days=1):
-                msg = f"Напоминание: подписка VPN истекает менее чем через 24 часа ({self._format_local_dt(expires_at)})."
+                msg = f"Напоминание: подписка VXcloud истекает менее чем через 24 часа ({self._format_local_dt(expires_at)})."
                 tag = "1d"
             else:
-                msg = f"Напоминание: подписка VPN истекает менее чем через 3 дня ({self._format_local_dt(expires_at)})."
+                msg = f"Напоминание: подписка VXcloud истекает менее чем через 3 дня ({self._format_local_dt(expires_at)})."
                 tag = "3d"
 
             try:

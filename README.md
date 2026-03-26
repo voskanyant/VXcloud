@@ -1,6 +1,6 @@
-# VPN Telegram Bot (3x-ui + Reality)
+# VXcloud Telegram Bot (3x-ui + Reality)
 
-MVP bot for selling VPN access:
+MVP bot for selling VXcloud access:
 
 - `/buy` creates or renews a 30-day subscription
 - `/buy` sends Telegram Stars invoice (`XTR`)
