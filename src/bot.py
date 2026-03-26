@@ -50,7 +50,6 @@ class VPNBot:
         self.cms = cms
         self._pending_profiles: dict[str, dict[str, str]] = {}
         self._copy_links: dict[str, str] = {}
-        self._open_app_links: dict[str, str] = {}
         self._cms_content: dict[str, str] = {}
         self._cms_buttons: dict[str, str] = {}
         self._cms_loaded_at: float = 0.0
@@ -531,23 +530,6 @@ class VPNBot:
                     await query.message.reply_text("\u0421\u0441\u044b\u043b\u043a\u0430 \u0443\u0441\u0442\u0430\u0440\u0435\u043b\u0430. \u041d\u0430\u0436\u043c\u0438\u0442\u0435 \xab\u041c\u043e\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0430\xbb \u0435\u0449\u0435 \u0440\u0430\u0437.")
             return
 
-        if kind == "open":
-            link = self._open_app_links.get(target)
-            await query.answer()
-            if query.message is not None:
-                if link:
-                    await query.message.reply_text(
-                        self._content_text(
-                            "open_in_app_hint",
-                            "\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043d\u0430 \u0441\u0441\u044b\u043b\u043a\u0443 \u043d\u0438\u0436\u0435, \u0447\u0442\u043e\u0431\u044b \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043a\u043e\u043d\u0444\u0438\u0433 \u0432 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438:\\n{link}\\n\\n\u0415\u0441\u043b\u0438 \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b\u043e\u0441\u044c \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438, \u043d\u0430\u0436\u043c\u0438\u0442\u0435 \u00ab\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443\u00bb.",
-                        ).replace("{link}", link)
-                    )
-                else:
-                    await query.message.reply_text(
-                        "\u0421\u0441\u044b\u043b\u043a\u0430 \u0443\u0441\u0442\u0430\u0440\u0435\u043b\u0430. \u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u00ab\u041c\u043e\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0430\u00bb \u0435\u0449\u0435 \u0440\u0430\u0437."
-                    )
-            return
-
         await query.answer()
 
 
@@ -881,21 +863,23 @@ class VPNBot:
         link_for_copy = subscription_url or vless_url
         qr_payload = subscription_url or vless_url
         qr_title = "Subscription QR" if subscription_url else "Direct VLESS QR"
-        open_app_id = uuid.uuid4().hex[:12]
-        self._open_app_links[open_app_id] = vless_url
 
         buttons: list[list[InlineKeyboardButton]] = [
             [
-                InlineKeyboardButton(
-                    text=self._button_label("open_in_app", "\U0001f680 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438"),
-                    callback_data=f"open|{open_app_id}|_",
-                ),
                 InlineKeyboardButton(
                     text="\U0001f4cb \u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443",
                     api_kwargs={"copy_text": {"text": link_for_copy}},
                 ),
             ],
         ]
+        if subscription_url:
+            buttons[0].insert(
+                0,
+                InlineKeyboardButton(
+                    text=self._button_label("open_in_app", "\U0001f680 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438"),
+                    url=subscription_url,
+                ),
+            )
         if subscription_url:
             buttons.insert(0, [InlineKeyboardButton(text="\U0001f517 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443", url=subscription_url)])
         buttons.append(
@@ -923,12 +907,12 @@ class VPNBot:
 
         text = f"\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u0430\u043a\u0442\u0438\u0432\u043d\u0430 \u0434\u043e: {self._format_local_dt(expires_at)}"
         if subscription_url:
-            text += f"\\n\\n\u0421\u0441\u044b\u043b\u043a\u0430 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438:\\n{subscription_url}"
+            text += f"\n\n\u0421\u0441\u044b\u043b\u043a\u0430 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438:\n{subscription_url}"
         copy_link_hint = self._content_text(
             "copy_link_hint",
             "Нажмите «Скопировать ссылку», затем откройте Streisand, нажмите + и выберите Import from Clipboard.",
         ).replace("\\n", "\n").replace("/n", "\n")
-        text += "\\n\\n" + copy_link_hint
+        text += "\n\n" + copy_link_hint
 
         await update.message.reply_photo(photo=qr_buff)
         await update.message.reply_text(text, reply_markup=action_markup)
