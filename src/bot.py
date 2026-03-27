@@ -179,7 +179,7 @@ class VPNBot:
                     [
                         [InlineKeyboardButton(text="🍏 iOS (Streisand)", url=STREISAND_APPSTORE_URL)],
                         [InlineKeyboardButton(text="🤖 Android (V2Box)", url=V2BOX_PLAYSTORE_URL)],
-                        [InlineKeyboardButton(text="💻 Инструкция на сайте", url=f"{self._site_url().rstrip('/')}/instructions/")],
+                        [InlineKeyboardButton(text="💻 Сайт VXcloud", url=f"{self._site_url().rstrip('/')}")],
                     ]
                 )
             return None

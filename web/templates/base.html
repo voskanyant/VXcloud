@@ -1,4 +1,4 @@
-{% load static cms %}
+{% load static cms wagtailcore_tags %}
 <!doctype html>
 <html lang="ru">
 <head>
@@ -19,11 +19,10 @@
       <a href="/" class="brand">{{ nav_brand }}</a>
       <nav class="side-nav">
         <a href="/" class="side-link{% if request.path == '/' %} is-active{% endif %}">{{ nav_home }}</a>
-        <a href="/instructions/" class="side-link{% if request.path|slice:':14' == '/instructions/' or request.path|slice:':6' == '/post/' %} is-active{% endif %}">{{ nav_instructions }}</a>
-        <a href="/account/" class="side-link{% if request.path|slice:':9' == '/account/' or request.path|slice:':10' == '/accounts/' %} is-active{% endif %}">{{ nav_account }}</a>
-        {% for page in cms_nav_pages %}
-          <a href="{% url 'blog_page_detail' slug=page.slug %}" class="side-link{% if request.path == '/page/'|add:page.slug|add:'/' %} is-active{% endif %}">{{ page.nav_label }}</a>
+        {% for page in wagtail_menu_pages %}
+          <a href="{% pageurl page %}" class="side-link{% if request.path == page.url %} is-active{% endif %}">{{ page.title }}</a>
         {% endfor %}
+        <a href="/account/" class="side-link{% if request.path|slice:':9' == '/account/' or request.path|slice:':10' == '/accounts/' %} is-active{% endif %}">{{ nav_account }}</a>
       </nav>
     </aside>
     <main class="content-area">

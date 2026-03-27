@@ -27,5 +27,4 @@ jobs:
             cd /srv/apps/vxcloud/app
             git fetch origin main
             git reset --hard origin/main
-            chmod +x scripts/ops/deploy-auto.sh
-            ./scripts/ops/deploy-auto.sh
+            bash scripts/ops/deploy-auto.sh

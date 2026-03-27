@@ -102,7 +102,8 @@ Wagtail can be enabled without touching bot logic or `/account/` flows.
 Routes:
 
 - `https://vxcloud.ru/cms-admin/` - Wagtail admin
-- `https://vxcloud.ru/cms/` - Wagtail public tree
+- `https://vxcloud.ru/` - Wagtail public tree (main site)
+- `https://vxcloud.ru/legacy/` - old Django blog routes
 
 Server setup after pull:
 

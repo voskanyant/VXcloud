@@ -64,7 +64,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "blog.context_processors.navigation_pages",
+                "cms.context_processors.wagtail_navigation",
             ],
         },
     }

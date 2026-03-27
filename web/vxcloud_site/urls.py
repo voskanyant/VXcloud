@@ -12,6 +12,6 @@ urlpatterns = [
     path("accounts/", include("django.contrib.auth.urls")),
     path("account/", include("cabinet.urls")),
     path("open-app/", open_app_link, name="open_app_link"),
-    path("cms/", include(wagtail_urls)),
-    path("", include("blog.urls")),
+    path("legacy/", include("blog.urls")),
+    path("", include(wagtail_urls)),
 ]
