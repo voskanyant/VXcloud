@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load wagtailcore_tags %}
+{% load wagtailcore_tags wagtailimages_tags %}
 
 {% block title %}{{ page.title }}{% endblock %}
 
@@ -13,4 +13,43 @@
     <div class="post-content">{{ page.body|richtext }}</div>
   {% endif %}
 </article>
+
+{% for block in page.sections %}
+  {% if block.block_type == "hero" %}
+    <section class="section-card mb-3">
+      <h2 class="h3 mb-2">{{ block.value.title }}</h2>
+      {% if block.value.subtitle %}<p class="text-secondary mb-0">{{ block.value.subtitle }}</p>{% endif %}
+    </section>
+  {% elif block.block_type == "rich_text" %}
+    <section class="section-card mb-3">
+      <div class="post-content">{{ block.value|richtext }}</div>
+    </section>
+  {% elif block.block_type == "cta" %}
+    <section class="section-card mb-3">
+      <h3 class="h4 mb-2">{{ block.value.heading }}</h3>
+      {% if block.value.text %}<p class="mb-3">{{ block.value.text }}</p>{% endif %}
+      {% if block.value.button_text and block.value.button_url %}
+        <a class="btn btn-primary" href="{{ block.value.button_url }}">{{ block.value.button_text }}</a>
+      {% endif %}
+    </section>
+  {% elif block.block_type == "faq" %}
+    <section class="section-card mb-3">
+      <h3 class="h4 mb-3">FAQ</h3>
+      <div class="vstack gap-2">
+        {% for item in block.value %}
+          <div>
+            <div class="fw-semibold">{{ item.question }}</div>
+            <div class="text-secondary">{{ item.answer }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% elif block.block_type == "image" %}
+    <section class="section-card mb-3">
+      {% image block.value.image width-1200 as rendered_image %}
+      <img src="{{ rendered_image.url }}" alt="{{ block.value.caption|default:block.value.image.title }}" class="img-fluid rounded" />
+      {% if block.value.caption %}<p class="text-secondary mt-2 mb-0">{{ block.value.caption }}</p>{% endif %}
+    </section>
+  {% endif %}
+{% endfor %}
 {% endblock %}

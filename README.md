@@ -114,6 +114,19 @@ docker compose --env-file .env exec -T web python /app/web/manage.py migrate
 
 Use existing Django superuser to sign in at `/cms-admin/`.
 
+Included editable page types:
+
+- `CMSHomePage`
+- `CMSContentPage`
+
+Ready StreamField sections:
+
+- `hero` (title + subtitle)
+- `rich_text`
+- `cta` (heading, text, button text/url)
+- `faq` (list of question/answer)
+- `image` (image + caption)
+
 ## Directus Content Sync From Git
 
 Directus content can be versioned in repo and synced on every deploy.
