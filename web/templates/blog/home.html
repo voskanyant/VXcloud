@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+{% load cms %}
+
+{% cms_text "home.page_title" "VXcloud - Главная" as home_page_title %}
+{% block title %}{{ home_page_title }}{% endblock %}
+
+{% block content %}
+<section class="section-card mb-3">
+  {% cms_text "home.hero_title" "VXcloud: быстрый VPN для повседневного использования" as home_hero_title %}
+  {% cms_text "home.hero_description" "Откройте Инструкцию для подключения или зайдите в Личный кабинет для управления подпиской." as home_hero_description %}
+  <h1 class="h2 mb-2">{{ home_hero_title }}</h1>
+  <p class="mb-0">{{ home_hero_description }}</p>
+</section>
+
+<section class="section-card">
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-primary" href="/instructions/">Инструкции</a>
+    <a class="btn btn-outline-primary" href="/account/">Личный кабинет</a>
+  </div>
+</section>
+{% endblock %}
