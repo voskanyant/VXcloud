@@ -95,6 +95,25 @@ chmod +x scripts/ops/deploy-auto.sh
 ./scripts/ops/deploy-auto.sh
 ```
 
+## Wagtail CMS (Optional, safe with existing bot)
+
+Wagtail can be enabled without touching bot logic or `/account/` flows.
+
+Routes:
+
+- `https://vxcloud.ru/cms-admin/` - Wagtail admin
+- `https://vxcloud.ru/cms/` - Wagtail public tree
+
+Server setup after pull:
+
+```bash
+cd /srv/apps/vxcloud/app
+./scripts/ops/deploy-auto.sh
+docker compose --env-file .env exec -T web python /app/web/manage.py migrate
+```
+
+Use existing Django superuser to sign in at `/cms-admin/`.
+
 ## Directus Content Sync From Git
 
 Directus content can be versioned in repo and synced on every deploy.
