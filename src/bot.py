@@ -871,8 +871,32 @@ class VPNBot:
         now = datetime.now(timezone.utc)
         expires_at = sub["expires_at"]
         if expires_at > now:
+            vless_url = str(sub["vless_url"])
             client_uuid = str(sub["client_uuid"])
             sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
+            if not sub_id:
+                await update.message.reply_text(
+                    self._content_text(
+                        "recovering_xui_profile_message",
+                        "Профиль на VPN-сервере не найден. Восстанавливаю конфиг...",
+                    )
+                )
+                restored = await self._restore_xui_profile_for_subscription(user_id, sub)
+                if restored is not None:
+                    vless_url, sub_id = restored
+                    await update.message.reply_text(
+                        self._content_text(
+                            "recovering_xui_profile_done_message",
+                            "Готово, профиль восстановлен.",
+                        )
+                    )
+                else:
+                    await update.message.reply_text(
+                        self._content_text(
+                            "recovering_xui_profile_failed_message",
+                            "Не удалось автоматически восстановить профиль. Напишите в поддержку.",
+                        )
+                    )
             sub_url = (
                 f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
                 if sub_id
@@ -881,7 +905,7 @@ class VPNBot:
             client_code = await self.db.get_user_client_code(user_id)
             await self._send_config(
                 update,
-                sub["vless_url"],
+                vless_url,
                 expires_at,
                 sub_url,
                 client_code=client_code,
@@ -893,6 +917,67 @@ class VPNBot:
                 "ÐŸÐ¾Ð´Ð¿Ð¸ÑÐºÐ°: Ð˜Ð¡Ð¢Ð•ÐšÐ›Ð\n"
                 f"Ð”Ð°Ñ‚Ð° Ð¾ÐºÐ¾Ð½Ñ‡Ð°Ð½Ð¸Ñ: {self._format_local_dt(expires_at)}"
             )
+
+    async def _restore_xui_profile_for_subscription(
+        self,
+        user_id: int,
+        sub: dict[str, object],
+    ) -> tuple[str, str | None] | None:
+        inbound_id = int(sub["inbound_id"])
+        client_uuid = str(sub["client_uuid"])
+        client_email = str(sub["client_email"])
+        expires_at = sub["expires_at"]
+        assert isinstance(expires_at, datetime)
+
+        try:
+            inbound = await self.xui.get_inbound(inbound_id)
+            reality = self.xui.parse_reality(inbound)
+            inbound_port = int(inbound["port"])
+
+            try:
+                await self.xui.add_client(
+                    inbound_id,
+                    client_uuid,
+                    client_email,
+                    expires_at,
+                    limit_ip=self.settings.max_devices_per_sub,
+                )
+            except Exception:
+                LOGGER.exception(
+                    "add_client failed while restoring XUI profile (user_id=%s, subscription_id=%s), trying update_client",
+                    user_id,
+                    sub.get("id"),
+                )
+                await self.xui.update_client(
+                    inbound_id,
+                    client_uuid,
+                    client_email,
+                    expires_at,
+                    limit_ip=self.settings.max_devices_per_sub,
+                )
+
+            sub_id = await self.xui.get_client_sub_id(inbound_id, client_uuid)
+            await self.db.update_subscription_xui_sub_id(int(sub["id"]), sub_id)
+
+            vless_url = build_vless_url(
+                uuid=client_uuid,
+                host=self.settings.vpn_public_host,
+                port=self.settings.vpn_public_port or inbound_port,
+                tag=self.settings.vpn_tag,
+                public_key=reality.public_key,
+                short_id=reality.short_id,
+                sni=reality.sni,
+                fingerprint=reality.fingerprint,
+            )
+            await self.db.extend_subscription(int(sub["id"]), expires_at, vless_url)
+            return vless_url, sub_id
+        except Exception:
+            LOGGER.exception(
+                "Failed to restore XUI profile for user_id=%s subscription_id=%s",
+                user_id,
+                sub.get("id"),
+            )
+            return None
 
     async def _send_stars_invoice(
         self,
