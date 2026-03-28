@@ -1434,7 +1434,12 @@ class VPNBot:
             "copy_link_hint",
             "Нажмите «Скопировать ссылку», затем откройте Streisand, нажмите + и выберите Import from Clipboard.",
         ).replace("\\n", "\n").replace("/n", "\n")
+        single_device_warning = self._content_text(
+            "single_device_warning",
+            "⚠️ Один конфиг нельзя использовать одновременно на двух устройствах.",
+        ).replace("\\n", "\n").replace("/n", "\n")
         text += "\n\n" + copy_link_hint
+        text += "\n\n" + single_device_warning
 
         await update.message.reply_photo(photo=qr_buff)
         await update.message.reply_text(text, reply_markup=action_markup)
