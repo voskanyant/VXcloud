@@ -386,7 +386,12 @@ class DB:
             SELECT *
             FROM orders
             WHERE user_id = $1
-              AND status IN ('paid', 'activating', 'activated')
+              AND (
+                    status IN ('paid', 'activating', 'activated', 'completed', 'success', 'succeeded')
+                    OR paid_at IS NOT NULL
+                    OR telegram_payment_charge_id IS NOT NULL
+                    OR provider_payment_charge_id IS NOT NULL
+                  )
             ORDER BY paid_at DESC NULLS LAST, id DESC
             LIMIT 1
             """,
