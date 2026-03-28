@@ -23,7 +23,12 @@ docker compose --env-file .env up -d --build db web
 docker compose --env-file .env --profile bot up -d --build bot
 
 echo "[5/6] Health checks..."
-curl -fsS -I -H "Host: vxcloud.ru" http://127.0.0.1:8088 >/dev/null
+HTTP_CODE="$(curl -sS -o /dev/null -w "%{http_code}" -H "Host: vxcloud.ru" http://127.0.0.1:8088 || true)"
+if [[ -z "$HTTP_CODE" || "$HTTP_CODE" == "000" || "$HTTP_CODE" -ge 500 ]]; then
+  echo "ERROR: web healthcheck failed, HTTP=$HTTP_CODE"
+  exit 1
+fi
+echo "web healthcheck OK (HTTP=$HTTP_CODE)"
 docker compose --env-file .env ps
 
 echo "[6/6] Done."
