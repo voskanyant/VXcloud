@@ -881,7 +881,8 @@ class VPNBot:
         if expires_at > now:
             vless_url = str(sub["vless_url"])
             client_uuid = str(sub["client_uuid"])
-            sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
+            inbound_id = int(sub["inbound_id"])
+            sub_id = await self.xui.get_client_sub_id(inbound_id, client_uuid)
             if not sub_id:
                 await update.message.reply_text(
                     self._content_text(
