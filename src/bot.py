@@ -365,6 +365,132 @@ class VPNBot:
             ]
         )
 
+    @staticmethod
+    def _start_message_text() -> str:
+        return (
+            "Добро пожаловать в VXcloud\n\n"
+            "Здесь вы можете получить стабильный доступ к интернету для работы, общения и повседневных задач.\n\n"
+            "Начните с пробного периода или сразу оформите доступ.\n\n"
+            "Для подключения понадобится специальное приложение.\n"
+            "Если его нет в российском App Store, может потребоваться сменить регион в App Store.\n"
+            "Мы покажем всё по шагам."
+        )
+
+    async def _send_start_screen(self, message: Message, user_id: int) -> None:
+        menu_keyboard = await self._menu_keyboard_for_user(user_id)
+        sent = await message.reply_text(self._start_message_text(), reply_markup=menu_keyboard)
+        try:
+            await sent.edit_reply_markup(reply_markup=self._start_inline_keyboard())
+        except Exception:
+            await message.reply_text("Выберите действие:", reply_markup=self._start_inline_keyboard())
+
+    def _trial_offer_markup(self) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(text="🎁 Активировать 7 дней", callback_data="act|trial_activate|_")],
+                [
+                    InlineKeyboardButton(text="💬 Как это работает", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="🔙 Назад", callback_data="act|start_back|_"),
+                ],
+            ]
+        )
+
+    def _trial_used_markup(self) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(text="💳 Купить доступ", callback_data="act|buy_new|_")],
+                [
+                    InlineKeyboardButton(text="💬 Как подключить", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="🔙 Назад", callback_data="act|start_back|_"),
+                ],
+            ]
+        )
+
+    def _trial_success_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(text="📲 Открыть доступ", callback_data=f"act|cfg_open:{subscription_id}|_"),
+                    InlineKeyboardButton(text="📷 Показать QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
+                ],
+                [
+                    InlineKeyboardButton(text="💬 Инструкция", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="📦 Моя подписка", callback_data="act|start_mysub|_"),
+                ],
+            ]
+        )
+
+    async def _show_trial_offer(self, message: Message, user_id: int) -> None:
+        if await self.db.has_any_subscription(user_id):
+            await message.reply_text(
+                "Пробный доступ уже был использован\n\n"
+                "Вы можете сразу оформить платный доступ.",
+                reply_markup=self._trial_used_markup(),
+            )
+            return
+
+        await message.reply_text(
+            "Пробный доступ на 7 дней\n\n"
+            "Подойдёт, если вы хотите сначала всё проверить.\n\n"
+            "Что вы получите:\n"
+            "• доступ на 7 дней\n"
+            "• ссылку для подключения\n"
+            "• QR-код для быстрого входа\n"
+            "• инструкцию по шагам\n\n"
+            "Пробный доступ можно активировать один раз.",
+            reply_markup=self._trial_offer_markup(),
+        )
+
+    async def _send_mysub_for_message(self, message: Message, user_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
+        subscriptions = await self.db.list_subscriptions(user_id)
+        if not subscriptions:
+            paid_order = await self.db.get_latest_paid_order(user_id)
+            if paid_order:
+                await message.reply_text(
+                    self._content_text(
+                        "recovering_subscription_message",
+                        "ÐÐ°Ð¹Ð´ÐµÐ½ Ð¾Ð¿Ð»Ð°Ñ‡ÐµÐ½Ð½Ñ‹Ð¹ Ð·Ð°ÐºÐ°Ð·. ÐŸÑ€Ð¾Ð±ÑƒÑŽ Ð²Ð¾ÑÑÑ‚Ð°Ð½Ð¾Ð²Ð¸Ñ‚ÑŒ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÑƒ...",
+                    )
+                )
+                try:
+                    await asyncio.wait_for(
+                        self._run_user_provision(
+                            user_id,
+                            lambda: self._activate_order_and_send_config(update=None, order_id=int(paid_order["id"]), message=message),
+                        ),
+                        timeout=45,
+                    )
+                    return
+                except Exception:
+                    LOGGER.exception(
+                        "Failed to recover subscription for user_id=%s from paid order_id=%s",
+                        user_id,
+                        paid_order.get("id"),
+                    )
+                    await message.reply_text(
+                        self._content_text(
+                            "recover_failed_message",
+                            "ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð°Ð²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡ÐµÑÐºÐ¸ Ð²Ð¾ÑÑÑ‚Ð°Ð½Ð¾Ð²Ð¸Ñ‚ÑŒ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÑƒ. ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ° ÑƒÐ¶Ðµ ÑƒÐ²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð°, Ð¿Ð¾Ð¶Ð°Ð»ÑƒÐ¹ÑÑ‚Ð° Ð¿Ð¾Ð´Ð¾Ð¶Ð´Ð¸Ñ‚Ðµ.",
+                        )
+                    )
+                    if self.settings.telegram_admin_id:
+                        try:
+                            await self.app.bot.send_message(
+                                chat_id=self.settings.telegram_admin_id,
+                                text=(
+                                    "âš ï¸ ÐžÑˆÐ¸Ð±ÐºÐ° Ð²Ð¾ÑÑÑ‚Ð°Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ¸.\n"
+                                    f"user_id={user_id} paid_order_id={paid_order.get('id')}"
+                                ),
+                            )
+                        except Exception:
+                            LOGGER.exception("Failed to notify admin about recovery issue")
+                    return
+        client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+        await message.reply_text(
+            text=self._configs_list_text(client_code=client_code, subscriptions=subscriptions),
+            reply_markup=self._configs_list_markup(subscriptions),
+        )
+
     async def _send_menu_node(
         self,
         update: Update,
@@ -631,20 +757,7 @@ class VPNBot:
             )
             return
 
-        msg = (
-            "Добро пожаловать в VXcloud\n\n"
-            "Здесь вы можете получить стабильный доступ к интернету для работы, общения и повседневных задач.\n\n"
-            "Начните с пробного периода или сразу оформите доступ.\n\n"
-            "Для подключения понадобится специальное приложение.\n"
-            "Если его нет в российском App Store, может потребоваться сменить регион в App Store.\n"
-            "Мы покажем всё по шагам."
-        )
-        menu_keyboard = await self._menu_keyboard_for_user(user_id)
-        sent = await update.message.reply_text(msg, reply_markup=menu_keyboard)
-        try:
-            await sent.edit_reply_markup(reply_markup=self._start_inline_keyboard())
-        except Exception:
-            await update.message.reply_text("Выберите действие:", reply_markup=self._start_inline_keyboard())
+        await self._send_start_screen(update.message, user_id)
 
     async def menu_click(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
@@ -792,25 +905,7 @@ class VPNBot:
         if message is None:
             return
         user_id = await self._ensure_user(update)
-
-        if await self.db.has_any_subscription(user_id):
-            await message.reply_text(
-                self._content_text(
-                    "trial_unavailable_message",
-                    "\u041f\u0440\u043e\u0431\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0442\u043e\u043b\u044c\u043a\u043e \u043e\u0434\u0438\u043d \u0440\u0430\u0437 \u0434\u043b\u044f \u043d\u043e\u0432\u044b\u0445 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439.",
-                ),
-                reply_markup=await self._menu_keyboard_for_user(user_id),
-            )
-            return
-
-        await message.reply_text(
-            self._content_text("trial_activating_message", "\u0410\u043a\u0442\u0438\u0432\u0438\u0440\u0443\u044e \u0432\u0430\u0448 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434 \u043d\u0430 7 \u0434\u043d\u0435\u0439..."),
-            reply_markup=await self._menu_keyboard_for_user(user_id),
-        )
-        await self._run_user_provision(
-            user_id,
-            lambda: self._create_trial_for_user(update, user_id=user_id, days=7),
-        )
+        await self._show_trial_offer(message, user_id)
 
     async def renew(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = await self._ensure_user(update)
@@ -1098,7 +1193,37 @@ class VPNBot:
             if target == "start_trial":
                 await query.answer()
                 if query.message is not None:
-                    await self.trial(update, context)
+                    user_id = await self._ensure_user(update)
+                    await self._show_trial_offer(query.message, user_id)
+                return
+            if target == "trial_activate":
+                await query.answer()
+                if query.message is not None:
+                    user_id = await self._ensure_user(update)
+                    if await self.db.has_any_subscription(user_id):
+                        await query.message.reply_text(
+                            "Пробный доступ уже был использован\n\n"
+                            "Вы можете сразу оформить платный доступ.",
+                            reply_markup=self._trial_used_markup(),
+                        )
+                    else:
+                        await query.message.reply_text("Активирую пробный доступ...")
+                        await self._run_user_provision(
+                            user_id,
+                            lambda: self._create_trial_for_user(update, user_id=user_id, days=7),
+                        )
+                return
+            if target == "start_back":
+                await query.answer()
+                if query.message is not None:
+                    user_id = await self._ensure_user(update)
+                    await self._send_start_screen(query.message, user_id)
+                return
+            if target == "start_mysub":
+                await query.answer()
+                if query.message is not None:
+                    user_id = await self._ensure_user(update)
+                    await self._send_mysub_for_message(query.message, user_id, context)
                 return
             if target == "support_start":
                 context.user_data["support_wait_message"] = True
@@ -1274,56 +1399,11 @@ class VPNBot:
 
     async def mysub(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
-        assert update.message is not None
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None:
+            return
         user_id = await self._ensure_user(update)
-        subscriptions = await self.db.list_subscriptions(user_id)
-        if not subscriptions:
-            paid_order = await self.db.get_latest_paid_order(user_id)
-            if paid_order:
-                await update.message.reply_text(
-                    self._content_text(
-                        "recovering_subscription_message",
-                        "ÐÐ°Ð¹Ð´ÐµÐ½ Ð¾Ð¿Ð»Ð°Ñ‡ÐµÐ½Ð½Ñ‹Ð¹ Ð·Ð°ÐºÐ°Ð·. ÐŸÑ€Ð¾Ð±ÑƒÑŽ Ð²Ð¾ÑÑÑ‚Ð°Ð½Ð¾Ð²Ð¸Ñ‚ÑŒ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÑƒ...",
-                    )
-                )
-                try:
-                    await asyncio.wait_for(
-                        self._run_user_provision(
-                            user_id,
-                            lambda: self._activate_order_and_send_config(update, int(paid_order["id"])),
-                        ),
-                        timeout=45,
-                    )
-                    return
-                except Exception:
-                    LOGGER.exception(
-                        "Failed to recover subscription for user_id=%s from paid order_id=%s",
-                        user_id,
-                        paid_order.get("id"),
-                    )
-                    await update.message.reply_text(
-                        self._content_text(
-                            "recover_failed_message",
-                            "ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð°Ð²Ñ‚Ð¾Ð¼Ð°Ñ‚Ð¸Ñ‡ÐµÑÐºÐ¸ Ð²Ð¾ÑÑÑ‚Ð°Ð½Ð¾Ð²Ð¸Ñ‚ÑŒ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÑƒ. ÐŸÐ¾Ð´Ð´ÐµÑ€Ð¶ÐºÐ° ÑƒÐ¶Ðµ ÑƒÐ²ÐµÐ´Ð¾Ð¼Ð»ÐµÐ½Ð°, Ð¿Ð¾Ð¶Ð°Ð»ÑƒÐ¹ÑÑ‚Ð° Ð¿Ð¾Ð´Ð¾Ð¶Ð´Ð¸Ñ‚Ðµ.",
-                        )
-                    )
-                    if self.settings.telegram_admin_id:
-                        try:
-                            await self.app.bot.send_message(
-                                chat_id=self.settings.telegram_admin_id,
-                                text=(
-                                    "âš ï¸ ÐžÑˆÐ¸Ð±ÐºÐ° Ð²Ð¾ÑÑÑ‚Ð°Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ñ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ¸.\n"
-                                    f"user_id={user_id} paid_order_id={paid_order.get('id')}"
-                                ),
-                            )
-                        except Exception:
-                            LOGGER.exception("Failed to notify admin about recovery issue")
-                    return
-        client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
-        await update.message.reply_text(
-            text=self._configs_list_text(client_code=client_code, subscriptions=subscriptions),
-            reply_markup=self._configs_list_markup(subscriptions),
-        )
+        await self._send_mysub_for_message(message, user_id, context)
 
     async def _restore_xui_profile_for_subscription(
         self,
@@ -1567,7 +1647,7 @@ class VPNBot:
                 except Exception:
                     LOGGER.exception("Failed to notify admin about provisioning issue")
 
-    async def _activate_order_and_send_config(self, update: Update, order_id: int) -> None:
+    async def _activate_order_and_send_config(self, update: Update | None, order_id: int, message: Message | None = None) -> None:
         result = await activate_subscription(
             order_id,
             db=self.db,
@@ -1596,6 +1676,7 @@ class VPNBot:
             client_code=client_code,
             user_id=result.user_id,
             last_payment_method=last_payment_method,
+            message=message,
         )
 
     async def myvpn(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1665,24 +1746,17 @@ class VPNBot:
             if sub_id
             else None
         )
-        last_payment_method = await self.db.get_latest_payment_method(user_id)
-        if update.message is not None:
-            await update.message.reply_text(
-                self._content_text(
-                    "trial_success_message",
-                    "Пробный период активирован на {days} дней. Действует до {expires_at}.",
-                )
-                .replace("{days}", str(days))
-                .replace("{expires_at}", self._format_local_dt(new_exp))
+        sub_row = await self.db.get_active_subscription(user_id)
+        subscription_id = int(sub_row["id"]) if sub_row else 0
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is not None:
+            await message.reply_text(
+                "Пробный доступ активирован\n\n"
+                "Срок действия: 7 дней\n\n"
+                "Ниже вы можете сразу открыть доступ, показать QR-код\n"
+                "или перейти к инструкции по подключению.",
+                reply_markup=self._trial_success_markup(subscription_id) if subscription_id else None,
             )
-        await self._send_config(
-            update,
-            vless_url,
-            new_exp,
-            sub_url,
-            user_id=user_id,
-            last_payment_method=last_payment_method,
-        )
 
     async def _create_or_extend_for_user(
         self,
@@ -1787,15 +1861,17 @@ class VPNBot:
 
     async def _send_config(
         self,
-        update: Update,
+        update: Update | None,
         vless_url: str,
         expires_at: datetime,
         subscription_url: str | None = None,
         client_code: str | None = None,
         user_id: int | None = None,
         last_payment_method: str | None = None,
+        message: Message | None = None,
     ) -> None:
-        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None and update is not None:
+            message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
         action_markup: InlineKeyboardMarkup | None = None
