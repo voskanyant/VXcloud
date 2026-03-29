@@ -5,11 +5,28 @@ from django.db.models import Q
 from django.utils import timezone
 
 
+class Category(models.Model):
+    title = models.CharField(max_length=120, unique=True)
+    slug = models.SlugField(unique=True, max_length=140)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["title", "id"]
+        verbose_name = "Категория"
+        verbose_name_plural = "Категории"
+
+    def __str__(self) -> str:
+        return self.title
+
+
 class Post(models.Model):
     title = models.CharField(max_length=180)
     slug = models.SlugField(unique=True, max_length=220)
     summary = models.CharField(max_length=280, blank=True)
     content = models.TextField()
+    categories = models.ManyToManyField(Category, blank=True, related_name="posts")
     is_published = models.BooleanField(default=True)
     published_at = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)

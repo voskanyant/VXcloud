@@ -51,6 +51,86 @@ class DB:
         )
         return dict(row) if row else None
 
+    async def list_subscriptions(self, user_id: int) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        rows = await self.pool.fetch(
+            """
+            SELECT *
+            FROM subscriptions
+            WHERE user_id = $1
+            ORDER BY expires_at DESC, id DESC
+            """,
+            user_id,
+        )
+        return [dict(r) for r in rows]
+
+    async def get_subscription(self, user_id: int, subscription_id: int) -> dict[str, Any] | None:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            SELECT *
+            FROM subscriptions
+            WHERE id = $1
+              AND user_id = $2
+            LIMIT 1
+            """,
+            subscription_id,
+            user_id,
+        )
+        return dict(row) if row else None
+
+    async def rename_subscription(self, user_id: int, subscription_id: int, display_name: str) -> bool:
+        assert self.pool is not None
+        normalized = display_name.strip()
+        try:
+            row = await self.pool.fetchrow(
+                """
+                UPDATE subscriptions
+                SET display_name = $3,
+                    updated_at = NOW()
+                WHERE id = $1
+                  AND user_id = $2
+                RETURNING id
+                """,
+                subscription_id,
+                user_id,
+                normalized,
+            )
+        except asyncpg.UndefinedColumnError:
+            return False
+        return row is not None
+
+    async def revoke_subscription(self, user_id: int, subscription_id: int) -> bool:
+        assert self.pool is not None
+        try:
+            row = await self.pool.fetchrow(
+                """
+                UPDATE subscriptions
+                SET revoked_at = NOW(),
+                    is_active = FALSE,
+                    updated_at = NOW()
+                WHERE id = $1
+                  AND user_id = $2
+                RETURNING id
+                """,
+                subscription_id,
+                user_id,
+            )
+        except asyncpg.UndefinedColumnError:
+            row = await self.pool.fetchrow(
+                """
+                UPDATE subscriptions
+                SET is_active = FALSE,
+                    updated_at = NOW()
+                WHERE id = $1
+                  AND user_id = $2
+                RETURNING id
+                """,
+                subscription_id,
+                user_id,
+            )
+        return row is not None
+
     async def get_user_client_code(self, user_id: int) -> str | None:
         assert self.pool is not None
         try:
@@ -606,6 +686,89 @@ class DB:
                 limit,
             )
         return [dict(r) for r in rows]
+
+    async def get_ticket_for_admin(self, ticket_id: int) -> dict[str, Any] | None:
+        assert self.pool is not None
+        try:
+            row = await self.pool.fetchrow(
+                """
+                SELECT
+                    t.id,
+                    t.user_id,
+                    t.status,
+                    t.subject,
+                    t.created_at,
+                    t.updated_at,
+                    t.closed_at,
+                    u.telegram_id,
+                    u.client_code
+                FROM support_tickets t
+                LEFT JOIN users u ON u.id = t.user_id
+                WHERE t.id = $1
+                LIMIT 1
+                """,
+                ticket_id,
+            )
+        except asyncpg.UndefinedColumnError:
+            row = await self.pool.fetchrow(
+                """
+                SELECT
+                    t.id,
+                    t.user_id,
+                    t.status,
+                    t.subject,
+                    t.created_at,
+                    t.updated_at,
+                    t.closed_at,
+                    u.telegram_id,
+                    NULL::TEXT AS client_code
+                FROM support_tickets t
+                LEFT JOIN users u ON u.id = t.user_id
+                WHERE t.id = $1
+                LIMIT 1
+                """,
+                ticket_id,
+            )
+        return dict(row) if row else None
+
+    async def list_ticket_messages(self, ticket_id: int, limit: int = 10) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        rows = await self.pool.fetch(
+            """
+            SELECT
+                m.id,
+                m.ticket_id,
+                m.sender_role,
+                m.sender_user_id,
+                m.message_text,
+                m.created_at,
+                u.client_code
+            FROM support_messages m
+            LEFT JOIN users u ON u.id = m.sender_user_id
+            WHERE m.ticket_id = $1
+            ORDER BY m.created_at DESC, m.id DESC
+            LIMIT $2
+            """,
+            ticket_id,
+            max(1, limit),
+        )
+        return [dict(r) for r in rows]
+
+    async def close_ticket(self, ticket_id: int) -> bool:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            UPDATE support_tickets
+            SET status = 'closed',
+                closed_at = COALESCE(closed_at, NOW()),
+                updated_at = NOW()
+            WHERE id = $1
+              AND status <> 'closed'
+            RETURNING id
+            """,
+            ticket_id,
+        )
+        return row is not None
 
     async def consume_telegram_link_code(self, code: str, telegram_id: int) -> str:
         assert self.pool is not None

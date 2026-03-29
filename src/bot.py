@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import qrcode
 from PIL import Image
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, LabeledPrice, ReplyKeyboardMarkup, Update, WebAppInfo
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, LabeledPrice, Message, ReplyKeyboardMarkup, Update, WebAppInfo
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -102,6 +102,10 @@ class VPNBot:
         self.app.add_handler(CommandHandler("myvpn", self.myvpn))
         self.app.add_handler(CommandHandler("renew", self.renew))
         self.app.add_handler(CommandHandler("reply", self.reply_support))
+        self.app.add_handler(CommandHandler("tickets", self.admin_tickets))
+        self.app.add_handler(CommandHandler("ticket", self.admin_ticket))
+        self.app.add_handler(CommandHandler("reply_ticket", self.admin_reply_ticket))
+        self.app.add_handler(CommandHandler("close", self.admin_close_ticket))
         self.app.add_handler(CommandHandler("admin_reload", self.admin_reload))
         self.app.add_handler(PreCheckoutQueryHandler(self.precheckout))
         self.app.add_handler(CallbackQueryHandler(self.inline_callback))
@@ -207,11 +211,13 @@ class VPNBot:
             return fallback
 
         endpoint = f"{site_url}/api/auth/magic-link"
+        telegram_user_id = await self.db.get_user_telegram_id(user_id)
         try:
             magic_url = await asyncio.to_thread(
                 self._request_magic_link_url,
                 endpoint,
                 shared_secret,
+                telegram_user_id,
                 user_id,
                 self.settings.magic_link_api_timeout_seconds,
             )
@@ -224,10 +230,14 @@ class VPNBot:
     def _request_magic_link_url(
         endpoint: str,
         shared_secret: str,
-        user_id: int,
+        telegram_user_id: int | None,
+        bot_user_id: int,
         timeout_seconds: int,
     ) -> str | None:
-        payload = json.dumps({"telegram_id": user_id}).encode("utf-8")
+        payload_obj: dict[str, int] = {"bot_user_id": bot_user_id}
+        if telegram_user_id is not None:
+            payload_obj["telegram_id"] = telegram_user_id
+        payload = json.dumps(payload_obj).encode("utf-8")
         req = Request(
             endpoint,
             data=payload,
@@ -425,6 +435,152 @@ class VPNBot:
         digits = re.sub(r"\D", "", normalized_phone)
         return f"tel{digits}_tg{user_id}"
 
+    @staticmethod
+    def _subscription_name(sub: dict[str, object]) -> str:
+        display_name = str(sub.get("display_name") or "").strip()
+        if display_name:
+            return display_name
+        client_email = str(sub.get("client_email") or "").strip()
+        if client_email:
+            return client_email
+        return f"Config #{sub.get('id')}"
+
+    @staticmethod
+    def _subscription_status(sub: dict[str, object], now: datetime) -> str:
+        if sub.get("revoked_at") is not None:
+            return "отозван"
+        expires_at = sub.get("expires_at")
+        if not isinstance(expires_at, datetime):
+            return "неизвестно"
+        if not bool(sub.get("is_active")):
+            return "истек" if expires_at <= now else "неактивен"
+        return "активен" if expires_at > now else "истек"
+
+    async def _start_buy_flow(self, message: Message, context: ContextTypes.DEFAULT_TYPE) -> None:
+        context.user_data["buy_wait_phone"] = True
+        context.user_data.pop("buy_wait_name", None)
+        context.user_data.pop("buy_phone", None)
+        await message.reply_text(
+            self._content_text(
+                "buy_intro_message",
+                "Поделитесь номером телефона, затем отправьте имя и я выставлю счет.",
+            ),
+            reply_markup=self._contact_keyboard(),
+        )
+
+    async def _resolve_subscription_links(self, user_id: int, sub: dict[str, object]) -> tuple[str, str | None]:
+        vless_url = str(sub["vless_url"])
+        client_uuid = str(sub["client_uuid"])
+        inbound_id = int(sub["inbound_id"])
+        sub_id = await self.xui.get_client_sub_id(inbound_id, client_uuid)
+
+        expires_at = sub.get("expires_at")
+        is_active = bool(sub.get("is_active"))
+        is_revoked = sub.get("revoked_at") is not None
+        now = datetime.now(timezone.utc)
+        if not sub_id and is_active and not is_revoked and isinstance(expires_at, datetime) and expires_at > now:
+            restored = await self._restore_xui_profile_for_subscription(user_id, sub)
+            if restored is not None:
+                vless_url, sub_id = restored
+
+        sub_url = (
+            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
+            if sub_id
+            else None
+        )
+        return vless_url, sub_url
+
+    def _configs_list_text(
+        self,
+        *,
+        client_code: str,
+        subscriptions: list[dict[str, object]],
+    ) -> str:
+        now = datetime.now(timezone.utc)
+        item_template = self._content_text(
+            "my_configs_item_template",
+            "{index}. {name}\n   До: {expires_at}\n   Статус: {status}",
+        )
+        items: list[str] = []
+        if not subscriptions:
+            return self._content_text(
+                "my_configs_empty_message",
+                "📚 Мои конфиги\nClient code: {client_code}\n\nКонфигов пока нет.",
+            ).replace("{client_code}", client_code)
+
+        for idx, sub in enumerate(subscriptions, start=1):
+            expires_at = sub.get("expires_at")
+            expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "—"
+            items.append(
+                item_template
+                .replace("{index}", str(idx))
+                .replace("{name}", self._subscription_name(sub))
+                .replace("{expires_at}", expires_text)
+                .replace("{status}", self._subscription_status(sub, now))
+            )
+
+        return self._content_text(
+            "my_configs_list_template",
+            "📚 Мои конфиги\nClient code: {client_code}\n\n{items}",
+        ).replace("{client_code}", client_code).replace("{items}", "\n".join(items))
+
+    def _configs_list_markup(self, subscriptions: list[dict[str, object]]) -> InlineKeyboardMarkup:
+        rows: list[list[InlineKeyboardButton]] = []
+        for idx, sub in enumerate(subscriptions, start=1):
+            sub_id = int(sub["id"])
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=f"{idx}. {self._subscription_name(sub)}",
+                        callback_data=f"act|cfg_open:{sub_id}|_",
+                    )
+                ]
+            )
+        rows.append(
+            [
+                InlineKeyboardButton(
+                    text=self._button_label("buy_new_config_button", "➕ Купить новый конфиг"),
+                    callback_data="act|buy_new|_",
+                )
+            ]
+        )
+        return InlineKeyboardMarkup(rows)
+
+    def _config_card_markup(self, subscription_id: int, open_app_url: str) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(text="📋 Copy", callback_data=f"act|cfg_copy:{subscription_id}|_"),
+                    InlineKeyboardButton(text="🧾 QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
+                ],
+                [
+                    InlineKeyboardButton(text="🚀 Open in app", url=open_app_url),
+                    InlineKeyboardButton(text="🔄 Renew", callback_data=f"act|cfg_renew:{subscription_id}|_"),
+                ],
+                [
+                    InlineKeyboardButton(text="✏️ Rename", callback_data=f"act|cfg_rename:{subscription_id}|_"),
+                    InlineKeyboardButton(text="⛔ Revoke", callback_data=f"act|cfg_revoke:{subscription_id}|_"),
+                ],
+                [InlineKeyboardButton(text="⬅️ Back", callback_data="act|cfg_back|_")],
+            ]
+        )
+
+    async def _config_card_text(self, user_id: int, sub: dict[str, object], *, client_code: str) -> tuple[str, str, str | None]:
+        vless_url, sub_url = await self._resolve_subscription_links(user_id, sub)
+        last_payment_method = await self.db.get_latest_payment_method(user_id)
+        expires_at = sub.get("expires_at")
+        expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "—"
+        status_text = self._subscription_status(sub, datetime.now(timezone.utc))
+        text = (
+            f"⚙️ {self._subscription_name(sub)}\n"
+            f"ID: {sub['id']}\n"
+            f"Client code: {client_code}\n"
+            f"Статус: {status_text}\n"
+            f"Действует до: {expires_text}\n"
+            f"Способ оплаты: {self._format_payment_method(last_payment_method)}"
+        )
+        return text, vless_url, sub_url
+
     async def _ensure_user(self, update: Update) -> int:
         assert update.effective_user is not None
         u = update.effective_user
@@ -552,6 +708,42 @@ class VPNBot:
             )
             return
 
+        rename_sub_id_raw = context.user_data.get("rename_wait_subscription_id")
+        if rename_sub_id_raw is not None:
+            context.user_data.pop("rename_wait_subscription_id", None)
+            new_name = raw_text.strip()
+            if not new_name:
+                await update.message.reply_text(
+                    "Имя не должно быть пустым. Операция отменена.",
+                    reply_markup=menu_keyboard,
+                )
+                return
+            try:
+                subscription_id = int(rename_sub_id_raw)
+            except (TypeError, ValueError):
+                await update.message.reply_text(
+                    "Не удалось определить конфиг для переименования.",
+                    reply_markup=menu_keyboard,
+                )
+                return
+            renamed = await self.db.rename_subscription(
+                user_id=user_id,
+                subscription_id=subscription_id,
+                display_name=new_name[:80],
+            )
+            if not renamed:
+                await update.message.reply_text(
+                    "Не удалось переименовать конфиг.",
+                    reply_markup=menu_keyboard,
+                )
+                return
+            await update.message.reply_text(
+                f"Имя конфига обновлено: {new_name[:80]}",
+                reply_markup=menu_keyboard,
+            )
+            await self.mysub(update, context)
+            return
+
         if context.user_data.get("buy_wait_name"):
             phone = context.user_data.get("buy_phone")
             if not phone:
@@ -611,16 +803,8 @@ class VPNBot:
     async def buy(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
         await self._ensure_user(update)
-        context.user_data["buy_wait_phone"] = True
-        context.user_data.pop("buy_wait_name", None)
-        context.user_data.pop("buy_phone", None)
-        await update.message.reply_text(
-            self._content_text(
-                "buy_intro_message",
-                "ÐŸÐ¾Ð´ÐµÐ»Ð¸Ñ‚ÐµÑÑŒ Ð½Ð¾Ð¼ÐµÑ€Ð¾Ð¼ Ñ‚ÐµÐ»ÐµÑ„Ð¾Ð½Ð°, Ð·Ð°Ñ‚ÐµÐ¼ Ð¾Ñ‚Ð¿Ñ€Ð°Ð²ÑŒÑ‚Ðµ Ð¸Ð¼Ñ Ð¸ Ñ Ð²Ñ‹ÑÑ‚Ð°Ð²Ð»ÑŽ ÑÑ‡ÐµÑ‚.",
-            ),
-            reply_markup=self._contact_keyboard(),
-        )
+        assert update.message is not None
+        await self._start_buy_flow(update.message, context)
 
     async def trial(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
@@ -689,7 +873,18 @@ class VPNBot:
 
     async def renew(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = await self._ensure_user(update)
-        await self._send_stars_invoice(update, user_id, mode="renew")
+        selected_id = context.user_data.get("selected_subscription_id")
+        target_subscription_id: int | None = None
+        if isinstance(selected_id, int):
+            target_subscription_id = selected_id
+        elif isinstance(selected_id, str) and selected_id.isdigit():
+            target_subscription_id = int(selected_id)
+        else:
+            active_sub = await self.db.get_active_subscription(user_id)
+            if active_sub:
+                target_subscription_id = int(active_sub["id"])
+                context.user_data["selected_subscription_id"] = target_subscription_id
+        await self._send_stars_invoice(update, user_id, mode="renew", target_subscription_id=target_subscription_id)
 
     async def admin_reload(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if self.cms is None:
@@ -701,8 +896,173 @@ class VPNBot:
         await self._refresh_cms(force=True)
         await update.message.reply_text("CMS content reloaded.")
 
+    def _is_admin(self, update: Update) -> bool:
+        user = update.effective_user
+        return bool(user and user.id == self.settings.telegram_admin_id)
+
+    @staticmethod
+    def _ticket_preview(text: str, limit: int = 90) -> str:
+        normalized = " ".join((text or "").split())
+        if len(normalized) <= limit:
+            return normalized
+        return normalized[: max(0, limit - 1)] + "…"
+
+    @staticmethod
+    def _parse_ticket_id(args: list[str]) -> int | None:
+        if not args:
+            return None
+        raw = (args[0] or "").strip()
+        if not raw.isdigit():
+            return None
+        return int(raw)
+
+    async def admin_tickets(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._is_admin(update):
+            assert update.message is not None
+            await update.message.reply_text("Access denied.")
+            return
+        assert update.message is not None
+
+        tickets = await self.db.list_open_tickets_for_admin(limit=50)
+        if not tickets:
+            await update.message.reply_text("Открытых тикетов нет.")
+            return
+
+        lines: list[str] = ["🧾 Открытые тикеты:"]
+        for ticket in tickets:
+            ticket_id = int(ticket["id"])
+            updated_at = ticket.get("updated_at")
+            updated_text = self._format_local_dt(updated_at) if isinstance(updated_at, datetime) else "—"
+            client_code = str(ticket.get("client_code") or "-")
+            preview = self._ticket_preview(str(ticket.get("last_message_text") or ""))
+            lines.append(
+                f"#{ticket_id} | {client_code} | {updated_text}\n"
+                f"{preview or '(без сообщений)'}"
+            )
+
+        await update.message.reply_text("\n\n".join(lines))
+
+    async def admin_ticket(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._is_admin(update):
+            assert update.message is not None
+            await update.message.reply_text("Access denied.")
+            return
+        assert update.message is not None
+
+        ticket_id = self._parse_ticket_id(context.args)
+        if ticket_id is None:
+            await update.message.reply_text("Usage: /ticket <id>")
+            return
+
+        ticket = await self.db.get_ticket_for_admin(ticket_id)
+        if not ticket:
+            await update.message.reply_text(f"Тикет #{ticket_id} не найден.")
+            return
+
+        messages = await self.db.list_ticket_messages(ticket_id=ticket_id, limit=10)
+        header = (
+            f"Тикет #{ticket_id}\n"
+            f"Статус: {ticket.get('status')}\n"
+            f"Client code: {ticket.get('client_code') or '-'}"
+        )
+        if not messages:
+            await update.message.reply_text(f"{header}\n\nСообщений пока нет.")
+            return
+
+        lines = [header, "", "Последние сообщения (новые сверху):"]
+        for msg in messages:
+            created_at = msg.get("created_at")
+            at_text = self._format_local_dt(created_at) if isinstance(created_at, datetime) else "—"
+            role = str(msg.get("sender_role") or "unknown")
+            body = self._ticket_preview(str(msg.get("message_text") or ""), limit=220)
+            lines.append(f"[{at_text}] {role}: {body}")
+
+        await update.message.reply_text("\n".join(lines))
+
+    async def admin_reply_ticket(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._is_admin(update):
+            assert update.message is not None
+            await update.message.reply_text("Access denied.")
+            return
+        assert update.message is not None
+
+        ticket_id = self._parse_ticket_id(context.args)
+        if ticket_id is None or len(context.args) < 2:
+            await update.message.reply_text("Usage: /reply_ticket <id> <text>")
+            return
+        reply_text = " ".join(context.args[1:]).strip()
+        if not reply_text:
+            await update.message.reply_text("Usage: /reply_ticket <id> <text>")
+            return
+
+        ticket = await self.db.get_ticket_for_admin(ticket_id)
+        if not ticket:
+            await update.message.reply_text(f"Тикет #{ticket_id} не найден.")
+            return
+        if str(ticket.get("status") or "").lower() == "closed":
+            await update.message.reply_text(f"Тикет #{ticket_id} уже закрыт.")
+            return
+
+        telegram_id = ticket.get("telegram_id")
+        if telegram_id is None:
+            await update.message.reply_text(
+                f"Тикет #{ticket_id} не привязан к Telegram-пользователю."
+            )
+            return
+
+        await self.db.add_message(
+            ticket_id=ticket_id,
+            sender_role="admin",
+            sender_user_id=None,
+            message_text=reply_text,
+        )
+
+        try:
+            await self.app.bot.send_message(
+                chat_id=int(telegram_id),
+                text=self._content_text(
+                    "support_admin_reply_prefix",
+                    "💬 Ответ поддержки:\n\n{message}",
+                ).replace("{message}", reply_text),
+            )
+        except Exception:
+            LOGGER.exception(
+                "Failed to send admin reply to ticket_id=%s telegram_id=%s",
+                ticket_id,
+                telegram_id,
+            )
+            await update.message.reply_text(
+                f"Тикет #{ticket_id}: ответ сохранен, но не удалось отправить пользователю."
+            )
+            return
+
+        await update.message.reply_text(f"Ответ отправлен (ticket #{ticket_id}).")
+
+    async def admin_close_ticket(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not self._is_admin(update):
+            assert update.message is not None
+            await update.message.reply_text("Access denied.")
+            return
+        assert update.message is not None
+
+        ticket_id = self._parse_ticket_id(context.args)
+        if ticket_id is None:
+            await update.message.reply_text("Usage: /close <id>")
+            return
+
+        ticket = await self.db.get_ticket_for_admin(ticket_id)
+        if not ticket:
+            await update.message.reply_text(f"Тикет #{ticket_id} не найден.")
+            return
+
+        closed = await self.db.close_ticket(ticket_id)
+        if not closed:
+            await update.message.reply_text(f"Тикет #{ticket_id} уже закрыт.")
+            return
+        await update.message.reply_text(f"Тикет #{ticket_id} закрыт.")
+
     async def reply_support(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        if not update.effective_user or update.effective_user.id != self.settings.telegram_admin_id:
+        if not self._is_admin(update):
             await update.message.reply_text("Access denied.")
             return
         if not context.args or len(context.args) < 2:
@@ -805,6 +1165,151 @@ class VPNBot:
                         )
                     )
                 return
+            if target == "buy_new":
+                await query.answer()
+                if query.message is not None:
+                    await self._start_buy_flow(query.message, context)
+                return
+            if target == "cfg_back":
+                user_id = await self._ensure_user(update)
+                subscriptions = await self.db.list_subscriptions(user_id)
+                client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+                await query.answer()
+                await query.edit_message_text(
+                    text=self._configs_list_text(client_code=client_code, subscriptions=subscriptions),
+                    reply_markup=self._configs_list_markup(subscriptions),
+                )
+                return
+            if target.startswith("cfg_open:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Некорректный конфиг", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub:
+                    await query.answer("Конфиг не найден", show_alert=True)
+                    return
+                context.user_data["selected_subscription_id"] = subscription_id
+                client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+                text, vless_url, sub_url = await self._config_card_text(user_id, sub, client_code=client_code)
+                open_app_link = self._open_app_url(sub_url or vless_url)
+                await query.answer()
+                await query.edit_message_text(
+                    text=text,
+                    reply_markup=self._config_card_markup(subscription_id, open_app_link),
+                )
+                return
+            if target.startswith("cfg_copy:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Некорректный конфиг", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub:
+                    await query.answer("Конфиг не найден", show_alert=True)
+                    return
+                _, vless_url, sub_url = await self._config_card_text(
+                    user_id,
+                    sub,
+                    client_code=(await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"),
+                )
+                await query.answer("Ссылку отправил в чат")
+                if query.message is not None:
+                    await query.message.reply_text(f"Скопируйте ссылку:\n{sub_url or vless_url}")
+                return
+            if target.startswith("cfg_qr:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Некорректный конфиг", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub:
+                    await query.answer("Конфиг не найден", show_alert=True)
+                    return
+                text, vless_url, sub_url = await self._config_card_text(
+                    user_id,
+                    sub,
+                    client_code=(await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"),
+                )
+                qr_payload = sub_url or vless_url
+                qr_img = self._build_styled_qr(qr_payload, "Subscription QR")
+                qr_buff = io.BytesIO()
+                qr_img.save(qr_buff, format="PNG")
+                qr_buff.seek(0)
+                await query.answer("QR отправлен")
+                if query.message is not None:
+                    await query.message.reply_photo(photo=qr_buff, caption=text)
+                return
+            if target.startswith("cfg_renew:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Некорректный конфиг", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub:
+                    await query.answer("Конфиг не найден", show_alert=True)
+                    return
+                context.user_data["selected_subscription_id"] = subscription_id
+                await query.answer()
+                if query.message is not None:
+                    await self._send_stars_invoice_for_message(
+                        query.message,
+                        user_id,
+                        mode="renew",
+                        target_subscription_id=subscription_id,
+                    )
+                return
+            if target.startswith("cfg_rename:"):
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Некорректный конфиг", show_alert=True)
+                    return
+                context.user_data["rename_wait_subscription_id"] = subscription_id
+                await query.answer()
+                if query.message is not None:
+                    await query.message.reply_text("Отправьте новое имя конфига одним сообщением.")
+                return
+            if target.startswith("cfg_revoke:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Некорректный конфиг", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub:
+                    await query.answer("Конфиг не найден", show_alert=True)
+                    return
+                revoked = await self.db.revoke_subscription(user_id, subscription_id)
+                if revoked:
+                    try:
+                        await self.xui.set_client_enabled(
+                            int(sub["inbound_id"]),
+                            str(sub["client_uuid"]),
+                            str(sub["client_email"]),
+                            sub["expires_at"],
+                            enable=False,
+                            limit_ip=self.settings.max_devices_per_sub,
+                        )
+                    except Exception:
+                        LOGGER.exception("Failed to disable revoked config in x-ui subscription_id=%s", subscription_id)
+                await query.answer("Конфиг отозван" if revoked else "Не удалось отозвать конфиг")
+                subscriptions = await self.db.list_subscriptions(user_id)
+                client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+                await query.edit_message_text(
+                    text=self._configs_list_text(client_code=client_code, subscriptions=subscriptions),
+                    reply_markup=self._configs_list_markup(subscriptions),
+                )
+                return
             await query.answer()
             return
 
@@ -825,9 +1330,8 @@ class VPNBot:
         await self._refresh_cms()
         assert update.message is not None
         user_id = await self._ensure_user(update)
-        sub = await self.db.get_active_subscription(user_id)
-        last_payment_method = await self.db.get_latest_payment_method(user_id)
-        if not sub:
+        subscriptions = await self.db.list_subscriptions(user_id)
+        if not subscriptions:
             paid_order = await self.db.get_latest_paid_order(user_id)
             if paid_order:
                 await update.message.reply_text(
@@ -869,64 +1373,11 @@ class VPNBot:
                         except Exception:
                             LOGGER.exception("Failed to notify admin about recovery issue")
                     return
-            await update.message.reply_text(
-                self._content_text(
-                    "no_subscription_message",
-                    "Ð£ Ð²Ð°Ñ Ð½ÐµÑ‚ Ð°ÐºÑ‚Ð¸Ð²Ð½Ð¾Ð¹ Ð¿Ð¾Ð´Ð¿Ð¸ÑÐºÐ¸.\nÐÐ°Ð¶Ð¼Ð¸Ñ‚Ðµ Â«ÐšÑƒÐ¿Ð¸Ñ‚ÑŒ VPNÂ».",
-                )
-            )
-            return
-
-        now = datetime.now(timezone.utc)
-        expires_at = sub["expires_at"]
-        if expires_at > now:
-            vless_url = str(sub["vless_url"])
-            client_uuid = str(sub["client_uuid"])
-            inbound_id = int(sub["inbound_id"])
-            sub_id = await self.xui.get_client_sub_id(inbound_id, client_uuid)
-            if not sub_id:
-                await update.message.reply_text(
-                    self._content_text(
-                        "recovering_xui_profile_message",
-                        "Профиль на VPN-сервере не найден. Восстанавливаю конфиг...",
-                    )
-                )
-                restored = await self._restore_xui_profile_for_subscription(user_id, sub)
-                if restored is not None:
-                    vless_url, sub_id = restored
-                    await update.message.reply_text(
-                        self._content_text(
-                            "recovering_xui_profile_done_message",
-                            "Готово, профиль восстановлен.",
-                        )
-                    )
-                else:
-                    await update.message.reply_text(
-                        self._content_text(
-                            "recovering_xui_profile_failed_message",
-                            "Не удалось автоматически восстановить профиль. Напишите в поддержку.",
-                        )
-                    )
-            sub_url = (
-                f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
-                if sub_id
-                else None
-            )
-            client_code = await self.db.get_user_client_code(user_id)
-            await self._send_config(
-                update,
-                vless_url,
-                expires_at,
-                sub_url,
-                client_code=client_code,
-                user_id=user_id,
-                last_payment_method=last_payment_method,
-            )
-        else:
-            await update.message.reply_text(
-                "ÐŸÐ¾Ð´Ð¿Ð¸ÑÐºÐ°: Ð˜Ð¡Ð¢Ð•ÐšÐ›Ð\n"
-                f"Ð”Ð°Ñ‚Ð° Ð¾ÐºÐ¾Ð½Ñ‡Ð°Ð½Ð¸Ñ: {self._format_local_dt(expires_at)}"
-            )
+        client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+        await update.message.reply_text(
+            text=self._configs_list_text(client_code=client_code, subscriptions=subscriptions),
+            reply_markup=self._configs_list_markup(subscriptions),
+        )
 
     async def _restore_xui_profile_for_subscription(
         self,
@@ -996,16 +1447,41 @@ class VPNBot:
         phone: str | None = None,
         customer_name: str | None = None,
         mode: str = "buynew",
+        target_subscription_id: int | None = None,
+    ) -> None:
+        assert update.message is not None
+        await self._send_stars_invoice_for_message(
+            update.message,
+            user_id=user_id,
+            phone=phone,
+            customer_name=customer_name,
+            mode=mode,
+            target_subscription_id=target_subscription_id,
+        )
+
+    async def _send_stars_invoice_for_message(
+        self,
+        message: Message,
+        user_id: int,
+        phone: str | None = None,
+        customer_name: str | None = None,
+        mode: str = "buynew",
+        target_subscription_id: int | None = None,
     ) -> None:
         await self._refresh_cms()
-        await update.message.reply_text(
+        await message.reply_text(
             self._content_text(
                 "stars_only_notice",
                 "Оплата в боте доступна только через Telegram Stars ⭐\nДля iPhone обычно используется способ оплаты через мобильный баланс МТС.",
             )
         )
         mode_prefix = "renew" if mode == "renew" else "buynew"
-        payload = f"{mode_prefix}:{user_id}:{int(datetime.now(timezone.utc).timestamp())}"
+        timestamp = int(datetime.now(timezone.utc).timestamp())
+        rand = uuid.uuid4().hex[:6]
+        if mode_prefix == "renew":
+            payload = f"{mode_prefix}:{user_id}:{int(target_subscription_id or 0)}:{timestamp}:{rand}"
+        else:
+            payload = f"{mode_prefix}:{user_id}:{timestamp}:{rand}"
         await self.db.create_order(user_id=user_id, amount_stars=self.settings.plan_price_stars, payload=payload)
         if phone:
             self._pending_profiles[payload] = {"phone": phone, "name": (customer_name or "").strip()}
@@ -1016,7 +1492,7 @@ class VPNBot:
             "invoice_description",
             "Оплата подписки выполняется только Telegram Stars. Для iPhone чаще всего — через мобильный баланс МТС.",
         )
-        await update.message.reply_invoice(
+        await message.reply_invoice(
             title=title,
             description=description,
             payload=payload,
@@ -1244,6 +1720,15 @@ class VPNBot:
             else None
         )
         last_payment_method = await self.db.get_latest_payment_method(user_id)
+        if update.message is not None:
+            await update.message.reply_text(
+                self._content_text(
+                    "trial_success_message",
+                    "Пробный период активирован на {days} дней. Действует до {expires_at}.",
+                )
+                .replace("{days}", str(days))
+                .replace("{expires_at}", self._format_local_dt(new_exp))
+            )
         await self._send_config(
             update,
             vless_url,

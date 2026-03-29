@@ -1,58 +1,62 @@
 [
   {
     "key": "menu_trial",
-    "label": "\ud83c\udf81 \u0411\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e 7\u0434"
+    "label": "🎁 Бесплатно 7д"
   },
   {
     "key": "menu_buy",
-    "label": "\ud83d\udcb3 \u041a\u0443\u043f\u0438\u0442\u044c VPN"
+    "label": "💳 Купить VPN"
   },
   {
     "key": "menu_renew",
-    "label": "\ud83d\udd04 \u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c"
+    "label": "🔄 Продлить"
   },
   {
     "key": "menu_mysub",
-    "label": "\ud83d\udcca \u041c\u043e\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0430"
+    "label": "📊 Моя подписка"
   },
   {
     "key": "menu_instructions",
-    "label": "\ud83d\udcac \u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f"
+    "label": "💬 Инструкция"
   },
   {
     "key": "menu_support",
-    "label": "\ud83c\udd98 \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430"
+    "label": "🆘 Поддержка"
   },
   {
     "key": "menu_site",
-    "label": "\ud83c\udf10 VXcloud.ru"
+    "label": "🌐 VXcloud.ru"
   },
   {
     "key": "contact_share",
-    "label": "\u041f\u043e\u0434\u0435\u043b\u0438\u0442\u044c\u0441\u044f \u043d\u043e\u043c\u0435\u0440\u043e\u043c"
+    "label": "Поделиться номером"
   },
   {
     "key": "contact_cancel",
-    "label": "\u041e\u0442\u043c\u0435\u043d\u0430"
+    "label": "Отмена"
   },
   {
     "key": "open_instructions",
-    "label": "\ud83d\udcd8 \u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f"
+    "label": "📘 Инструкция"
   },
   {
     "key": "open_account",
-    "label": "\ud83d\udc64 \u041b\u0438\u0447\u043d\u044b\u0439 \u043a\u0430\u0431\u0438\u043d\u0435\u0442 \u043d\u0430 VXcloud"
+    "label": "👤 Личный кабинет на VXcloud"
   },
   {
     "key": "open_in_app",
-    "label": "\ud83d\ude80 \u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u0438"
+    "label": "🚀 Открыть в приложении"
   },
   {
     "key": "config_button",
-    "label": "\u2699\ufe0f \u041a\u043e\u043d\u0444\u0438\u0433"
+    "label": "⚙️ Конфиг"
   },
   {
     "key": "pay_card_button",
-    "label": "\ud83d\udcb3 \u041e\u043f\u043b\u0430\u0442\u0438\u0442\u044c \u043a\u0430\u0440\u0442\u043e\u0439"
+    "label": "💳 Оплатить картой"
+  },
+  {
+    "key": "buy_new_config_button",
+    "label": "? ?????? ????? ??????"
   }
 ]

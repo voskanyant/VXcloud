@@ -15,7 +15,7 @@
   {% cms_text "cabinet.config.back_action" "Назад в кабинет" as cabinet_config_back_action %}
   {% cms_text "cabinet.config.all_configs" "Все конфиги" as cabinet_config_all_configs %}
 
-  <h1 class="h2 mb-2">{{ cabinet_config_heading }} #{{ subscription.id }}</h1>
+  <h1 class="h2 mb-2">{{ cabinet_config_heading }}: {{ display_name }}</h1>
   {% if subscription.user and subscription.user.client_code %}
     <p class="mb-1">{{ cabinet_config_client_code_label }} <code>{{ subscription.user.client_code }}</code></p>
   {% endif %}
@@ -35,7 +35,7 @@
     </div>
   {% endif %}
 
-  <img class="img-fluid border rounded p-2 bg-white" style="max-width: 360px;" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
+  <img id="qr" class="img-fluid border rounded p-2 bg-white" style="max-width: 360px;" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
 
   <label class="form-label mt-3" for="cfg">{{ cabinet_config_link_label }}</label>
   <textarea id="cfg" rows="5" readonly>{{ copy_text }}</textarea>

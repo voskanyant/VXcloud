@@ -76,6 +76,16 @@ async def activate_subscription(
     user_id = int(order["user_id"])
     payload_value = str(order.get("payload") or "")
     force_new_config = payload_value.startswith("buynew:") or payload_value.startswith("web-newcfg:")
+    selected_subscription_id: int | None = None
+    if payload_value.startswith("renew:") or payload_value.startswith("web-renew:"):
+        parts = payload_value.split(":")
+        if len(parts) >= 4:
+            try:
+                candidate_id = int(parts[2])
+            except ValueError:
+                candidate_id = 0
+            if candidate_id > 0:
+                selected_subscription_id = candidate_id
     client_code = await db.get_user_client_code(user_id)
     provider = _payment_provider_for_order(order)
     event_id = _event_id_for_order(order)
@@ -119,7 +129,11 @@ async def activate_subscription(
         reality = xui.parse_reality(inbound)
         inbound_port = int(inbound["port"])
 
-        current_sub = None if force_new_config else await db.get_active_subscription(user_id)
+        current_sub = None
+        if not force_new_config and selected_subscription_id is not None:
+            current_sub = await db.get_subscription(user_id, selected_subscription_id)
+        if current_sub is None and not force_new_config:
+            current_sub = await db.get_active_subscription(user_id)
         created = False
 
         if current_sub is None:

@@ -10,4 +10,6 @@ urlpatterns = [
     path("config/<int:subscription_id>/", views.account_config, name="account_config_id"),
     path("buy/", views.create_order_stub, name="account_buy"),
     path("renew/", views.create_order_stub, name="account_renew"),
+    path("subscriptions/<int:subscription_id>/rename/", views.rename_subscription, name="account_subscription_rename"),
+    path("subscriptions/<int:subscription_id>/revoke/", views.revoke_subscription, name="account_subscription_revoke"),
 ]

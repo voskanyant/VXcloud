@@ -17,6 +17,7 @@ class ActivateSubscriptionIdempotencyUnitTests(unittest.IsolatedAsyncioTestCase)
             "user_id": 77,
             "status": "activated",
         }
+        db.get_user_client_code.return_value = None
         db.get_active_subscription.return_value = {
             "id": 501,
             "expires_at": existing_expires_at,

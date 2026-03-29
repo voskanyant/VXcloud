@@ -36,44 +36,69 @@
     <p class="mb-3">{{ cabinet_telegram_missing }} <a href="/account/link/">{{ cabinet_telegram_link_action }}</a></p>
   {% endif %}
 
+  <hr />
+  <p class="mb-1">{{ cabinet_status_label }} {% if has_active %}<strong class="text-success">{{ cabinet_status_active }}</strong>{% else %}<strong class="text-danger">{{ cabinet_status_expired }}</strong>{% endif %}</p>
+  {% if bot_user and bot_user.client_code %}
+    <p class="mb-1">{{ cabinet_client_code_label }} <code>{{ bot_user.client_code }}</code></p>
+  {% endif %}
   {% if subscription %}
-    <hr />
-    <p class="mb-1">{{ cabinet_status_label }} {% if has_active %}<strong class="text-success">{{ cabinet_status_active }}</strong>{% else %}<strong class="text-danger">{{ cabinet_status_expired }}</strong>{% endif %}</p>
-    {% if bot_user and bot_user.client_code %}
-      <p class="mb-1">{{ cabinet_client_code_label }} <code>{{ bot_user.client_code }}</code></p>
-    {% endif %}
     <p class="mb-1">{{ cabinet_expires_label }} {{ subscription.expires_at|date:'d.m.Y H:i' }}</p>
-    <p class="mb-2">{{ cabinet_payment_method_label }} <strong>{{ last_payment_method }}</strong></p>
-    <div class="d-flex gap-2 flex-wrap mt-3 mb-3">
-      <a class="btn btn-outline-primary" href="/account/config/">{{ cabinet_open_config }}</a>
-      <a class="btn btn-outline-primary" href="/account/buy/">{{ cabinet_buy_new_action }}</a>
-      <a class="btn btn-outline-primary" href="/account/renew/">{{ cabinet_renew_action_short }}</a>
-      <a class="btn btn-outline-secondary" href="/instructions/">{{ cabinet_instructions_action }}</a>
+  {% endif %}
+  <p class="mb-2">{{ cabinet_payment_method_label }} <strong>{{ last_payment_method }}</strong></p>
+
+  <h3 class="h5 mt-3 mb-2">{{ cabinet_configs_label }}</h3>
+  {% if subscription_rows %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle">
+        <thead>
+          <tr>
+            <th>Имя</th>
+            <th>Срок действия</th>
+            <th>Статус</th>
+            <th>Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in subscription_rows %}
+            <tr>
+              <td>
+                <strong>{{ row.display_name }}</strong>
+                <div class="text-secondary">ID: {{ row.id }}</div>
+              </td>
+              <td>{{ row.expires_at|date:'d.m.Y H:i' }}</td>
+              <td>{{ row.status_text }}</td>
+              <td>
+                <div class="d-flex gap-2 flex-wrap mb-2">
+                  <a class="btn btn-outline-primary btn-sm" href="/account/config/{{ row.id }}/">{{ cabinet_open_selected_config }}</a>
+                  <a class="btn btn-outline-secondary btn-sm" href="/account/config/{{ row.id }}/#qr">QR</a>
+                  <a class="btn btn-outline-primary btn-sm" href="/account/renew/?subscription_id={{ row.id }}">Продлить</a>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                  <form method="post" action="/account/subscriptions/{{ row.id }}/rename/" class="d-flex gap-2">
+                    {% csrf_token %}
+                    <input
+                      type="text"
+                      name="display_name"
+                      value="{{ row.display_name }}"
+                      maxlength="80"
+                      placeholder="Новое имя"
+                      style="min-width: 180px;"
+                    />
+                    <button type="submit" class="btn btn-outline-dark btn-sm">Переименовать</button>
+                  </form>
+                  <form method="post" action="/account/subscriptions/{{ row.id }}/revoke/">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm">Отключить</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   {% else %}
     <p>{{ cabinet_subscription_missing }}</p>
-  {% endif %}
-
-  {% if subscriptions %}
-    <h3 class="h5 mt-2 mb-2">{{ cabinet_configs_label }}</h3>
-    <div class="d-flex flex-column gap-2">
-      {% for sub_item in subscriptions %}
-        <div class="section-card" style="padding:12px 14px;">
-          <div class="d-flex gap-2 flex-wrap justify-content-between align-items-center">
-            <div>
-              <strong>#{{ sub_item.id }}</strong>
-              {% if sub_item.is_active and sub_item.expires_at > now %}
-                <span class="text-success">Активна</span>
-              {% else %}
-                <span class="text-danger">Истекла</span>
-              {% endif %}
-              <div class="text-secondary">до {{ sub_item.expires_at|date:'d.m.Y H:i' }}</div>
-            </div>
-            <a class="btn btn-outline-primary btn-sm" href="/account/config/{{ sub_item.id }}/">{{ cabinet_open_selected_config }}</a>
-          </div>
-        </div>
-      {% endfor %}
-    </div>
   {% endif %}
 
   <div class="d-flex gap-2 flex-wrap mt-3">

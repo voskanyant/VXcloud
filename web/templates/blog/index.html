@@ -12,12 +12,27 @@
   <h1 class="h2 mb-2">{{ instructions_hero_title }}</h1>
   <p class="mb-2">{{ instructions_hero_description }}</p>
   <p class="text-secondary mb-0">{{ instructions_hero_note }}</p>
+  {% if categories %}
+    <div class="d-flex gap-2 flex-wrap mt-3">
+      <a class="btn btn-outline-secondary btn-sm{% if not selected_category %} active{% endif %}" href="/instructions/">Все</a>
+      {% for category in categories %}
+        <a class="btn btn-outline-secondary btn-sm{% if selected_category and selected_category.id == category.id %} active{% endif %}" href="{% url 'blog_category_detail' slug=category.slug %}">{{ category.title }}</a>
+      {% endfor %}
+    </div>
+  {% endif %}
 </section>
 
 <section class="vstack gap-3">
   {% for post in posts %}
     <article class="section-card">
       <h2 class="h4 mb-2"><a class="text-decoration-none" href="{% url 'blog_post_detail' slug=post.slug %}">{{ post.title }}</a></h2>
+      {% if post.categories.all %}
+        <p class="mb-2 text-secondary">
+          {% for category in post.categories.all %}
+            <a href="{% url 'blog_category_detail' slug=category.slug %}">{{ category.title }}</a>{% if not forloop.last %}, {% endif %}
+          {% endfor %}
+        </p>
+      {% endif %}
       {% if post.summary %}<p class="mb-2">{{ post.summary }}</p>{% endif %}
       <small class="text-secondary">{{ post.published_at|date:'d.m.Y H:i' }}</small>
     </article>

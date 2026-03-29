@@ -73,6 +73,11 @@ class DuplicatePaymentsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             cms_cache_ttl_seconds=60,
             magic_link_shared_secret=None,
             magic_link_api_timeout_seconds=5,
+            enforce_single_ip=False,
+            single_ip_check_interval_seconds=20,
+            single_ip_window_seconds=90,
+            single_ip_block_seconds=120,
+            xray_access_log_path="/var/log/xray/access.log",
         )
 
         db = AsyncMock()
@@ -81,6 +86,7 @@ class DuplicatePaymentsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             "user_id": 555,
             "status": "pending",
         }
+        db.get_user_client_code.return_value = None
         db.is_charge_processed.return_value = True
 
         bot = VPNBot(app=SimpleNamespace(), settings=settings, db=db, xui=AsyncMock(), cms=None)

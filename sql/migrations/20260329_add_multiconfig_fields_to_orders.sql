@@ -1,0 +1,4 @@
+ALTER TABLE orders
+    ADD COLUMN IF NOT EXISTS target_subscription_id BIGINT,
+    ADD COLUMN IF NOT EXISTS order_kind TEXT NOT NULL DEFAULT 'renew',
+    ADD COLUMN IF NOT EXISTS meta JSONB NOT NULL DEFAULT '{}'::jsonb;

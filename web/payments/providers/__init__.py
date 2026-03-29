@@ -5,10 +5,12 @@ from django.conf import settings
 
 from .base import PaymentProvider
 from .reference import ReferencePaymentProvider
+from .yookassa import YooKassaPaymentProvider
 
 
 _PROVIDERS: dict[str, type[PaymentProvider]] = {
     "reference": ReferencePaymentProvider,
+    "yookassa": YooKassaPaymentProvider,
 }
 
 

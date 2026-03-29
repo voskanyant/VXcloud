@@ -32,6 +32,7 @@ from django.db import IntegrityError
 from django.db import transaction
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 from django.http import HttpRequest, HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -120,6 +121,21 @@ def _list_subscriptions_for_bot_user(bot_user: BotUser | None) -> list[BotSubscr
     )
 
 
+def _subscription_display_name(subscription: BotSubscription) -> str:
+    value = (getattr(subscription, "display_name", "") or "").strip()
+    if value:
+        return value
+    return f"Конфиг #{subscription.id}"
+
+
+def _resolve_linked_bot_user(request: HttpRequest) -> tuple[LinkedAccount | None, BotUser | None]:
+    linked = LinkedAccount.objects.filter(user=request.user).first()
+    if not linked:
+        return None, None
+    bot_user = BotUser.objects.filter(telegram_id=linked.telegram_id).first()
+    return linked, bot_user
+
+
 def _new_web_idempotency_key() -> str:
     return uuid.uuid4().hex
 
@@ -200,13 +216,25 @@ def signup_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def account_dashboard(request: HttpRequest) -> HttpResponse:
-    linked = LinkedAccount.objects.filter(user=request.user).first()
-    bot_user = None
-    if linked:
-        bot_user = BotUser.objects.filter(telegram_id=linked.telegram_id).first()
+    linked, bot_user = _resolve_linked_bot_user(request)
     sub, has_active, last_payment_method = _get_subscription_snapshot_for_bot_user(bot_user)
     subscriptions = _list_subscriptions_for_bot_user(bot_user)
     now = timezone.now()
+    subscription_rows: list[dict[str, object]] = []
+    for item in subscriptions:
+        expires_at = getattr(item, "expires_at", None)
+        is_active = bool(getattr(item, "is_active", False) and expires_at and expires_at > now and getattr(item, "revoked_at", None) is None)
+        status_text = "Активна" if is_active else ("Отключена" if getattr(item, "revoked_at", None) else "Истекла")
+        subscription_rows.append(
+            {
+                "obj": item,
+                "id": int(item.id),
+                "display_name": _subscription_display_name(item),
+                "is_active": is_active,
+                "status_text": status_text,
+                "expires_at": expires_at,
+            }
+        )
     return render(
         request,
         "cabinet/dashboard.html",
@@ -218,6 +246,7 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
             "has_active": has_active,
             "last_payment_method": last_payment_method,
             "now": now,
+            "subscription_rows": subscription_rows,
         },
     )
 
@@ -271,12 +300,11 @@ def _generate_link_code(length: int = 12) -> str:
 
 @login_required
 def account_config(request: HttpRequest, subscription_id: int | None = None) -> HttpResponse:
-    linked = LinkedAccount.objects.filter(user=request.user).first()
+    linked, bot_user = _resolve_linked_bot_user(request)
     if not linked:
         messages.error(request, "Сначала привяжите Telegram ID")
         return redirect("account_link")
 
-    bot_user = BotUser.objects.filter(telegram_id=linked.telegram_id).first()
     if not bot_user:
         messages.error(request, "Пользователь бота не найден")
         return redirect("account_link")
@@ -308,6 +336,7 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
             "subscriptions": subscriptions,
             "has_active": has_active,
             "last_payment_method": last_payment_method,
+            "display_name": _subscription_display_name(sub),
             "qr_b64": qr_b64,
             "copy_text": qr_data,
         },
@@ -316,12 +345,11 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
 
 @login_required
 def create_order_stub(request: HttpRequest) -> HttpResponse:
-    linked = LinkedAccount.objects.filter(user=request.user).first()
+    linked, bot_user = _resolve_linked_bot_user(request)
     if not linked:
         messages.error(request, "Сначала привяжите Telegram ID")
         return redirect("account_link")
 
-    bot_user = BotUser.objects.filter(telegram_id=linked.telegram_id).first()
     if not bot_user:
         messages.error(request, "Пользователь бота не найден")
         return redirect("account_link")
@@ -329,17 +357,38 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
     now = timezone.now()
     is_buy_route = request.resolver_match and request.resolver_match.url_name == "account_buy"
     flow_mode = "buynew" if is_buy_route else "renew"
+    target_subscription_id: int | None = None
+    if flow_mode == "renew":
+        requested_subscription_id = (request.GET.get("subscription_id") or request.POST.get("subscription_id") or "").strip()
+        if requested_subscription_id.isdigit():
+            candidate_id = int(requested_subscription_id)
+            if BotSubscription.objects.filter(id=candidate_id, user_id=bot_user.id).exists():
+                target_subscription_id = candidate_id
+        if target_subscription_id is None:
+            active_sub = (
+                BotSubscription.objects.filter(user_id=bot_user.id, is_active=True, expires_at__gt=now)
+                .order_by("-expires_at", "-id")
+                .first()
+            )
+            if active_sub:
+                target_subscription_id = int(active_sub.id)
+
     session_state = _load_web_order_session_state(request, user_id=bot_user.id)
     idempotency_key = str(session_state.get("idempotency_key") or "").strip() or _new_web_idempotency_key()
 
     pending_method = "card" if settings.ENABLE_CARD_PAYMENTS else "stars"
+    pending_payload_prefix = (
+        f"web-newcfg:{bot_user.id}:"
+        if flow_mode == "buynew"
+        else f"web-renew:{bot_user.id}:{int(target_subscription_id or 0)}:"
+    )
     existing_pending = (
         BotOrder.objects.filter(
             user_id=bot_user.id,
             status="pending",
             channel="web",
             payment_method=pending_method,
-            payload__startswith=(f"web-newcfg:{bot_user.id}:" if flow_mode == "buynew" else f"web-renew:{bot_user.id}:"),
+            payload__startswith=pending_payload_prefix,
         )
         .order_by("-id")
         .first()
@@ -390,7 +439,10 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
     if not settings.ENABLE_CARD_PAYMENTS:
         amount = int(os.getenv("PLAN_PRICE_STARS", "10"))
         payload_prefix = "web-newcfg" if flow_mode == "buynew" else "web-renew"
-        payload = f"{payload_prefix}:{bot_user.id}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
+        if flow_mode == "renew":
+            payload = f"{payload_prefix}:{bot_user.id}:{int(target_subscription_id or 0)}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
+        else:
+            payload = f"{payload_prefix}:{bot_user.id}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
         order = BotOrder.objects.create(
             user_id=bot_user.id,
             amount_stars=amount,
@@ -415,7 +467,10 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
         return redirect("account_dashboard")
 
     payload_prefix = "web-newcfg" if flow_mode == "buynew" else "web-renew"
-    payload = f"{payload_prefix}:{bot_user.id}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
+    if flow_mode == "renew":
+        payload = f"{payload_prefix}:{bot_user.id}:{int(target_subscription_id or 0)}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
+    else:
+        payload = f"{payload_prefix}:{bot_user.id}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
     amount_minor = int(settings.CARD_PAYMENT_AMOUNT_MINOR)
     currency_iso = str(settings.CARD_PAYMENT_CURRENCY).upper()
     provider_name = str(settings.PAYMENT_PROVIDER).lower()
@@ -443,6 +498,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
                 status="pending",
                 channel="web",
                 payment_method="card",
+                payload__startswith=pending_payload_prefix,
             )
             .order_by("-id")
             .first()
@@ -487,6 +543,53 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
         pay_url=create_result.pay_url,
     )
     return redirect(create_result.pay_url)
+
+
+@login_required
+@require_POST
+def rename_subscription(request: HttpRequest, subscription_id: int) -> HttpResponse:
+    linked, bot_user = _resolve_linked_bot_user(request)
+    if not linked or not bot_user:
+        messages.error(request, "Сначала привяжите Telegram ID")
+        return redirect("account_link")
+
+    subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
+    if not subscription:
+        messages.error(request, "Конфиг не найден.")
+        return redirect("account_dashboard")
+
+    new_name = (request.POST.get("display_name") or "").strip()
+    if not new_name:
+        messages.error(request, "Введите имя конфига.")
+        return redirect("account_dashboard")
+
+    subscription.display_name = new_name[:80]
+    subscription.updated_at = timezone.now()
+    subscription.save(update_fields=["display_name", "updated_at"])
+    messages.success(request, "Имя конфига обновлено.")
+    return redirect("account_dashboard")
+
+
+@login_required
+@require_POST
+def revoke_subscription(request: HttpRequest, subscription_id: int) -> HttpResponse:
+    linked, bot_user = _resolve_linked_bot_user(request)
+    if not linked or not bot_user:
+        messages.error(request, "Сначала привяжите Telegram ID")
+        return redirect("account_link")
+
+    subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
+    if not subscription:
+        messages.error(request, "Конфиг не найден.")
+        return redirect("account_dashboard")
+
+    now = timezone.now()
+    subscription.is_active = False
+    subscription.revoked_at = now
+    subscription.updated_at = now
+    subscription.save(update_fields=["is_active", "revoked_at", "updated_at"])
+    messages.success(request, "Конфиг отключен.")
+    return redirect("account_dashboard")
 
 
 def open_app_link(request: HttpRequest) -> HttpResponse:
@@ -562,9 +665,33 @@ def create_magic_link(request: HttpRequest) -> HttpResponse:
         return JsonResponse({"error": "invalid_json"}, status=400)
 
     telegram_id_raw = payload.get("telegram_id")
-    try:
-        telegram_id = int(telegram_id_raw)
-    except Exception:
+    bot_user_id_raw = payload.get("bot_user_id")
+
+    telegram_user_id: int | None = None
+    bot_user_id: int | None = None
+
+    if telegram_id_raw is not None:
+        try:
+            telegram_user_id = int(telegram_id_raw)
+        except Exception:
+            return JsonResponse({"error": "invalid_telegram_id"}, status=400)
+
+    if bot_user_id_raw is not None:
+        try:
+            bot_user_id = int(bot_user_id_raw)
+        except Exception:
+            return JsonResponse({"error": "invalid_bot_user_id"}, status=400)
+
+    if telegram_user_id is None and bot_user_id is not None:
+        bot_user = BotUser.objects.filter(pk=bot_user_id).first()
+        if bot_user is None:
+            return JsonResponse({"error": "bot_user_not_found"}, status=404)
+        telegram_value = getattr(bot_user, "telegram_id", None)
+        if telegram_value is None:
+            return JsonResponse({"error": "bot_user_has_no_telegram_id"}, status=400)
+        telegram_user_id = int(telegram_value)
+
+    if telegram_user_id is None:
         return JsonResponse({"error": "invalid_telegram_id"}, status=400)
 
     now = timezone.now()
@@ -572,7 +699,7 @@ def create_magic_link(request: HttpRequest) -> HttpResponse:
     token = _generate_magic_token()
     WebLoginToken.objects.create(
         token=token,
-        telegram_id=telegram_id,
+        telegram_id=telegram_user_id,
         expires_at=expires_at,
         consumed_at=None,
         created_at=now,
@@ -729,15 +856,15 @@ def payment_webhook(request: HttpRequest, provider: str) -> HttpResponse:
         )
         return JsonResponse({"error": "invalid_webhook"}, status=400)
 
-    if webhook.event_id and _payment_event_exists(provider_name, webhook.event_id):
+    if not webhook.event_id:
         _log_payment_event(
             order_id=None,
             client_code=None,
             provider=provider_name,
-            event_id=webhook.event_id,
-            provision_state="webhook_duplicate",
+            event_id=None,
+            provision_state="webhook_missing_event_id",
         )
-        return JsonResponse({"ok": True, "duplicate": True}, status=200)
+        return JsonResponse({"error": "invalid_webhook_event_id"}, status=400)
 
     now = timezone.now()
     order_id_for_activation: int | None = None
@@ -822,10 +949,6 @@ def payment_webhook(request: HttpRequest, provider: str) -> HttpResponse:
         _spawn_activation_worker(order_id_for_activation)
 
     return JsonResponse({"ok": True}, status=200)
-
-
-def _payment_event_exists(provider: str, event_id: str) -> bool:
-    return PaymentEvent.objects.filter(provider=provider, event_id=event_id).exists()
 
 
 def _spawn_activation_worker(order_id: int) -> None:

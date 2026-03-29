@@ -1,0 +1,3 @@
+ALTER TABLE subscriptions
+    ADD COLUMN IF NOT EXISTS display_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;

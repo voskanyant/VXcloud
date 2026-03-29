@@ -80,9 +80,11 @@ class BotSubscription(models.Model):
     inbound_id = models.IntegerField()
     client_uuid = models.UUIDField()
     client_email = models.TextField()
+    display_name = models.TextField()
     vless_url = models.TextField()
     expires_at = models.DateTimeField()
     is_active = models.BooleanField()
+    revoked_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField()
     updated_at = models.DateTimeField()
 

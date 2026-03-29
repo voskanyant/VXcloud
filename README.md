@@ -288,6 +288,39 @@ After login, users can open:
 Note: payment on site is currently a lightweight stub (`/account/renew/`) to create an order record.
 Real card payment requires payment provider webhook integration.
 
+## Card Payments Providers
+
+By default the project uses `ReferencePaymentProvider` (`PAYMENT_PROVIDER=reference`).
+
+There is also a contract-only scaffold provider: `PAYMENT_PROVIDER=yookassa`.
+It implements the same contract (`create_payment`, `verify_webhook`) but does not perform real API integration yet.
+
+### Required env vars to enable card payments
+
+Minimal:
+
+- `ENABLE_CARD_PAYMENTS=1`
+- `PAYMENT_PROVIDER=reference` (or `yookassa`)
+- `CARD_PAYMENT_AMOUNT_MINOR` (example `29900`)
+- `CARD_PAYMENT_CURRENCY` (example `RUB`)
+
+For `reference` provider:
+
+- `PAYMENT_REFERENCE_BASE_URL`
+- `PAYMENT_REFERENCE_WEBHOOK_SECRET`
+
+For `yookassa` scaffold provider:
+
+- `PAYMENT_YOOKASSA_CHECKOUT_BASE_URL`
+- `PAYMENT_YOOKASSA_WEBHOOK_SECRET`
+- `PAYMENT_YOOKASSA_SHOP_ID`
+- `PAYMENT_YOOKASSA_API_KEY`
+
+### Webhook deduplication guarantee
+
+`POST /api/webhooks/<provider>` always writes incoming events to `payment_events`.
+Uniqueness is enforced by `(provider, event_id)` and duplicate events are acknowledged with `200 OK` without re-processing the order.
+
 ## DNS for New Domain
 
 If your server public IPv4 is `1.2.3.4` and domain is `vxcloud.example.com`, add:
