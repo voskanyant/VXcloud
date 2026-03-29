@@ -351,6 +351,20 @@ class VPNBot:
             return None
         return InlineKeyboardMarkup(rows)
 
+    def _start_inline_keyboard(self) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(text="🎁 Попробовать 7 дней", callback_data="act|start_trial|_"),
+                    InlineKeyboardButton(text="💳 Купить доступ", callback_data="act|buy_new|_"),
+                ],
+                [
+                    InlineKeyboardButton(text="💬 Как подключить", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="🌐 Открыть сайт", url=self._site_url().rstrip("/")),
+                ],
+            ]
+        )
+
     async def _send_menu_node(
         self,
         update: Update,
@@ -617,14 +631,20 @@ class VPNBot:
             )
             return
 
-        default_msg = (
-            "\u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c \u0432 VXcloud.\n\n"
-            "\u041c\u044b \u043f\u0440\u0435\u0434\u043b\u0430\u0433\u0430\u0435\u043c \u0431\u044b\u0441\u0442\u0440\u044b\u0439, \u043b\u0435\u0433\u043a\u0438\u0439 \u0438 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u044b\u0439 VPN \u0434\u043b\u044f \u0420\u043e\u0441\u0441\u0438\u0438.\n"
-            "\u041f\u043e\u0434\u0445\u043e\u0434\u0438\u0442 \u0434\u043b\u044f \u043f\u043e\u0432\u0441\u0435\u0434\u043d\u0435\u0432\u043d\u043e\u0433\u043e \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d\u0438\u044f: \u0441\u043e\u0446\u0441\u0435\u0442\u0438, \u043c\u0435\u0441\u0441\u0435\u043d\u0434\u0436\u0435\u0440\u044b, \u0441\u0430\u0439\u0442\u044b \u0438 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f.\n\n"
-            "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u043a\u043d\u043e\u043f\u043a\u0438 \u043c\u0435\u043d\u044e \u043d\u0438\u0436\u0435."
+        msg = (
+            "Добро пожаловать в VXcloud\n\n"
+            "Здесь вы можете получить стабильный доступ к интернету для работы, общения и повседневных задач.\n\n"
+            "Начните с пробного периода или сразу оформите доступ.\n\n"
+            "Для подключения понадобится специальное приложение.\n"
+            "Если его нет в российском App Store, может потребоваться сменить регион в App Store.\n"
+            "Мы покажем всё по шагам."
         )
-        msg = self._content_text("start_message", default_msg)
-        await update.message.reply_text(msg, reply_markup=await self._menu_keyboard_for_user(user_id))
+        menu_keyboard = await self._menu_keyboard_for_user(user_id)
+        sent = await update.message.reply_text(msg, reply_markup=menu_keyboard)
+        try:
+            await sent.edit_reply_markup(reply_markup=self._start_inline_keyboard())
+        except Exception:
+            await update.message.reply_text("Выберите действие:", reply_markup=self._start_inline_keyboard())
 
     async def menu_click(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
@@ -768,11 +788,13 @@ class VPNBot:
 
     async def trial(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await self._refresh_cms()
-        assert update.message is not None
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None:
+            return
         user_id = await self._ensure_user(update)
 
         if await self.db.has_any_subscription(user_id):
-            await update.message.reply_text(
+            await message.reply_text(
                 self._content_text(
                     "trial_unavailable_message",
                     "\u041f\u0440\u043e\u0431\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434 \u0434\u043e\u0441\u0442\u0443\u043f\u0435\u043d \u0442\u043e\u043b\u044c\u043a\u043e \u043e\u0434\u0438\u043d \u0440\u0430\u0437 \u0434\u043b\u044f \u043d\u043e\u0432\u044b\u0445 \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u0435\u0439.",
@@ -781,7 +803,7 @@ class VPNBot:
             )
             return
 
-        await update.message.reply_text(
+        await message.reply_text(
             self._content_text("trial_activating_message", "\u0410\u043a\u0442\u0438\u0432\u0438\u0440\u0443\u044e \u0432\u0430\u0448 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434 \u043d\u0430 7 \u0434\u043d\u0435\u0439..."),
             reply_markup=await self._menu_keyboard_for_user(user_id),
         )
@@ -1073,6 +1095,11 @@ class VPNBot:
             return
 
         if kind == "act":
+            if target == "start_trial":
+                await query.answer()
+                if query.message is not None:
+                    await self.trial(update, context)
+                return
             if target == "support_start":
                 context.user_data["support_wait_message"] = True
                 await query.answer()
@@ -1768,6 +1795,9 @@ class VPNBot:
         user_id: int | None = None,
         last_payment_method: str | None = None,
     ) -> None:
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None:
+            return
         action_markup: InlineKeyboardMarkup | None = None
         link_for_copy = subscription_url or vless_url
         qr_payload = subscription_url or vless_url
@@ -1848,8 +1878,8 @@ class VPNBot:
         text += "\n\n" + copy_link_hint
         text += "\n\n" + single_device_warning
 
-        await update.message.reply_photo(photo=qr_buff)
-        await update.message.reply_text(text, reply_markup=action_markup)
+        await message.reply_photo(photo=qr_buff)
+        await message.reply_text(text, reply_markup=action_markup)
 
     @staticmethod
     def _build_styled_qr(data: str, title: str) -> Image.Image:
