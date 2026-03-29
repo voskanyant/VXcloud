@@ -16,11 +16,22 @@
 
 {% if post_items %}
   <section class="section-card mb-3">
+    {% if is_blog_index and blog_categories %}
+      <h2 class="h4 mb-3">Категории</h2>
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <a href="{% pageurl page %}" class="btn btn-sm {% if not selected_blog_category %}btn-dark{% else %}btn-outline-dark{% endif %}">Все</a>
+        {% for category in blog_categories %}
+          <a href="{% pageurl page %}?category={{ category.slug }}" class="btn btn-sm {% if selected_blog_category and selected_blog_category.id == category.id %}btn-dark{% else %}btn-outline-dark{% endif %}">{{ category.title }}</a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
     {% if is_blog_index %}
       <h2 class="h4 mb-3">Все публикации</h2>
     {% else %}
       <h2 class="h4 mb-3">Публикации</h2>
     {% endif %}
+
     <div class="vstack gap-2">
       {% for item in post_items %}
         <article class="post-card">
@@ -33,8 +44,17 @@
           {% else %}
             <p class="text-secondary mb-2"><a href="{% pageurl item %}">Read more</a></p>
           {% endif %}
+
           {% if item.first_published_at %}
             <time datetime="{{ item.first_published_at|date:'c' }}">{{ item.first_published_at|date:"d.m.Y" }}</time>
+          {% endif %}
+
+          {% if item.categories.all %}
+            <div class="d-flex flex-wrap gap-1 mt-2">
+              {% for category in item.categories.all %}
+                <a href="{% pageurl page %}?category={{ category.slug }}" class="badge text-bg-light text-decoration-none border">{{ category.title }}</a>
+              {% endfor %}
+            </div>
           {% endif %}
         </article>
       {% endfor %}

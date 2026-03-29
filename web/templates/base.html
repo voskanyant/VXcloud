@@ -14,32 +14,10 @@
     <aside class="sidebar">
       {% cms_text "nav.brand" "VXcloud" as nav_brand %}
       {% cms_text "nav.home" "Главная" as nav_home %}
-      {% cms_text "nav.blog" "Блог" as nav_blog %}
       {% cms_text "nav.account" "Личный кабинет" as nav_account %}
       <a href="/" class="brand">{{ nav_brand }}</a>
       <nav class="side-nav">
         <a href="/" class="side-link{% if request.path == '/' %} is-active{% endif %}">{{ nav_home }}</a>
-        <div class="side-item has-children">
-          <div class="side-item-head">
-            <a href="/instructions/" class="side-link{% if request.path|slice:':14' == '/instructions/' %} is-active{% endif %}">{{ nav_blog }}</a>
-            <button
-              class="side-toggle"
-              type="button"
-              aria-expanded="false"
-              aria-controls="submenu-blog"
-              data-submenu-target="submenu-blog"
-            >
-              ▾
-            </button>
-          </div>
-          <div id="submenu-blog" class="side-submenu">
-            {% for category in blog_categories %}
-              <a href="{% url 'blog_category_detail' slug=category.slug %}" class="side-link side-sublink{% if request.path == '/instructions/category/'|add:category.slug|add:'/' %} is-active{% endif %}">{{ category.title }}</a>
-            {% empty %}
-              <span class="side-link side-sublink text-secondary">Категорий нет</span>
-            {% endfor %}
-          </div>
-        </div>
         {% for page in wagtail_menu_pages %}
           {% with children=page.get_children.live.in_menu.specific %}
             <div class="side-item{% if children|length %} has-children{% endif %}">

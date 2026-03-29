@@ -3,6 +3,7 @@ from wagtail.admin.panels import FieldPanel
 from wagtail.fields import RichTextField, StreamField
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.models import Page
+from django.db import models
 
 
 class CMSHomePage(Page):
@@ -102,6 +103,7 @@ class CMSContentPage(Page):
 
     intro = RichTextField(blank=True)
     body = RichTextField(blank=True)
+    categories = models.ManyToManyField("blog.Category", blank=True, related_name="cms_pages")
     sections = StreamField(
         [
             (
@@ -184,6 +186,7 @@ class CMSContentPage(Page):
     content_panels = Page.content_panels + [
         FieldPanel("intro"),
         FieldPanel("body"),
+        FieldPanel("categories"),
         FieldPanel("sections"),
     ]
 
@@ -195,18 +198,27 @@ class CMSContentPage(Page):
         context["post_items"] = []
 
         if context["is_blog_index"]:
-            context["blog_categories"] = (
-                self.get_children().live().in_menu().specific().order_by("title")
-            )
-            context["post_items"] = (
+            from blog.models import Category
+
+            selected_category_slug = (request.GET.get("category") or "").strip()
+            categories_qs = Category.objects.filter(is_active=True).order_by("title")
+            selected_category = categories_qs.filter(slug=selected_category_slug).first() if selected_category_slug else None
+
+            posts_qs = (
                 CMSContentPage.objects.live()
                 .descendant_of(self)
                 .exclude(id=self.id)
                 .filter(depth__gte=self.depth + 2)
                 .filter(numchild=0)
-                .specific()
+                .prefetch_related("categories")
                 .order_by("-first_published_at", "-latest_revision_created_at")
             )
+            if selected_category is not None:
+                posts_qs = posts_qs.filter(categories=selected_category)
+
+            context["blog_categories"] = list(categories_qs)
+            context["selected_blog_category"] = selected_category
+            context["post_items"] = posts_qs.specific()
             return context
 
         if self.get_children().live().exists():
@@ -214,6 +226,7 @@ class CMSContentPage(Page):
                 self.get_children()
                 .live()
                 .filter(numchild=0)
+                .prefetch_related("categories")
                 .specific()
                 .order_by("-first_published_at", "-latest_revision_created_at")
             )
