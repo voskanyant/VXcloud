@@ -1,0 +1,241 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    .ops-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .ops-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .ops-label {
+      color: #6b7280;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+    .ops-value {
+      font-size: 24px;
+      line-height: 1.1;
+      font-weight: 700;
+      color: #111827;
+    }
+    .ops-section {
+      margin-bottom: 20px;
+    }
+    .ops-table-wrap {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+    .ops-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+    .ops-table th,
+    .ops-table td {
+      text-align: left;
+      padding: 10px 12px;
+      border-bottom: 1px solid #eef2f7;
+      vertical-align: top;
+    }
+    .ops-table tr:last-child td {
+      border-bottom: 0;
+    }
+    .ops-muted {
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .ops-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: #f8fafc;
+    }
+    .ops-badge.is-good {
+      color: #065f46;
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+    }
+    .ops-badge.is-warn {
+      color: #92400e;
+      background: #fffbeb;
+      border-color: #fde68a;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <div style="margin-bottom: 14px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+    <h1 style="margin:0;">Ops Dashboard</h1>
+    <div>
+      <a class="button" href="{% url 'admin:cabinet_botuser_changelist' %}">Пользователи</a>
+      <a class="button" href="{% url 'admin:cabinet_botsubscription_changelist' %}">Подписки</a>
+      <a class="button" href="{% url 'admin:cabinet_botorder_changelist' %}">Заказы</a>
+      <a class="button" href="{% url 'admin:cabinet_paymentevent_changelist' %}">Webhook события</a>
+    </div>
+  </div>
+
+  <section class="ops-grid">
+    <article class="ops-card"><div class="ops-label">Пользователи</div><div class="ops-value">{{ metrics.total_users }}</div></article>
+    <article class="ops-card"><div class="ops-label">Подписки (всего)</div><div class="ops-value">{{ metrics.total_subscriptions }}</div></article>
+    <article class="ops-card"><div class="ops-label">Активные подписки</div><div class="ops-value">{{ metrics.active_subscriptions }}</div></article>
+    <article class="ops-card"><div class="ops-label">Истекают за 7 дней</div><div class="ops-value">{{ metrics.expiring_7d }}</div></article>
+    <article class="ops-card"><div class="ops-label">Заказы (всего)</div><div class="ops-value">{{ metrics.total_orders }}</div></article>
+    <article class="ops-card"><div class="ops-label">Pending заказы</div><div class="ops-value">{{ metrics.pending_orders }}</div></article>
+    <article class="ops-card"><div class="ops-label">Оплачено за 24ч</div><div class="ops-value">{{ metrics.paid_24h }}</div></article>
+    <article class="ops-card"><div class="ops-label">Webhook за 24ч</div><div class="ops-value">{{ metrics.webhook_events_24h }}</div></article>
+    <article class="ops-card"><div class="ops-label">Необработанные webhook</div><div class="ops-value">{{ metrics.unprocessed_webhooks }}</div></article>
+  </section>
+
+  <section class="ops-section">
+    <h2>Топ пользователей по конфигам</h2>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Client code</th>
+            <th>Telegram ID</th>
+            <th>Активные</th>
+            <th>Всего</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in top_users %}
+            <tr>
+              <td>{{ u.id }}</td>
+              <td>{{ u.client_code }}</td>
+              <td>{{ u.telegram_id }}</td>
+              <td><span class="ops-badge is-good">{{ u.active_subs }}</span></td>
+              <td><span class="ops-badge">{{ u.total_subs }}</span></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="ops-muted">Нет данных</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ops-section">
+    <h2>Последние заказы</h2>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Client code</th>
+            <th>Статус</th>
+            <th>Метод</th>
+            <th>Сумма</th>
+            <th>Создан</th>
+            <th>Оплачен</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in recent_orders %}
+            <tr>
+              <td><a href="{% url 'admin:cabinet_botorder_change' order.id %}">{{ order.id }}</a></td>
+              <td>{{ order.user.client_code }}</td>
+              <td>
+                <span class="ops-badge {% if order.status == 'pending' %}is-warn{% elif order.status == 'activated' or order.status == 'paid' %}is-good{% endif %}">
+                  {{ order.status }}
+                </span>
+              </td>
+              <td>{{ order.payment_method|default:"-" }}</td>
+              <td>{% if order.amount_minor %}{{ order.amount_minor }}{% else %}-{% endif %}</td>
+              <td class="ops-muted">{{ order.created_at }}</td>
+              <td class="ops-muted">{{ order.paid_at|default:"-" }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="ops-muted">Нет данных</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ops-section">
+    <h2>Последние подписки</h2>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Client code</th>
+            <th>Имя</th>
+            <th>Статус</th>
+            <th>Истекает</th>
+            <th>Обновлен</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for sub in recent_subscriptions %}
+            <tr>
+              <td><a href="{% url 'admin:cabinet_botsubscription_change' sub.id %}">{{ sub.id }}</a></td>
+              <td>{{ sub.user.client_code }}</td>
+              <td>{{ sub.display_name|default:"-" }}</td>
+              <td>
+                <span class="ops-badge {% if sub.is_active %}is-good{% else %}is-warn{% endif %}">
+                  {% if sub.is_active %}active{% else %}inactive{% endif %}
+                </span>
+              </td>
+              <td class="ops-muted">{{ sub.expires_at }}</td>
+              <td class="ops-muted">{{ sub.updated_at }}</td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="6" class="ops-muted">Нет данных</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="ops-section">
+    <h2>Последние webhook события</h2>
+    <div class="ops-table-wrap">
+      <table class="ops-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Provider</th>
+            <th>Event ID</th>
+            <th>Создан</th>
+            <th>Обработан</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in recent_webhooks %}
+            <tr>
+              <td><a href="{% url 'admin:cabinet_paymentevent_change' e.id %}">{{ e.id }}</a></td>
+              <td>{{ e.provider }}</td>
+              <td class="ops-muted">{{ e.event_id }}</td>
+              <td class="ops-muted">{{ e.created_at }}</td>
+              <td>
+                {% if e.processed_at %}
+                  <span class="ops-badge is-good">{{ e.processed_at }}</span>
+                {% else %}
+                  <span class="ops-badge is-warn">not processed</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5" class="ops-muted">Нет данных</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}
+

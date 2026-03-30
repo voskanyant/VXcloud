@@ -1,4 +1,10 @@
-﻿from django.contrib import admin
+﻿from datetime import timedelta
+
+from django.contrib import admin
+from django.db.models import Count, Q
+from django.template.response import TemplateResponse
+from django.urls import path
+from django.utils import timezone
 
 from .models import (
     BotOrder,
@@ -114,3 +120,86 @@ class WebLoginTokenAdmin(admin.ModelAdmin):
     list_filter = ("consumed_at",)
     ordering = ("-id",)
     list_per_page = 50
+
+
+def ops_dashboard_view(request):
+    now = timezone.now()
+    day_ago = now - timedelta(days=1)
+    week_ahead = now + timedelta(days=7)
+
+    total_users = BotUser.objects.count()
+    total_subscriptions = BotSubscription.objects.count()
+    active_subscriptions = BotSubscription.objects.filter(
+        is_active=True,
+        revoked_at__isnull=True,
+        expires_at__gt=now,
+    ).count()
+    expiring_7d = BotSubscription.objects.filter(
+        is_active=True,
+        revoked_at__isnull=True,
+        expires_at__gt=now,
+        expires_at__lte=week_ahead,
+    ).count()
+
+    total_orders = BotOrder.objects.count()
+    pending_orders = BotOrder.objects.filter(status="pending").count()
+    paid_24h = BotOrder.objects.filter(
+        status__in=["paid", "activating", "activated"],
+        paid_at__gte=day_ago,
+    ).count()
+
+    webhook_events_24h = PaymentEvent.objects.filter(created_at__gte=day_ago).count()
+    unprocessed_webhooks = PaymentEvent.objects.filter(processed_at__isnull=True).count()
+
+    recent_orders = BotOrder.objects.select_related("user").order_by("-id")[:20]
+    recent_subscriptions = BotSubscription.objects.select_related("user").order_by("-id")[:20]
+    recent_webhooks = PaymentEvent.objects.order_by("-id")[:20]
+
+    top_users = (
+        BotUser.objects.annotate(
+            total_subs=Count("botsubscription"),
+            active_subs=Count(
+                "botsubscription",
+                filter=Q(
+                    botsubscription__is_active=True,
+                    botsubscription__revoked_at__isnull=True,
+                    botsubscription__expires_at__gt=now,
+                ),
+            ),
+        )
+        .order_by("-active_subs", "-total_subs", "id")[:10]
+    )
+
+    context = {
+        **admin.site.each_context(request),
+        "title": "Ops Dashboard",
+        "metrics": {
+            "total_users": total_users,
+            "total_subscriptions": total_subscriptions,
+            "active_subscriptions": active_subscriptions,
+            "expiring_7d": expiring_7d,
+            "total_orders": total_orders,
+            "pending_orders": pending_orders,
+            "paid_24h": paid_24h,
+            "webhook_events_24h": webhook_events_24h,
+            "unprocessed_webhooks": unprocessed_webhooks,
+        },
+        "recent_orders": recent_orders,
+        "recent_subscriptions": recent_subscriptions,
+        "recent_webhooks": recent_webhooks,
+        "top_users": top_users,
+    }
+    return TemplateResponse(request, "admin/ops_dashboard.html", context)
+
+
+_original_get_urls = admin.site.get_urls
+
+
+def _get_urls():
+    custom_urls = [
+        path("ops/", admin.site.admin_view(ops_dashboard_view), name="ops_dashboard"),
+    ]
+    return custom_urls + _original_get_urls()
+
+
+admin.site.get_urls = _get_urls
