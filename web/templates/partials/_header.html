@@ -1,4 +1,4 @@
-{% load cms %}
+﻿{% load cms %}
 <header class="site-header">
   <div class="container site-header-inner">
     {% cms_text "nav.logo" "VXcloud" as nav_logo %}
@@ -10,15 +10,18 @@
     {% cms_text "nav.account" "Личный кабинет" as nav_account %}
     {% cms_text "nav.buy_cta" "⭐ Купить доступ" as nav_buy_cta %}
 
-    <a class="site-logo" href="/">{{ nav_logo }}</a>
+    <div class="site-header-top">
+      <a class="site-logo" href="/">{{ nav_logo }}</a>
+      <a href="/account/" class="btn btn-primary site-cta">{{ nav_buy_cta }}</a>
+    </div>
+
     <nav class="site-nav" aria-label="Главное меню">
       <a href="/" class="site-nav-link{% if request.path == '/' %} is-active{% endif %}">{{ nav_home }}</a>
       <a href="/how-it-works/" class="site-nav-link{% if request.path|slice:':14' == '/how-it-works/' %} is-active{% endif %}">{{ nav_how }}</a>
-      <a href="/instructions/" class="site-nav-link{% if request.path|slice:':14' == '/instructions/' %} is-active{% endif %}">{{ nav_instructions }}</a>
+      <a href="/help/" class="site-nav-link{% if request.path|slice:':6' == '/help/' or request.path|slice:':14' == '/instructions/' %} is-active{% endif %}">{{ nav_instructions }}</a>
       <a href="/faq/" class="site-nav-link{% if request.path|slice:':5' == '/faq/' %} is-active{% endif %}">{{ nav_faq }}</a>
       <a href="/blog/" class="site-nav-link{% if request.path|slice:':6' == '/blog/' %} is-active{% endif %}">{{ nav_blog }}</a>
       <a href="/account/" class="site-nav-link{% if request.path|slice:':9' == '/account/' or request.path|slice:':10' == '/accounts/' %} is-active{% endif %}">{{ nav_account }}</a>
     </nav>
-    <a href="/account/" class="btn btn-primary site-cta">{{ nav_buy_cta }}</a>
   </div>
 </header>

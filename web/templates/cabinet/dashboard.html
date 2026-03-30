@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load cms %}
 
 {% cms_text "cabinet.dashboard.page_title" "Кабинет - VXcloud" as cabinet_page_title %}
@@ -20,15 +20,13 @@
 {% cms_text "cabinet.dashboard.renew_action_short" "🔄 Продлить" as cabinet_renew_action_short %}
 {% cms_text "cabinet.dashboard.support_action" "🆘 Поддержка" as cabinet_support_action %}
 
-{% cms_text "cabinet.dashboard.configs_title" "Ваши доступы" as cabinet_configs_title %}
-{% cms_text "cabinet.dashboard.name_col" "Название" as cabinet_name_col %}
-{% cms_text "cabinet.dashboard.exp_col" "Срок действия" as cabinet_exp_col %}
-{% cms_text "cabinet.dashboard.status_col" "Статус" as cabinet_status_col %}
-{% cms_text "cabinet.dashboard.actions_col" "Действия" as cabinet_actions_col %}
+{% cms_text "cabinet.dashboard.configs_title" "Ваши устройства" as cabinet_configs_title %}
 {% cms_text "cabinet.dashboard.open_selected_config" "🚀 Открыть" as cabinet_open_selected_config %}
 {% cms_text "cabinet.dashboard.qr_action" "📷 QR-код" as cabinet_qr_action %}
 {% cms_text "cabinet.dashboard.copy_action" "📋 Скопировать" as cabinet_copy_action %}
 {% cms_text "cabinet.dashboard.renew_action" "🔄 Продлить" as cabinet_renew_action %}
+{% cms_text "cabinet.dashboard.rename_action" "✏️ Переименовать" as cabinet_rename_action %}
+{% cms_text "cabinet.dashboard.revoke_action" "❌ Отключить" as cabinet_revoke_action %}
 
 {% cms_text "cabinet.empty_configs" "Пока нет активных доступов. Оформите первый доступ, чтобы он появился здесь." as cabinet_empty_configs %}
 {% cms_text "cabinet.error_loading" "Не удалось загрузить данные аккаунта. Попробуйте обновить страницу." as cabinet_error_loading %}
@@ -40,41 +38,33 @@
     <div class="alert alert-error mb-0">{{ cabinet_error_loading }}</div>
   {% else %}
     <h2 class="h5 mb-3">{{ cabinet_account_summary }}</h2>
-    <div class="table-responsive">
-      <table class="table mb-0">
-        <tbody>
-          <tr>
-            <th style="width: 220px;">{{ cabinet_user_label }}</th>
-            <td><strong>{{ request.user.username }}</strong></td>
-          </tr>
-          <tr>
-            <th>{{ cabinet_client_code_label }}</th>
-            <td>
-              {% if bot_user.client_code %}
-                <code>{{ bot_user.client_code }}</code>
-              {% else %}
-                <span class="badge badge-muted">-</span>
-              {% endif %}
-            </td>
-          </tr>
-          <tr>
-            <th>{{ cabinet_telegram_label }}</th>
-            <td>
-              {% if linked %}
-                <span class="badge badge-success">{{ cabinet_telegram_linked }}</span>
-                <code class="ms-2">{{ linked.telegram_id }}</code>
-              {% else %}
-                <span class="badge badge-warning">{{ cabinet_telegram_missing }}</span>
-                <a class="ms-2" href="/account/link/">{{ cabinet_telegram_link_action }}</a>
-              {% endif %}
-            </td>
-          </tr>
-          <tr>
-            <th>{{ cabinet_payment_method_label }}</th>
-            <td><strong>{{ last_payment_method }}</strong></td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="config-grid">
+      <div class="config-tile">
+        <div class="config-meta mb-1">{{ cabinet_user_label }}</div>
+        <strong>{{ request.user.username }}</strong>
+      </div>
+      <div class="config-tile">
+        <div class="config-meta mb-1">{{ cabinet_client_code_label }}</div>
+        {% if bot_user.client_code %}
+          <code>{{ bot_user.client_code }}</code>
+        {% else %}
+          <span class="badge badge-muted">-</span>
+        {% endif %}
+      </div>
+      <div class="config-tile">
+        <div class="config-meta mb-1">{{ cabinet_telegram_label }}</div>
+        {% if linked %}
+          <span class="badge badge-success">{{ cabinet_telegram_linked }}</span>
+          <div class="mt-1"><code>{{ linked.telegram_id }}</code></div>
+        {% else %}
+          <span class="badge badge-warning">{{ cabinet_telegram_missing }}</span>
+          <div class="mt-1"><a href="/account/link/">{{ cabinet_telegram_link_action }}</a></div>
+        {% endif %}
+      </div>
+      <div class="config-tile">
+        <div class="config-meta mb-1">{{ cabinet_payment_method_label }}</div>
+        <strong>{{ last_payment_method }}</strong>
+      </div>
     </div>
   {% endif %}
 </section>
@@ -92,71 +82,49 @@
   <h2 class="h5 mb-3">{{ cabinet_configs_title }}</h2>
 
   {% if subscription_rows %}
-    <div class="table-responsive">
-      <table class="table">
-        <thead>
-          <tr>
-            <th>{{ cabinet_name_col }}</th>
-            <th>{{ cabinet_exp_col }}</th>
-            <th>{{ cabinet_status_col }}</th>
-            <th>{{ cabinet_actions_col }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in subscription_rows %}
-            <tr>
-              <td>
-                <strong>{{ row.display_name }}</strong>
-                <div class="text-secondary small">ID: {{ row.id }}</div>
-              </td>
-              <td>
-                {% if row.expires_at %}
-                  {{ row.expires_at|date:'d.m.Y H:i' }}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td>
-                {% if row.is_active %}
-                  <span class="badge badge-success">{{ row.status_text }}</span>
-                {% else %}
-                  <span class="badge badge-warning">{{ row.status_text }}</span>
-                {% endif %}
-              </td>
-              <td>
-                <div class="d-flex flex-wrap gap-2 mb-2">
-                  <a class="btn btn-secondary btn-sm" href="/account/config/{{ row.id }}/">{{ cabinet_open_selected_config }}</a>
-                  <a class="btn btn-secondary btn-sm" href="/account/config/{{ row.id }}/#qr">{{ cabinet_qr_action }}</a>
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm js-copy-config"
-                    data-copy-text="{{ row.obj.vless_url|default:'' }}"
-                  >{{ cabinet_copy_action }}</button>
-                  <a class="btn btn-secondary btn-sm" href="/account/renew/?subscription_id={{ row.id }}">{{ cabinet_renew_action }}</a>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                  <form method="post" action="/account/subscriptions/{{ row.id }}/rename/" class="d-flex gap-2 align-items-center">
-                    {% csrf_token %}
-                    <input
-                      type="text"
-                      name="display_name"
-                      value="{{ row.display_name }}"
-                      maxlength="80"
-                      placeholder="Новое имя"
-                      style="min-width: 160px;"
-                    />
-                    <button type="submit" class="btn btn-secondary btn-sm">✏️ Переименовать</button>
-                  </form>
-                  <form method="post" action="/account/subscriptions/{{ row.id }}/revoke/">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-secondary btn-sm">❌ Отключить</button>
-                  </form>
-                </div>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="config-grid">
+      {% for row in subscription_rows %}
+        <article class="config-tile">
+          <div class="d-flex justify-content-between align-items-start gap-2">
+            <div>
+              <strong>{{ row.display_name }}</strong>
+              <div class="config-meta">ID: {{ row.id }}</div>
+            </div>
+            {% if row.is_active %}
+              <span class="badge badge-success">{{ row.status_text }}</span>
+            {% else %}
+              <span class="badge badge-warning">{{ row.status_text }}</span>
+            {% endif %}
+          </div>
+
+          <div class="config-meta mt-2">
+            {% if row.expires_at %}
+              Действует до: {{ row.expires_at|date:'d.m.Y H:i' }}
+            {% else %}
+              Дата окончания: -
+            {% endif %}
+          </div>
+
+          <div class="config-actions">
+            <a class="btn btn-secondary btn-sm" href="/account/config/{{ row.id }}/">{{ cabinet_open_selected_config }}</a>
+            <a class="btn btn-secondary btn-sm" href="/account/config/{{ row.id }}/#qr">{{ cabinet_qr_action }}</a>
+            <button type="button" class="btn btn-secondary btn-sm js-copy-config" data-copy-text="{{ row.obj.vless_url|default:'' }}">{{ cabinet_copy_action }}</button>
+            <a class="btn btn-secondary btn-sm" href="/account/renew/?subscription_id={{ row.id }}">{{ cabinet_renew_action }}</a>
+          </div>
+
+          <div class="config-actions">
+            <form method="post" action="/account/subscriptions/{{ row.id }}/rename/" class="d-flex gap-2 align-items-center w-100 flex-wrap">
+              {% csrf_token %}
+              <input type="text" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Новое имя" style="max-width: 220px;" />
+              <button type="submit" class="btn btn-secondary btn-sm">{{ cabinet_rename_action }}</button>
+            </form>
+            <form method="post" action="/account/subscriptions/{{ row.id }}/revoke/">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-secondary btn-sm">{{ cabinet_revoke_action }}</button>
+            </form>
+          </div>
+        </article>
+      {% endfor %}
     </div>
   {% else %}
     <div class="alert alert-info mb-0">{{ cabinet_empty_configs }}</div>

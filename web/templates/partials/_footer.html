@@ -1,19 +1,19 @@
-{% load cms %}
+﻿{% load cms %}
 <footer class="site-footer">
   <div class="container site-footer-inner">
     {% cms_text "footer.support" "Поддержка" as footer_support %}
     {% cms_text "footer.docs_label" "Документы" as footer_docs_label %}
-    {% cms_text "footer.terms" "Terms" as footer_terms %}
-    {% cms_text "footer.privacy" "Privacy" as footer_privacy %}
+    {% cms_text "footer.terms" "Условия" as footer_terms %}
+    {% cms_text "footer.privacy" "Политика" as footer_privacy %}
     {% cms_text "footer.copy" "© VXcloud" as footer_copy %}
 
     <div class="site-footer-links">
       <a href="/support/">{{ footer_support }}</a>
       <span class="site-footer-docs">
         {{ footer_docs_label }}:
-        <a href="/terms/">{{ footer_terms }}</a>
+        <a href="/legal/terms/">{{ footer_terms }}</a>
         /
-        <a href="/privacy/">{{ footer_privacy }}</a>
+        <a href="/legal/privacy/">{{ footer_privacy }}</a>
       </span>
     </div>
     <div class="site-footer-copy">{{ footer_copy }}</div>
