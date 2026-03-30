@@ -128,6 +128,16 @@ Ready StreamField sections:
 - `faq` (list of question/answer)
 - `image` (image + caption)
 
+### Bootstrap payment-compliance pages (YooKassa)
+
+To create/update required public pages in Wagtail (services/prices, digital delivery, offer, privacy, contacts/bank details):
+
+```bash
+docker compose --env-file .env exec -T web python /app/web/manage.py bootstrap_yookassa_pages
+```
+
+This command is idempotent and safe to run multiple times.
+
 ## Directus Content Sync From Git
 
 Directus content can be versioned in repo and synced on every deploy.
