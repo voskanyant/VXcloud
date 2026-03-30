@@ -5,62 +5,28 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   {% cms_text "base.default_title" "VXcloud Guide" as base_default_title %}
-  <title>{% block title %}{{ base_default_title }}{% endblock %}</title>
+  {% cms_text "base.default_description" "VXcloud: стабильный доступ к интернету и простое подключение на всех устройствах." as base_default_description %}
+  <title>{% block title %}{% if page %}{% if page.seo_title %}{{ page.seo_title }}{% else %}{{ page.title }}{% endif %}{% else %}{{ base_default_title }}{% endif %}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{% if page and page.search_description %}{{ page.search_description }}{% else %}{{ base_default_description }}{% endif %}{% endblock %}">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="{% static 'site.css' %}" />
+  <link rel="stylesheet" href="{% static 'css/site.css' %}" />
+  {% block extra_head %}{% endblock %}
 </head>
 <body>
-  <div class="app-layout">
-    <aside class="sidebar">
-      {% cms_text "nav.brand" "VXcloud" as nav_brand %}
-      {% cms_text "nav.home" "Главная" as nav_home %}
-      {% cms_text "nav.account" "Личный кабинет" as nav_account %}
-      <a href="/" class="brand">{{ nav_brand }}</a>
-      <nav class="side-nav">
-        <a href="/" class="side-link{% if request.path == '/' %} is-active{% endif %}">{{ nav_home }}</a>
-        {% for page in wagtail_menu_pages %}
-          {% with children=page.get_children.live.in_menu.specific %}
-            <div class="side-item{% if children|length %} has-children{% endif %}">
-              <div class="side-item-head">
-                <a href="{% pageurl page %}" class="side-link{% if request.path == page.url %} is-active{% endif %}">{{ page.title }}</a>
-                {% if children|length %}
-                  <button
-                    class="side-toggle"
-                    type="button"
-                    aria-expanded="false"
-                    aria-controls="submenu-{{ forloop.counter }}"
-                    data-submenu-target="submenu-{{ forloop.counter }}"
-                  >
-                    ▾
-                  </button>
-                {% endif %}
-              </div>
-              {% if children|length %}
-                <div id="submenu-{{ forloop.counter }}" class="side-submenu">
-                  {% for child in children %}
-                    <a href="{% pageurl child %}" class="side-link side-sublink{% if request.path == child.url %} is-active{% endif %}">{{ child.title }}</a>
-                  {% endfor %}
-                </div>
-              {% endif %}
-            </div>
-          {% endwith %}
-        {% endfor %}
-        <a href="/account/" class="side-link{% if request.path|slice:':9' == '/account/' or request.path|slice:':10' == '/accounts/' %} is-active{% endif %}">{{ nav_account }}</a>
-      </nav>
-    </aside>
-    <main class="content-area">
-      <div class="content-shell">
-        {% if messages %}
-          <section class="alert-wrap mb-2">
-            {% for message in messages %}
-              <div class="alert alert-info py-2">{{ message }}</div>
-            {% endfor %}
-          </section>
-        {% endif %}
-        {% block content %}{% endblock %}
-      </div>
-    </main>
-  </div>
+  {% include "partials/_header.html" %}
+  <main class="site-main">
+    <div class="container content-shell">
+      {% if messages %}
+        <section class="alert-wrap mb-2">
+          {% for message in messages %}
+            <div class="alert alert-info py-2">{{ message }}</div>
+          {% endfor %}
+        </section>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+  {% include "partials/_footer.html" %}
   <script>
     document.querySelectorAll('input, select, textarea').forEach((el) => {
       if (el.type === 'checkbox' || el.type === 'radio') return;
@@ -69,22 +35,6 @@
     document.querySelectorAll('button[type="submit"], button.btn').forEach((el) => {
       el.classList.add('btn', 'btn-primary');
     });
-    document.querySelectorAll('[data-submenu-target]').forEach((btn) => {
-      const submenu = document.getElementById(btn.dataset.submenuTarget);
-      if (!submenu) return;
-      const parentItem = btn.closest('.side-item');
-      if (submenu.querySelector('.side-sublink.is-active')) {
-        submenu.classList.add('is-open');
-        btn.setAttribute('aria-expanded', 'true');
-        if (parentItem) parentItem.classList.add('is-open');
-      }
-      btn.addEventListener('click', () => {
-        const isOpen = submenu.classList.toggle('is-open');
-        btn.setAttribute('aria-expanded', String(isOpen));
-        if (parentItem) parentItem.classList.toggle('is-open', isOpen);
-      });
-    });
-
     async function syncTelegramWebAppSession() {
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
       if (!tg || !tg.initData) return;

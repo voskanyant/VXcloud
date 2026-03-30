@@ -2,6 +2,21 @@
 {% load cms %}
 
 {% block title %}{{ post.title }} - VXcloud{% endblock %}
+{% block meta_description %}{% if post.summary %}{{ post.summary }}{% else %}{{ post.content|striptags|truncatechars:160 }}{% endif %}{% endblock %}
+{% block extra_head %}
+  {{ block.super }}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    "headline": "{{ post.title|escapejs }}",
+    "description": "{% if post.summary %}{{ post.summary|escapejs }}{% else %}{{ post.content|striptags|truncatechars:180|escapejs }}{% endif %}",
+    "datePublished": "{{ post.published_at|date:'c' }}",
+    "dateModified": "{{ post.updated_at|date:'c' }}",
+    "mainEntityOfPage": "{{ request.path|escapejs }}"
+  }
+  </script>
+{% endblock %}
 
 {% block content %}
 <article class="section-card">

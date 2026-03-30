@@ -1,9 +1,67 @@
 from wagtail import blocks
 from wagtail.admin.panels import FieldPanel
+from wagtail.embeds.blocks import EmbedBlock
 from wagtail.fields import RichTextField, StreamField
 from wagtail.images.blocks import ImageChooserBlock
 from wagtail.models import Page
+from wagtail.snippets.models import register_snippet
 from django.db import models
+from django.core.cache import cache
+from django.core.validators import RegexValidator
+
+from .blocks import HowToStepsBlock, StepsBlock
+
+
+class SiteCopy(models.Model):
+    key_validator = RegexValidator(
+        regex=r"^[a-z0-9._-]+$",
+        message="Use only a-z, 0-9, dot, dash and underscore.",
+    )
+    key = models.CharField(max_length=120, unique=True, validators=[key_validator])
+    text = models.TextField(blank=True)
+    help_text = models.CharField(max_length=255, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    panels = [
+        FieldPanel("key"),
+        FieldPanel("text"),
+        FieldPanel("help_text"),
+    ]
+
+    class Meta:
+        ordering = ["key"]
+        verbose_name = "Site copy"
+        verbose_name_plural = "Site copy"
+
+    def __str__(self) -> str:
+        return self.key
+
+    @staticmethod
+    def _cache_key(key: str) -> str:
+        return f"site_copy::{key}"
+
+    @classmethod
+    def get_text(cls, key: str, default: str = "") -> str:
+        cache_key = cls._cache_key(key)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+        value = cls.objects.filter(key=key).values_list("text", flat=True).first()
+        if value is None:
+            return default
+        cache.set(cache_key, value, timeout=3600)
+        return value
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        cache.delete(self._cache_key(self.key))
+
+    def delete(self, *args, **kwargs):
+        cache.delete(self._cache_key(self.key))
+        super().delete(*args, **kwargs)
+
+
+register_snippet(SiteCopy)
 
 
 class CMSHomePage(Page):
@@ -77,6 +135,9 @@ class CMSHomePage(Page):
                     required=False,
                 ),
             ),
+            ("steps", StepsBlock()),
+            ("howto_steps", HowToStepsBlock()),
+            ("embed", EmbedBlock(required=False)),
             (
                 "image",
                 blocks.StructBlock(
@@ -169,6 +230,9 @@ class CMSContentPage(Page):
                     required=False,
                 ),
             ),
+            ("steps", StepsBlock()),
+            ("howto_steps", HowToStepsBlock()),
+            ("embed", EmbedBlock(required=False)),
             (
                 "image",
                 blocks.StructBlock(
