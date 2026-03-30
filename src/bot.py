@@ -906,16 +906,32 @@ class VPNBot:
         vless_url = str(sub["vless_url"])
         client_uuid = str(sub["client_uuid"])
         inbound_id = int(sub["inbound_id"])
-        sub_id = await self.xui.get_client_sub_id(inbound_id, client_uuid)
+        sub_id: str | None = None
+        try:
+            sub_id = await self.xui.get_client_sub_id(inbound_id, client_uuid)
+        except Exception:
+            LOGGER.exception(
+                "Failed to fetch client sub id from x-ui user_id=%s inbound_id=%s client_uuid=%s",
+                user_id,
+                inbound_id,
+                client_uuid,
+            )
 
         expires_at = sub.get("expires_at")
         is_active = bool(sub.get("is_active"))
         is_revoked = sub.get("revoked_at") is not None
         now = datetime.now(timezone.utc)
         if not sub_id and is_active and not is_revoked and isinstance(expires_at, datetime) and expires_at > now:
-            restored = await self._restore_xui_profile_for_subscription(user_id, sub)
-            if restored is not None:
-                vless_url, sub_id = restored
+            try:
+                restored = await self._restore_xui_profile_for_subscription(user_id, sub)
+                if restored is not None:
+                    vless_url, sub_id = restored
+            except Exception:
+                LOGGER.exception(
+                    "Failed to restore x-ui profile for subscription user_id=%s subscription_id=%s",
+                    user_id,
+                    sub.get("id"),
+                )
 
         sub_url = (
             f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
