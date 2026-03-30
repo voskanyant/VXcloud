@@ -376,7 +376,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
     session_state = _load_web_order_session_state(request, user_id=bot_user.id)
     idempotency_key = str(session_state.get("idempotency_key") or "").strip() or _new_web_idempotency_key()
 
-    pending_method = "card" if settings.ENABLE_CARD_PAYMENTS else "stars"
+    pending_method = "card"
     pending_payload_prefix = (
         f"web-newcfg:{bot_user.id}:"
         if flow_mode == "buynew"
@@ -394,77 +394,43 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
         .first()
     )
     if existing_pending:
-        if settings.ENABLE_CARD_PAYMENTS:
-            pay_url = str(session_state.get("pay_url") or "").strip()
-            if not pay_url and str(settings.PAYMENT_PROVIDER).lower() == "reference":
-                pay_url = _reference_checkout_url_from_order(existing_pending) or ""
-            if not pay_url:
-                provider_name = str(settings.PAYMENT_PROVIDER).lower()
-                provider = get_payment_provider(provider_name=provider_name)
-                try:
-                    create_result = provider.create_payment(
-                        {
-                            "id": int(existing_pending.id),
-                            "user_id": int(bot_user.id),
-                            "amount_minor": int(existing_pending.amount_minor or settings.CARD_PAYMENT_AMOUNT_MINOR),
-                            "currency_iso": str(existing_pending.currency_iso or settings.CARD_PAYMENT_CURRENCY).upper(),
-                            "idempotency_key": idempotency_key,
-                        }
-                    )
-                    existing_pending.card_payment_id = create_result.payment_id
-                    existing_pending.save(update_fields=["card_payment_id"])
-                    pay_url = create_result.pay_url
-                except Exception:
-                    messages.error(request, "Не удалось восстановить ссылку оплаты. Попробуйте снова через 1-2 минуты.")
-                    return redirect("account_dashboard")
-            if pay_url:
-                _save_web_order_session_state(
-                    request,
-                    user_id=bot_user.id,
-                    idempotency_key=idempotency_key,
-                    order_id=int(existing_pending.id),
-                    pay_url=pay_url,
+        pay_url = str(session_state.get("pay_url") or "").strip()
+        if not pay_url and str(settings.PAYMENT_PROVIDER).lower() == "reference":
+            pay_url = _reference_checkout_url_from_order(existing_pending) or ""
+        if not pay_url:
+            provider_name = str(settings.PAYMENT_PROVIDER).lower()
+            provider = get_payment_provider(provider_name=provider_name)
+            try:
+                create_result = provider.create_payment(
+                    {
+                        "id": int(existing_pending.id),
+                        "user_id": int(bot_user.id),
+                        "amount_minor": int(existing_pending.amount_minor or settings.CARD_PAYMENT_AMOUNT_MINOR),
+                        "currency_iso": str(existing_pending.currency_iso or settings.CARD_PAYMENT_CURRENCY).upper(),
+                        "idempotency_key": idempotency_key,
+                    }
                 )
-                messages.info(request, "Используем уже созданный ожидающий платеж.")
-                return redirect(pay_url)
-        else:
-            messages.info(request, "У вас уже есть ожидающий заказ. Завершите его в Telegram-боте.")
-            return redirect("account_dashboard")
+                existing_pending.card_payment_id = create_result.payment_id
+                existing_pending.save(update_fields=["card_payment_id"])
+                pay_url = create_result.pay_url
+            except Exception:
+                messages.error(request, "Не удалось восстановить ссылку оплаты. Попробуйте снова через 1-2 минуты.")
+                return redirect("account_dashboard")
+        if pay_url:
+            _save_web_order_session_state(
+                request,
+                user_id=bot_user.id,
+                idempotency_key=idempotency_key,
+                order_id=int(existing_pending.id),
+                pay_url=pay_url,
+            )
+            messages.info(request, "Используем уже созданный ожидающий платеж.")
+            return redirect(pay_url)
 
     used_non_pending = BotOrder.objects.filter(user_id=bot_user.id, idempotency_key=idempotency_key).exclude(status="pending").exists()
     if used_non_pending:
         idempotency_key = _new_web_idempotency_key()
         _save_web_order_session_state(request, user_id=bot_user.id, idempotency_key=idempotency_key)
-
-    if not settings.ENABLE_CARD_PAYMENTS:
-        amount = int(os.getenv("PLAN_PRICE_STARS", "10"))
-        payload_prefix = "web-newcfg" if flow_mode == "buynew" else "web-renew"
-        if flow_mode == "renew":
-            payload = f"{payload_prefix}:{bot_user.id}:{int(target_subscription_id or 0)}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
-        else:
-            payload = f"{payload_prefix}:{bot_user.id}:{int(datetime.now().timestamp())}:{uuid.uuid4().hex[:6]}"
-        order = BotOrder.objects.create(
-            user_id=bot_user.id,
-            amount_stars=amount,
-            currency="XTR",
-            payload=payload,
-            status="pending",
-            channel="web",
-            payment_method="stars",
-            idempotency_key=idempotency_key,
-            created_at=now,
-        )
-        _save_web_order_session_state(
-            request,
-            user_id=bot_user.id,
-            idempotency_key=idempotency_key,
-            order_id=int(order.id),
-        )
-        messages.success(
-            request,
-            "Заявка на оплату создана. Сейчас оплата на сайте не подключена: завершите оплату через Telegram-бота.",
-        )
-        return redirect("account_dashboard")
 
     payload_prefix = "web-newcfg" if flow_mode == "buynew" else "web-renew"
     if flow_mode == "renew":
