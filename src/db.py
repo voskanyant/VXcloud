@@ -380,6 +380,119 @@ class DB:
         )
         return int(row["id"])
 
+    async def cancel_expired_pending_orders(
+        self,
+        user_id: int,
+        payload_prefix: str,
+        max_age_seconds: int = 3600,
+    ) -> int:
+        assert self.pool is not None
+        result = await self.pool.execute(
+            """
+            UPDATE orders
+            SET status = 'cancelled'
+            WHERE user_id = $1
+              AND status = 'pending'
+              AND payload LIKE ($2 || '%')
+              AND created_at < (NOW() - make_interval(secs => $3))
+            """,
+            user_id,
+            payload_prefix,
+            int(max_age_seconds),
+        )
+        # asyncpg returns e.g. "UPDATE 3"
+        updated = int(str(result).split()[-1])
+        return updated
+
+    async def get_fresh_pending_order(
+        self,
+        user_id: int,
+        payload_prefix: str,
+        max_age_seconds: int = 3600,
+    ) -> dict[str, Any] | None:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            SELECT *
+            FROM orders
+            WHERE user_id = $1
+              AND status = 'pending'
+              AND payload LIKE ($2 || '%')
+              AND created_at >= (NOW() - make_interval(secs => $3))
+            ORDER BY created_at DESC, id DESC
+            LIMIT 1
+            """,
+            user_id,
+            payload_prefix,
+            int(max_age_seconds),
+        )
+        return dict(row) if row else None
+
+    async def create_or_reuse_pending_stars_order(
+        self,
+        user_id: int,
+        amount_stars: int,
+        payload_prefix: str,
+        new_payload: str,
+        max_age_seconds: int = 3600,
+    ) -> dict[str, Any]:
+        assert self.pool is not None
+        async with self.pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """
+                    UPDATE orders
+                    SET status = 'cancelled'
+                    WHERE user_id = $1
+                      AND status = 'pending'
+                      AND payload LIKE ($2 || '%')
+                      AND created_at < (NOW() - make_interval(secs => $3))
+                    """,
+                    user_id,
+                    payload_prefix,
+                    int(max_age_seconds),
+                )
+
+                existing = await conn.fetchrow(
+                    """
+                    SELECT *
+                    FROM orders
+                    WHERE user_id = $1
+                      AND status = 'pending'
+                      AND payload LIKE ($2 || '%')
+                      AND created_at >= (NOW() - make_interval(secs => $3))
+                    ORDER BY created_at DESC, id DESC
+                    LIMIT 1
+                    FOR UPDATE
+                    """,
+                    user_id,
+                    payload_prefix,
+                    int(max_age_seconds),
+                )
+                if existing and int(existing["amount_stars"] or 0) == int(amount_stars):
+                    return dict(existing)
+                if existing:
+                    await conn.execute(
+                        """
+                        UPDATE orders
+                        SET status = 'cancelled'
+                        WHERE id = $1
+                        """,
+                        int(existing["id"]),
+                    )
+
+                created = await conn.fetchrow(
+                    """
+                    INSERT INTO orders (user_id, amount_stars, currency, payload, status)
+                    VALUES ($1, $2, 'XTR', $3, 'pending')
+                    RETURNING *
+                    """,
+                    user_id,
+                    amount_stars,
+                    new_payload,
+                )
+                return dict(created)
+
     async def get_order_by_payload(self, payload: str) -> dict[str, Any] | None:
         assert self.pool is not None
         row = await self.pool.fetchrow(

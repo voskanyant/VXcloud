@@ -385,6 +385,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
 
     session_state = _load_web_order_session_state(request, user_id=bot_user.id)
     idempotency_key = str(session_state.get("idempotency_key") or "").strip() or _new_web_idempotency_key()
+    pending_cutoff = now - timedelta(hours=1)
 
     pending_method = "card"
     pending_payload_prefix = (
@@ -392,6 +393,15 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
         if flow_mode == "buynew"
         else f"web-renew:{bot_user.id}:{int(target_subscription_id or 0)}:"
     )
+    BotOrder.objects.filter(
+        user_id=bot_user.id,
+        status="pending",
+        channel="web",
+        payment_method=pending_method,
+        payload__startswith=pending_payload_prefix,
+        created_at__lt=pending_cutoff,
+    ).update(status="cancelled")
+
     existing_pending = (
         BotOrder.objects.filter(
             user_id=bot_user.id,
@@ -399,6 +409,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
             channel="web",
             payment_method=pending_method,
             payload__startswith=pending_payload_prefix,
+            created_at__gte=pending_cutoff,
         )
         .order_by("-id")
         .first()
@@ -475,6 +486,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
                 channel="web",
                 payment_method="card",
                 payload__startswith=pending_payload_prefix,
+                created_at__gte=pending_cutoff,
             )
             .order_by("-id")
             .first()

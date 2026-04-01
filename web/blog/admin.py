@@ -5,6 +5,14 @@ from .models import Category, Page, Post, PostType, SiteText
 
 
 class RichTextAdminForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if "content" in self.fields:
+            self.fields["content"].help_text = (
+                "Можно вставлять кнопки через меню редактора: "
+                "Вставка -> шаблоны кнопок, либо выделить ссылку и применить стиль кнопки."
+            )
+
     class Meta:
         widgets = {
             "content": forms.Textarea(attrs={"class": "js-richtext", "rows": 28}),

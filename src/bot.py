@@ -1898,13 +1898,21 @@ class VPNBot:
             )
         )
         mode_prefix = "renew" if mode == "renew" else "buynew"
+        payload_scope = f"{mode_prefix}:{user_id}:{int(target_subscription_id or 0)}:" if mode_prefix == "renew" else f"{mode_prefix}:{user_id}:"
         timestamp = int(datetime.now(timezone.utc).timestamp())
         rand = uuid.uuid4().hex[:6]
         if mode_prefix == "renew":
             payload = f"{mode_prefix}:{user_id}:{int(target_subscription_id or 0)}:{timestamp}:{rand}"
         else:
             payload = f"{mode_prefix}:{user_id}:{timestamp}:{rand}"
-        await self.db.create_order(user_id=user_id, amount_stars=self.settings.plan_price_stars, payload=payload)
+        order = await self.db.create_or_reuse_pending_stars_order(
+            user_id=user_id,
+            amount_stars=self.settings.plan_price_stars,
+            payload_prefix=payload_scope,
+            new_payload=payload,
+            max_age_seconds=3600,
+        )
+        payload = str(order["payload"])
         if phone:
             self._pending_profiles[payload] = {"phone": phone, "name": (customer_name or "").strip()}
         price_label = self._content_text("invoice_price_label", "Оплата звёздами")
