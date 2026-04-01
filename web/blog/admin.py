@@ -7,22 +7,22 @@ from .models import Category, Page, Post, PostType, SiteText
 class RichTextAdminForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if "content" in self.fields:
-            self.fields["content"].help_text = (
-                "Можно вставлять кнопки через меню редактора: "
-                "Вставка -> шаблоны кнопок, либо выделить ссылку и применить стиль кнопки."
+        if "content_blocks" in self.fields:
+            self.fields["content_blocks"].help_text = (
+                "Новый блочный редактор (Gutenberg-подобный): добавляйте блоки, меняйте порядок, удаляйте."
             )
+        if "content" in self.fields:
+            self.fields["content"].help_text = "Резервное поле HTML (используется, если блоки пустые)."
 
     class Meta:
         widgets = {
-            "content": forms.Textarea(attrs={"class": "js-richtext", "rows": 28}),
+            "content_blocks": forms.Textarea(attrs={"class": "js-block-editor-source", "rows": 6}),
+            "content": forms.Textarea(attrs={"rows": 12}),
         }
 
     class Media:
-        js = (
-            "https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js",
-            "admin/post_editor.js",
-        )
+        css = {"all": ("admin/block_editor.css",)}
+        js = ("admin/block_editor.js",)
 
 
 class PostAdminForm(RichTextAdminForm):
@@ -46,6 +46,11 @@ class PostAdmin(admin.ModelAdmin):
     prepopulated_fields = {"slug": ("title",)}
     ordering = ("-published_at", "-id")
     filter_horizontal = ("categories",)
+    fieldsets = (
+        (None, {"fields": ("title", "slug", "summary", "content_blocks", "content")}),
+        ("Рубрикация", {"fields": ("post_type", "categories")}),
+        ("Публикация", {"fields": ("is_published", "published_at")}),
+    )
 
 
 @admin.register(Category)
@@ -87,7 +92,7 @@ class PageAdmin(admin.ModelAdmin):
     ordering = ("nav_order", "title")
     filter_horizontal = ("post_types", "post_categories", "manual_posts")
     fieldsets = (
-        (None, {"fields": ("title", "slug", "path", "summary", "content")}),
+        (None, {"fields": ("title", "slug", "path", "summary", "content_blocks", "content")}),
         ("Публикация", {"fields": ("is_published", "is_homepage")}),
         ("Навигация", {"fields": ("show_in_nav", "nav_title", "nav_order")}),
         (

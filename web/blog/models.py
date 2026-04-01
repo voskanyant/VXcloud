@@ -4,6 +4,8 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from .block_render import render_content_blocks
+
 
 class Category(models.Model):
     title = models.CharField(max_length=120, unique=True)
@@ -42,6 +44,7 @@ class Post(models.Model):
     slug = models.SlugField(unique=True, max_length=220)
     summary = models.CharField(max_length=280, blank=True)
     content = models.TextField()
+    content_blocks = models.JSONField(default=list, blank=True)
     post_type = models.ForeignKey(
         PostType,
         null=True,
@@ -61,6 +64,10 @@ class Post(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+    @property
+    def rendered_content(self):
+        return render_content_blocks(self.content_blocks, self.content)
 
 
 class SiteText(models.Model):
@@ -125,6 +132,7 @@ class Page(models.Model):
     )
     summary = models.CharField(max_length=280, blank=True)
     content = models.TextField()
+    content_blocks = models.JSONField(default=list, blank=True)
     is_published = models.BooleanField(default=True)
     is_homepage = models.BooleanField(default=False)
     show_in_nav = models.BooleanField(default=False)
@@ -184,3 +192,7 @@ class Page(models.Model):
         super().save(*args, **kwargs)
         if self.is_homepage:
             Page.objects.filter(is_homepage=True).exclude(pk=self.pk).update(is_homepage=False)
+
+    @property
+    def rendered_content(self):
+        return render_content_blocks(self.content_blocks, self.content)

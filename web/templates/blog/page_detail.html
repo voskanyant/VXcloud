@@ -8,7 +8,7 @@
   {% if page.summary %}
     <p class="text-secondary mt-2 mb-3">{{ page.summary }}</p>
   {% endif %}
-  <div class="post-content">{{ page.content|safe }}</div>
+  <div class="post-content">{{ page.rendered_content }}</div>
 </article>
 
 {% if page_posts %}

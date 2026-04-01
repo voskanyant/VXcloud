@@ -12,7 +12,10 @@
 
     <div class="site-header-top">
       <a class="site-logo" href="/">{{ nav_logo }}</a>
-      <nav class="site-nav" aria-label="Главное меню">
+      <button class="site-menu-toggle" type="button" aria-label="Открыть меню" aria-controls="site-nav" aria-expanded="false">
+        ☰
+      </button>
+      <nav class="site-nav" id="site-nav" aria-label="Главное меню">
         {% if nav_pages %}
           {% for nav_page in nav_pages %}
             <a href="{{ nav_page.path }}" class="site-nav-link{% if request.path == nav_page.path %} is-active{% endif %}">{{ nav_page.nav_label }}</a>

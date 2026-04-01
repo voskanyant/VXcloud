@@ -9,10 +9,12 @@
 {% block extrastyle %}
   {{ block.super }}
   <link rel="stylesheet" href="{% static 'admin/admin_override.css' %}">
+  <link rel="stylesheet" href="{% static 'admin/admin_sidebar.css' %}">
 {% endblock %}
 
 {% block extrahead %}
   {{ block.super }}
+  <script defer src="{% static 'admin/admin_sidebar.js' %}"></script>
   <script>
     (function () {
       try { localStorage.setItem("theme", "light"); } catch (e) {}
@@ -23,4 +25,5 @@
 
 {% block branding %}
   <div id="site-name"><a href="{% url 'admin:index' %}">{{ admin_branding }}</a></div>
+  <button type="button" class="admin-sidebar-toggle" aria-controls="nav-sidebar" aria-expanded="false">☰ Меню</button>
 {% endblock %}

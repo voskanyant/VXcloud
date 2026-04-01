@@ -1,0 +1,71 @@
+/* Sidebar-first admin layout */
+@media (min-width: 1024px) {
+  body.app-blog #container,
+  body.app-cabinet #container,
+  body.index #container,
+  body.change-form #container,
+  body.change-list #container {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+
+  #nav-sidebar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    border-right: 1px solid #e2e8f0;
+    background: #fff;
+  }
+
+  #main {
+    min-width: 0;
+  }
+}
+
+.admin-sidebar-toggle {
+  margin-left: 10px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+@media (max-width: 1023px) {
+  .admin-sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  #nav-sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: min(86vw, 320px);
+    height: 100vh;
+    overflow-y: auto;
+    background: #fff;
+    border-right: 1px solid #e2e8f0;
+    z-index: 1200;
+    transform: translateX(-104%);
+    transition: transform 0.24s ease;
+  }
+
+  body.admin-sidebar-open #nav-sidebar {
+    transform: translateX(0);
+  }
+
+  body.admin-sidebar-open::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.42);
+    z-index: 1100;
+  }
+}
+

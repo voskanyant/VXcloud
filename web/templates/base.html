@@ -61,6 +61,28 @@
       }
     }
 
+    (function initSiteMobileMenu() {
+      const toggle = document.querySelector(".site-menu-toggle");
+      const nav = document.querySelector("#site-nav");
+      if (!toggle || !nav) return;
+      toggle.addEventListener("click", function () {
+        const opened = document.body.classList.toggle("site-nav-open");
+        toggle.setAttribute("aria-expanded", opened ? "true" : "false");
+      });
+      document.addEventListener("click", function (event) {
+        if (!document.body.classList.contains("site-nav-open")) return;
+        if (nav.contains(event.target) || toggle.contains(event.target)) return;
+        document.body.classList.remove("site-nav-open");
+        toggle.setAttribute("aria-expanded", "false");
+      });
+      window.addEventListener("resize", function () {
+        if (window.innerWidth >= 768) {
+          document.body.classList.remove("site-nav-open");
+          toggle.setAttribute("aria-expanded", "false");
+        }
+      });
+    })();
+
     syncTelegramWebAppSession();
   </script>
 </body>
