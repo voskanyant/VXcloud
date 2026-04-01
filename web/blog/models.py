@@ -3,23 +3,14 @@ from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone
-from wagtail.admin.panels import FieldPanel
-from wagtail.snippets.models import register_snippet
 
 
-@register_snippet
 class Category(models.Model):
     title = models.CharField(max_length=120, unique=True)
     slug = models.SlugField(unique=True, max_length=140)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    panels = [
-        FieldPanel("title"),
-        FieldPanel("slug"),
-        FieldPanel("is_active"),
-    ]
 
     class Meta:
         ordering = ["title", "id"]
@@ -30,11 +21,35 @@ class Category(models.Model):
         return self.title
 
 
+class PostType(models.Model):
+    title = models.CharField(max_length=120, unique=True)
+    slug = models.SlugField(unique=True, max_length=140)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["title", "id"]
+        verbose_name = "Тип поста"
+        verbose_name_plural = "Типы постов"
+
+    def __str__(self) -> str:
+        return self.title
+
+
 class Post(models.Model):
     title = models.CharField(max_length=180)
     slug = models.SlugField(unique=True, max_length=220)
     summary = models.CharField(max_length=280, blank=True)
     content = models.TextField()
+    post_type = models.ForeignKey(
+        PostType,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="posts",
+        verbose_name="Тип поста",
+    )
     categories = models.ManyToManyField(Category, blank=True, related_name="posts")
     is_published = models.BooleanField(default=True)
     published_at = models.DateTimeField(default=timezone.now)
@@ -91,8 +106,23 @@ class SiteText(models.Model):
 
 
 class Page(models.Model):
+    POSTS_SOURCE_ALL = "all"
+    POSTS_SOURCE_TYPES = "types"
+    POSTS_SOURCE_MANUAL = "manual"
+    POSTS_SOURCE_CHOICES = (
+        (POSTS_SOURCE_ALL, "Все посты"),
+        (POSTS_SOURCE_TYPES, "По типам/категориям"),
+        (POSTS_SOURCE_MANUAL, "Выбранные вручную"),
+    )
+
     title = models.CharField(max_length=160)
     slug = models.SlugField(unique=True, max_length=200)
+    path = models.CharField(
+        max_length=220,
+        unique=True,
+        blank=True,
+        help_text="URL path, for example /how-it-works/ or /help/install/",
+    )
     summary = models.CharField(max_length=280, blank=True)
     content = models.TextField()
     is_published = models.BooleanField(default=True)
@@ -100,6 +130,20 @@ class Page(models.Model):
     show_in_nav = models.BooleanField(default=False)
     nav_title = models.CharField(max_length=60, blank=True)
     nav_order = models.PositiveSmallIntegerField(default=50)
+    posts_enabled = models.BooleanField(
+        default=False,
+        help_text="Показывать на странице ленту постов ниже основного контента.",
+    )
+    posts_title = models.CharField(max_length=120, blank=True, default="Публикации")
+    posts_source = models.CharField(
+        max_length=16,
+        choices=POSTS_SOURCE_CHOICES,
+        default=POSTS_SOURCE_ALL,
+    )
+    posts_limit = models.PositiveSmallIntegerField(default=24)
+    post_types = models.ManyToManyField(PostType, blank=True, related_name="pages")
+    post_categories = models.ManyToManyField(Category, blank=True, related_name="pages")
+    manual_posts = models.ManyToManyField(Post, blank=True, related_name="manual_pages")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -122,7 +166,21 @@ class Page(models.Model):
     def nav_label(self) -> str:
         return self.nav_title or self.title
 
+    @staticmethod
+    def normalize_path(raw: str) -> str:
+        value = (raw or "").strip()
+        if not value:
+            return "/"
+        if not value.startswith("/"):
+            value = "/" + value
+        if value != "/" and not value.endswith("/"):
+            value = value + "/"
+        return value
+
     def save(self, *args, **kwargs):
+        if not self.path:
+            self.path = "/" if self.is_homepage else f"/{self.slug}/"
+        self.path = self.normalize_path(self.path)
         super().save(*args, **kwargs)
         if self.is_homepage:
             Page.objects.filter(is_homepage=True).exclude(pk=self.pk).update(is_homepage=False)

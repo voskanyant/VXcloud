@@ -1,14 +1,18 @@
 ﻿from django.contrib import admin
 from django.urls import include, path
-from cabinet.views import EmailLoginView, create_magic_link, open_app_link, payment_webhook, telegram_webapp_auth, tg_magic_login
-from wagtail import urls as wagtail_urls
-from wagtail.admin import urls as wagtailadmin_urls
-from wagtail.documents import urls as wagtaildocs_urls
+
+from blog import views as blog_views
+from cabinet.views import (
+    EmailLoginView,
+    create_magic_link,
+    open_app_link,
+    payment_webhook,
+    telegram_webapp_auth,
+    tg_magic_login,
+)
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("cms-admin/", include(wagtailadmin_urls)),
-    path("cms-documents/", include(wagtaildocs_urls)),
     path("accounts/login/", EmailLoginView.as_view(), name="login"),
     path("accounts/", include("django.contrib.auth.urls")),
     path("api/auth/magic-link", create_magic_link, name="api_magic_link"),
@@ -18,5 +22,10 @@ urlpatterns = [
     path("account/", include("cabinet.urls")),
     path("open-app/", open_app_link, name="open_app_link"),
     path("legacy/", include("blog.urls")),
-    path("", include(wagtail_urls)),
+    path("instructions/", blog_views.index, name="instructions"),
+    path("blog/", blog_views.page_by_path, {"path": "blog"}, name="blog_index"),
+    path("blog/category/<slug:slug>/", blog_views.category_detail, name="blog_category_detail"),
+    path("blog/<slug:slug>/", blog_views.post_detail, name="blog_post_detail"),
+    path("", blog_views.home, name="home"),
+    path("<path:path>/", blog_views.page_by_path, name="site_page"),
 ]

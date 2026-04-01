@@ -10,4 +10,19 @@
   {% endif %}
   <div class="post-content">{{ page.content|safe }}</div>
 </article>
+
+{% if page_posts %}
+  <section class="section-card mt-3">
+    <h2 class="h4 mb-3">{{ page.posts_title|default:"Публикации" }}</h2>
+    <div class="vstack gap-3">
+      {% for post in page_posts %}
+        <article class="post-card">
+          <h3 class="h5 mb-2"><a href="{% url 'blog_post_detail' slug=post.slug %}">{{ post.title }}</a></h3>
+          {% if post.summary %}<p class="text-secondary mb-2">{{ post.summary }}</p>{% endif %}
+          <small class="text-secondary">{{ post.published_at|date:'d.m.Y H:i' }}</small>
+        </article>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
 {% endblock %}

@@ -1,4 +1,4 @@
-python-telegram-bot==21.7
+﻿python-telegram-bot==21.7
 aiohttp==3.11.10
 asyncpg==0.30.0
 python-dotenv==1.0.1
@@ -6,4 +6,3 @@ qrcode[pil]==7.4.2
 Django==5.1.11
 psycopg[binary]==3.2.9
 whitenoise==6.9.0
-wagtail==7.3.1

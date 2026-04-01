@@ -95,48 +95,25 @@ chmod +x scripts/ops/deploy-auto.sh
 ./scripts/ops/deploy-auto.sh
 ```
 
-## Wagtail CMS (Optional, safe with existing bot)
+## Django Admin CMS
 
-Wagtail can be enabled without touching bot logic or `/account/` flows.
+Сайт теперь полностью работает на Django Admin (без Wagtail).
 
-Routes:
+- Публичные страницы редактируются в `Admin -> Page`
+- Меню редактируется флагами `show_in_nav`, `nav_title`, `nav_order`
+- Тексты интерфейса редактируются в `Admin -> SiteText`
+- Типы контента редактируются в `Admin -> PostType`
+- Посты редактируются в `Admin -> Post`
+- На странице (`Admin -> Page`) можно включить авто-ленту постов:
+  - `posts_enabled`
+  - источник: `Все посты` / `По типам/категориям` / `Выбранные вручную`
+  - выбор типов, категорий и лимита
 
-- `https://vxcloud.ru/cms-admin/` - Wagtail admin
-- `https://vxcloud.ru/` - Wagtail public tree (main site)
-- `https://vxcloud.ru/legacy/` - old Django blog routes
-
-Server setup after pull:
-
-```bash
-cd /srv/apps/vxcloud/app
-./scripts/ops/deploy-auto.sh
-docker compose --env-file .env exec -T web python /app/web/manage.py migrate
-```
-
-Use existing Django superuser to sign in at `/cms-admin/`.
-
-Included editable page types:
-
-- `CMSHomePage`
-- `CMSContentPage`
-
-Ready StreamField sections:
-
-- `hero` (title + subtitle)
-- `rich_text`
-- `cta` (heading, text, button text/url)
-- `faq` (list of question/answer)
-- `image` (image + caption)
-
-### Bootstrap payment-compliance pages (YooKassa)
-
-To create/update required public pages in Wagtail (services/prices, digital delivery, offer, privacy, contacts/bank details):
+### Bootstrap базовых страниц
 
 ```bash
-docker compose --env-file .env exec -T web python /app/web/manage.py bootstrap_yookassa_pages
+docker compose --env-file .env exec -T web python /app/web/manage.py bootstrap_site_pages
 ```
-
-This command is idempotent and safe to run multiple times.
 
 ## Directus Content Sync From Git
 

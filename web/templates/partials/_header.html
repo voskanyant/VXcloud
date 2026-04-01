@@ -13,16 +13,18 @@
     <div class="site-header-top">
       <a class="site-logo" href="/">{{ nav_logo }}</a>
       <nav class="site-nav" aria-label="Главное меню">
-        <a href="/" class="site-nav-link{% if request.path == '/' %} is-active{% endif %}">{{ nav_home }}</a>
-        <a href="/how-it-works/" class="site-nav-link{% if request.path|slice:':14' == '/how-it-works/' %} is-active{% endif %}">{{ nav_how }}</a>
-        <a href="/help/" class="site-nav-link{% if request.path|slice:':6' == '/help/' or request.path|slice:':14' == '/instructions/' %} is-active{% endif %}">{{ nav_instructions }}</a>
-        <a href="/faq/" class="site-nav-link{% if request.path|slice:':5' == '/faq/' %} is-active{% endif %}">{{ nav_faq }}</a>
-        <a href="/blog/" class="site-nav-link{% if request.path|slice:':6' == '/blog/' %} is-active{% endif %}">{{ nav_blog }}</a>
-        <a href="/account/" class="site-nav-link{% if request.path|slice:':9' == '/account/' or request.path|slice:':10' == '/accounts/' %} is-active{% endif %}">{{ nav_account }}</a>
-        {% if request.user.is_authenticated and request.user.is_staff %}
-          <a href="/admin/" class="site-nav-link{% if request.path|slice:':7' == '/admin/' %} is-active{% endif %}">Админ</a>
-          <a href="/admin/ops/" class="site-nav-link{% if request.path|slice:':11' == '/admin/ops/' %} is-active{% endif %}">Ops</a>
+        {% if nav_pages %}
+          {% for nav_page in nav_pages %}
+            <a href="{{ nav_page.path }}" class="site-nav-link{% if request.path == nav_page.path %} is-active{% endif %}">{{ nav_page.nav_label }}</a>
+          {% endfor %}
+        {% else %}
+          <a href="/" class="site-nav-link{% if request.path == '/' %} is-active{% endif %}">{{ nav_home }}</a>
+          <a href="/how-it-works/" class="site-nav-link{% if request.path|slice:':14' == '/how-it-works/' %} is-active{% endif %}">{{ nav_how }}</a>
+          <a href="/help/" class="site-nav-link{% if request.path|slice:':6' == '/help/' or request.path|slice:':14' == '/instructions/' %} is-active{% endif %}">{{ nav_instructions }}</a>
+          <a href="/faq/" class="site-nav-link{% if request.path|slice:':5' == '/faq/' %} is-active{% endif %}">{{ nav_faq }}</a>
+          <a href="/blog/" class="site-nav-link{% if request.path|slice:':6' == '/blog/' %} is-active{% endif %}">{{ nav_blog }}</a>
         {% endif %}
+        <a href="/account/" class="site-nav-link{% if request.path|slice:':9' == '/account/' or request.path|slice:':10' == '/accounts/' %} is-active{% endif %}">{{ nav_account }}</a>
       </nav>
       <a href="/account/" class="btn btn-primary site-cta">{{ nav_buy_cta }}</a>
     </div>

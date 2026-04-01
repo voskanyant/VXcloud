@@ -1,7 +1,7 @@
 ﻿from django import forms
 from django.contrib import admin
 
-from .models import Category, Page, Post, SiteText
+from .models import Category, Page, Post, PostType, SiteText
 
 
 class RichTextAdminForm(forms.ModelForm):
@@ -32,8 +32,8 @@ class PageAdminForm(RichTextAdminForm):
 @admin.register(Post)
 class PostAdmin(admin.ModelAdmin):
     form = PostAdminForm
-    list_display = ("title", "is_published", "published_at", "updated_at")
-    list_filter = ("is_published", "categories")
+    list_display = ("title", "post_type", "is_published", "published_at", "updated_at")
+    list_filter = ("is_published", "post_type", "categories")
     search_fields = ("title", "summary", "content")
     prepopulated_fields = {"slug": ("title",)}
     ordering = ("-published_at", "-id")
@@ -49,26 +49,53 @@ class CategoryAdmin(admin.ModelAdmin):
     ordering = ("title",)
 
 
+@admin.register(PostType)
+class PostTypeAdmin(admin.ModelAdmin):
+    list_display = ("title", "slug", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("title", "slug")
+    prepopulated_fields = {"slug": ("title",)}
+    ordering = ("title",)
+
+
 @admin.register(Page)
 class PageAdmin(admin.ModelAdmin):
     form = PageAdminForm
     list_display = (
         "title",
         "slug",
+        "path",
         "is_published",
         "is_homepage",
         "show_in_nav",
+        "posts_enabled",
+        "posts_source",
         "nav_order",
         "updated_at",
     )
-    list_filter = ("is_published", "is_homepage", "show_in_nav")
+    list_filter = ("is_published", "is_homepage", "show_in_nav", "posts_enabled", "posts_source")
     search_fields = ("title", "slug", "summary", "content")
     prepopulated_fields = {"slug": ("title",)}
     ordering = ("nav_order", "title")
+    filter_horizontal = ("post_types", "post_categories", "manual_posts")
     fieldsets = (
-        (None, {"fields": ("title", "slug", "summary", "content")}),
+        (None, {"fields": ("title", "slug", "path", "summary", "content")}),
         ("Публикация", {"fields": ("is_published", "is_homepage")}),
         ("Навигация", {"fields": ("show_in_nav", "nav_title", "nav_order")}),
+        (
+            "Лента постов на странице",
+            {
+                "fields": (
+                    "posts_enabled",
+                    "posts_title",
+                    "posts_source",
+                    "posts_limit",
+                    "post_types",
+                    "post_categories",
+                    "manual_posts",
+                )
+            },
+        ),
     )
 
 

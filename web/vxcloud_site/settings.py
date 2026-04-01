@@ -22,20 +22,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "wagtail.contrib.forms",
-    "wagtail.contrib.redirects",
-    "wagtail.embeds",
-    "wagtail.sites",
-    "wagtail.users",
-    "wagtail.snippets",
-    "wagtail.documents",
-    "wagtail.images",
-    "wagtail.search",
-    "wagtail.admin",
-    "wagtail",
-    "modelcluster",
-    "taggit",
-    "cms",
     "blog",
     "cabinet",
 ]
@@ -49,7 +35,6 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
-    "wagtail.contrib.redirects.middleware.RedirectMiddleware",
 ]
 
 ROOT_URLCONF = "vxcloud_site.urls"
@@ -64,7 +49,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
-                "cms.context_processors.wagtail_navigation",
+                "blog.context_processors.site_navigation",
             ],
         },
     }
@@ -124,9 +109,6 @@ EMAIL_USE_SSL = os.getenv("DJANGO_EMAIL_USE_SSL", "0") == "1"
 DEFAULT_FROM_EMAIL = os.getenv("DJANGO_DEFAULT_FROM_EMAIL", "no-reply@vxcloud.ru")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-WAGTAIL_SITE_NAME = "VXcloud CMS"
-WAGTAILADMIN_BASE_URL = os.getenv("WAGTAILADMIN_BASE_URL", "https://vxcloud.ru/cms-admin")
-
 MAGIC_LINK_SHARED_SECRET = os.getenv("MAGIC_LINK_SHARED_SECRET", "")
 MAGIC_LINK_TTL_SECONDS = int(os.getenv("MAGIC_LINK_TTL_SECONDS", "600"))
 MAGIC_LINK_RATE_LIMIT_PER_MINUTE = int(os.getenv("MAGIC_LINK_RATE_LIMIT_PER_MINUTE", "30"))
