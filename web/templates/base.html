@@ -66,12 +66,19 @@
       const nav = document.querySelector("#site-nav");
       if (!toggle || !nav) return;
       function isMobile() {
-        return window.matchMedia("(max-width: 767px)").matches;
+        return window.matchMedia("(max-width: 980px)").matches;
       }
       toggle.addEventListener("click", function () {
         if (!isMobile()) return;
         const opened = document.body.classList.toggle("site-nav-open");
         toggle.setAttribute("aria-expanded", opened ? "true" : "false");
+      });
+      nav.querySelectorAll("a").forEach(function (link) {
+        link.addEventListener("click", function () {
+          if (!isMobile()) return;
+          document.body.classList.remove("site-nav-open");
+          toggle.setAttribute("aria-expanded", "false");
+        });
       });
       document.addEventListener("click", function (event) {
         if (!isMobile()) return;
@@ -85,6 +92,126 @@
           document.body.classList.remove("site-nav-open");
           toggle.setAttribute("aria-expanded", "false");
         }
+      });
+    })();
+
+    (function initCardsSlider() {
+      document.querySelectorAll(".block-cards-slider .block-cards-track").forEach(function (track) {
+        const originalCards = Array.from(track.children).filter(function (el) {
+          return el.classList.contains("block-card");
+        });
+        if (originalCards.length < 2) return;
+
+        if (!track.dataset.loopReady) {
+          const prepend = document.createDocumentFragment();
+          const append = document.createDocumentFragment();
+          originalCards.forEach(function (card) {
+            prepend.appendChild(card.cloneNode(true));
+            append.appendChild(card.cloneNode(true));
+          });
+          track.insertBefore(prepend, track.firstChild);
+          track.appendChild(append);
+          track.dataset.loopReady = "1";
+        }
+
+        let middleStart = 0;
+        let segmentWidth = 0;
+        let ticking = false;
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartScroll = 0;
+
+        const readMiddle = function () {
+          const allCards = Array.from(track.children).filter(function (el) {
+            return el.classList.contains("block-card");
+          });
+          const count = originalCards.length;
+          const middleFirst = allCards[count];
+          const middleLast = allCards[count + count - 1];
+          if (!middleFirst || !middleLast) return false;
+
+          middleStart = middleFirst.offsetLeft;
+          segmentWidth = middleLast.offsetLeft + middleLast.offsetWidth - middleFirst.offsetLeft;
+          return segmentWidth > 0;
+        };
+
+        const normalizeLoop = function () {
+          if (!segmentWidth) return;
+          if (track.scrollLeft < middleStart - 2) {
+            track.scrollLeft += segmentWidth;
+          } else if (track.scrollLeft > middleStart + segmentWidth + 2) {
+            track.scrollLeft -= segmentWidth;
+          }
+        };
+
+        const reflow = function (resetToMiddle) {
+          const ok = readMiddle();
+          if (!ok) return;
+          if (resetToMiddle) {
+            track.scrollLeft = middleStart;
+          } else {
+            normalizeLoop();
+          }
+        };
+
+        reflow(true);
+        requestAnimationFrame(function () {
+          reflow(true);
+        });
+
+        track.addEventListener(
+          "scroll",
+          function () {
+            if (ticking) return;
+            ticking = true;
+            requestAnimationFrame(function () {
+              normalizeLoop();
+              ticking = false;
+            });
+          },
+          { passive: true }
+        );
+
+        window.addEventListener("resize", function () {
+          reflow(false);
+        });
+
+        track.addEventListener("dragstart", function (event) {
+          event.preventDefault();
+        });
+
+        track.addEventListener("pointerdown", function (event) {
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+          isDragging = true;
+          dragStartX = event.clientX;
+          dragStartScroll = track.scrollLeft;
+          track.classList.add("is-dragging");
+          if (track.setPointerCapture) track.setPointerCapture(event.pointerId);
+        });
+
+        track.addEventListener("pointermove", function (event) {
+          if (!isDragging) return;
+          const deltaX = event.clientX - dragStartX;
+          track.scrollLeft = dragStartScroll - deltaX;
+          if (event.cancelable) event.preventDefault();
+        });
+
+        const stopDrag = function (event) {
+          if (!isDragging) return;
+          isDragging = false;
+          track.classList.remove("is-dragging");
+          if (event && track.releasePointerCapture) {
+            try {
+              track.releasePointerCapture(event.pointerId);
+            } catch (_error) {}
+          }
+        };
+
+        track.addEventListener("pointerup", stopDrag);
+        track.addEventListener("pointercancel", stopDrag);
+        track.addEventListener("pointerleave", function (event) {
+          if (event.pointerType === "mouse") stopDrag(event);
+        });
       });
     })();
 

@@ -35,7 +35,13 @@ def _render_cards_slider(block: dict[str, Any]) -> str:
     title = _safe_text(block.get("title"))
     subtitle = _safe_text(block.get("subtitle"))
     raw_items = block.get("items")
-    items = raw_items if isinstance(raw_items, list) else []
+    if not raw_items:
+        raw_items = block.get("lines")
+    if not raw_items:
+        raw_items = block.get("line")
+    if not raw_items:
+        raw_items = block.get("text")
+    items = _normalize_slider_items(raw_items)
     if not items:
         return ""
 
@@ -50,10 +56,8 @@ def _render_cards_slider(block: dict[str, Any]) -> str:
 
     parts.append('<div class="block-cards-track" role="list">')
     for item in items:
-        if not isinstance(item, dict):
-            continue
-        item_title = _safe_text(item.get("title"))
-        item_text = _safe_text(item.get("text"))
+        item_title = _safe_text(item["title"])
+        item_text = _safe_text(item["text"])
         if not item_title and not item_text:
             continue
         parts.append('<article class="block-card" role="listitem">')
@@ -64,6 +68,54 @@ def _render_cards_slider(block: dict[str, Any]) -> str:
         parts.append("</article>")
     parts.append("</div></section>")
     return "".join(parts)
+
+
+def _normalize_slider_items(raw_items: Any) -> list[dict[str, str]]:
+    normalized: list[dict[str, str]] = []
+
+    if isinstance(raw_items, list):
+        for row in raw_items:
+            if isinstance(row, dict):
+                title = str(row.get("title") or "").strip()
+                text = str(row.get("text") or "").strip()
+                if title or text:
+                    normalized.append({"title": title, "text": text})
+            elif isinstance(row, str):
+                parsed = _parse_slider_line(row)
+                if parsed["title"] or parsed["text"]:
+                    normalized.append(parsed)
+        return normalized
+
+    if not isinstance(raw_items, str):
+        return normalized
+
+    raw = raw_items.replace("\r", "\n")
+    lines = [line.strip() for line in raw.split("\n") if line.strip()]
+
+    # Backward compatibility: single collapsed string "title|text|title|text|..."
+    if len(lines) == 1 and raw.count("|") >= 2:
+        chunks = [chunk.strip() for chunk in raw.split("|") if chunk.strip()]
+        paired: list[str] = []
+        i = 0
+        while i < len(chunks):
+            left = chunks[i]
+            right = chunks[i + 1] if i + 1 < len(chunks) else ""
+            paired.append(f"{left}|{right}")
+            i += 2
+        lines = paired
+
+    for line in lines:
+        parsed = _parse_slider_line(line)
+        if parsed["title"] or parsed["text"]:
+            normalized.append(parsed)
+    return normalized
+
+
+def _parse_slider_line(line: str) -> dict[str, str]:
+    if "|" not in line:
+        return {"title": line.strip(), "text": ""}
+    left, right = line.split("|", 1)
+    return {"title": left.strip(), "text": right.strip()}
 
 
 def render_content_blocks(blocks: Any, legacy_html: str = ""):
@@ -152,7 +204,7 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
             custom = str(block.get("html") or "").strip()
             if custom:
                 output.append(custom)
-        elif block_type == "cards_slider":
+        elif block_type in {"cards_slider", "cards-slider", "cards slider", "cs_cards_slider"}:
             rendered = _render_cards_slider(block)
             if rendered:
                 output.append(rendered)
