@@ -193,14 +193,36 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
             if q:
                 output.append(f'<details class="block-faq"><summary>{q}</summary><p>{a}</p></details>')
         elif block_type == "columns":
-            left = _safe_text(block.get("left"))
-            right = _safe_text(block.get("right"))
+            left_html = ""
+            right_html = ""
+
+            left_blocks = block.get("left_blocks")
+            if isinstance(left_blocks, list):
+                left_html = str(render_content_blocks(left_blocks, ""))
+            if not left_html:
+                left = _safe_text(block.get("left"))
+                if left:
+                    left_html = f"<p>{left}</p>"
+
+            right_blocks = block.get("right_blocks")
+            if isinstance(right_blocks, list):
+                right_html = str(render_content_blocks(right_blocks, ""))
+            if not right_html:
+                right = _safe_text(block.get("right"))
+                if right:
+                    right_html = f"<p>{right}</p>"
+
             output.append(
                 '<div class="block-columns">'
-                f'<div class="block-column"><p>{left}</p></div>'
-                f'<div class="block-column"><p>{right}</p></div>'
+                f'<div class="block-column">{left_html}</div>'
+                f'<div class="block-column">{right_html}</div>'
                 "</div>"
             )
+        elif block_type in {"rows", "raws"}:
+            items = [str(x).strip() for x in (block.get("items") or []) if str(x).strip()]
+            if items:
+                rendered = "".join(f'<div class="block-row"><p>{_safe_text(item)}</p></div>' for item in items)
+                output.append(f'<div class="block-rows">{rendered}</div>')
         elif block_type == "html":
             custom = str(block.get("html") or "").strip()
             if custom:

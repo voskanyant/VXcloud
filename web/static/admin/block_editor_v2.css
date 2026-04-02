@@ -361,6 +361,84 @@
   resize: vertical;
 }
 
+.be-columns-editor {
+  border: 1px solid #dbe2ee;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.be-columns-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.be-columns-editor-head strong {
+  font-size: 12px;
+  color: #111827;
+}
+
+.be-columns-add {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.be-columns-add select {
+  min-width: 130px;
+}
+
+.be-columns-empty {
+  margin: 0;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+.be-columns-item {
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+  background: #f9fafb;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.be-columns-item-top {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.be-columns-index {
+  color: #6b7280;
+  font-size: 11px;
+  min-width: 20px;
+}
+
+.be-columns-item-top .button {
+  min-height: 26px;
+  padding: 3px 7px;
+  line-height: 1;
+}
+
+.be-columns-item-body {
+  display: grid;
+  gap: 8px;
+}
+
+.be-columns-item-body .be-field {
+  gap: 3px;
+}
+
+.be-columns-item-body textarea {
+  min-height: 72px;
+}
+
 .be-shell.be-mode-compact {
   grid-template-columns: minmax(210px, 34%) minmax(0, 1fr);
 }

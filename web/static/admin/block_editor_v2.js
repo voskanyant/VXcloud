@@ -12,12 +12,14 @@
     { value: "buttons", label: "Buttons Group", icon: "BG", group: "Design" },
     { value: "cards_slider", label: "Cards Slider", icon: "CS", group: "Design" },
     { value: "columns", label: "Columns", icon: "C", group: "Layout" },
+    { value: "rows", label: "Rows", icon: "R", group: "Layout" },
     { value: "faq", label: "FAQ Item", icon: "?", group: "Design" },
     { value: "spacer", label: "Spacer", icon: "S", group: "Layout" },
     { value: "html", label: "Custom HTML", icon: "<>", group: "Advanced" },
   ];
 
   const GROUPS = ["Text", "Media", "Design", "Layout", "Advanced"];
+  const COLUMN_CHILD_TYPES = ["paragraph", "heading", "list", "quote", "button", "image", "embed", "faq", "spacer", "html"];
 
   function parseJSON(raw) {
     if (!raw || !raw.trim()) return [];
@@ -62,6 +64,9 @@
   function normalizeLegacyBlock(block) {
     if (!block || typeof block !== "object") return defaultsFor("paragraph");
     const originalType = String(block.type || "paragraph").trim().toLowerCase();
+    if (originalType === "raws" || originalType === "row") {
+      block.type = "rows";
+    }
     if (originalType === "cards-slider" || originalType === "cards slider" || originalType === "cs_cards_slider") {
       block.type = "cards_slider";
     }
@@ -73,6 +78,28 @@
       }
       if (!("title" in block)) block.title = "";
       if (!("subtitle" in block)) block.subtitle = "";
+    }
+
+    if (String(block.type || "") === "columns") {
+      const toChildBlocks = (value) => {
+        if (Array.isArray(value)) {
+          return value
+            .filter((item) => item && typeof item === "object")
+            .map((item) => normalizeLegacyBlock(item));
+        }
+        if (typeof value === "string" && value.trim()) {
+          return [{ type: "paragraph", text: value.trim() }];
+        }
+        return [];
+      };
+      if (!Array.isArray(block.left_blocks)) {
+        block.left_blocks = toChildBlocks(block.left_blocks ?? block.left);
+      }
+      if (!Array.isArray(block.right_blocks)) {
+        block.right_blocks = toChildBlocks(block.right_blocks ?? block.right);
+      }
+      delete block.left;
+      delete block.right;
     }
     return block;
   }
@@ -100,7 +127,13 @@
           ],
         };
       case "columns":
-        return { type, left: "Left column", right: "Right column" };
+        return {
+          type,
+          left_blocks: [{ type: "paragraph", text: "Left column text" }],
+          right_blocks: [{ type: "paragraph", text: "Right column text" }],
+        };
+      case "rows":
+        return { type, items: ["First row text", "Second row text"] };
       case "cards_slider":
         return {
           type,
@@ -199,7 +232,15 @@
       const count = Array.isArray(block.items) ? block.items.length : 0;
       return `Cards slider (${count})`;
     }
-    if (type === "columns") return "Two-column content";
+    if (type === "columns") {
+      const leftCount = Array.isArray(block.left_blocks) ? block.left_blocks.length : 0;
+      const rightCount = Array.isArray(block.right_blocks) ? block.right_blocks.length : 0;
+      return `Columns (${leftCount}|${rightCount})`;
+    }
+    if (type === "rows" || type === "raws") {
+      const count = Array.isArray(block.items) ? block.items.length : 0;
+      return `Rows (${count})`;
+    }
     if (type === "faq") return String(block.question || "FAQ item");
     if (type === "spacer") return `Spacer ${block.height || 24}px`;
     if (type === "html") return "Custom HTML";
@@ -497,6 +538,297 @@
         sync();
       }
 
+      function normalizeColumnItems(value) {
+        if (Array.isArray(value)) {
+          return value
+            .filter((item) => item && typeof item === "object")
+            .map((item) => normalizeLegacyBlock(item));
+        }
+        if (typeof value === "string" && value.trim()) {
+          return [{ type: "paragraph", text: value.trim() }];
+        }
+        return [];
+      }
+
+      function renderColumnChildFields(item, holder) {
+        const type = String(item.type || "paragraph");
+        if (type === "paragraph") {
+          const text = textArea(item.text || "", 4);
+          text.addEventListener("input", () => {
+            item.text = text.value;
+            changed();
+          });
+          holder.appendChild(field("Text", text));
+          return;
+        }
+        if (type === "heading") {
+          const level = selectInput(
+            [
+              { value: 1, label: "H1" },
+              { value: 2, label: "H2" },
+              { value: 3, label: "H3" },
+              { value: 4, label: "H4" },
+            ],
+            item.level || 2
+          );
+          const text = textInput(item.text || "");
+          level.addEventListener("change", () => {
+            item.level = Number(level.value);
+            changed();
+          });
+          text.addEventListener("input", () => {
+            item.text = text.value;
+            changed();
+          });
+          holder.appendChild(field("Level", level));
+          holder.appendChild(field("Text", text));
+          return;
+        }
+        if (type === "list") {
+          const ordered = document.createElement("input");
+          ordered.type = "checkbox";
+          ordered.checked = !!item.ordered;
+          ordered.addEventListener("change", () => {
+            item.ordered = ordered.checked;
+            changed();
+          });
+          const items = textArea(Array.isArray(item.items) ? item.items.join("\n") : "", 5);
+          items.addEventListener("input", () => {
+            item.items = items.value
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean);
+            changed();
+          });
+          holder.appendChild(field("Ordered list", ordered));
+          holder.appendChild(field("Items (one line = one item)", items));
+          return;
+        }
+        if (type === "quote") {
+          const text = textArea(item.text || "", 4);
+          const cite = textInput(item.cite || "");
+          text.addEventListener("input", () => {
+            item.text = text.value;
+            changed();
+          });
+          cite.addEventListener("input", () => {
+            item.cite = cite.value;
+            changed();
+          });
+          holder.appendChild(field("Quote", text));
+          holder.appendChild(field("Author", cite));
+          return;
+        }
+        if (type === "button") {
+          const label = textInput(item.label || "");
+          const url = textInput(item.url || "");
+          const style = selectInput(
+            [
+              { value: "primary", label: "Primary" },
+              { value: "secondary", label: "Secondary" },
+            ],
+            item.style || "primary"
+          );
+          label.addEventListener("input", () => {
+            item.label = label.value;
+            changed();
+          });
+          url.addEventListener("input", () => {
+            item.url = url.value;
+            changed();
+          });
+          style.addEventListener("change", () => {
+            item.style = style.value;
+            changed();
+          });
+          holder.appendChild(field("Button text", label));
+          holder.appendChild(field("URL", url));
+          holder.appendChild(field("Style", style));
+          return;
+        }
+        if (type === "image") {
+          const src = textInput(item.src || "");
+          const alt = textInput(item.alt || "");
+          const caption = textInput(item.caption || "");
+          src.addEventListener("input", () => {
+            item.src = src.value;
+            changed();
+          });
+          alt.addEventListener("input", () => {
+            item.alt = alt.value;
+            changed();
+          });
+          caption.addEventListener("input", () => {
+            item.caption = caption.value;
+            changed();
+          });
+          holder.appendChild(field("Image URL", src));
+          holder.appendChild(field("Alt text", alt));
+          holder.appendChild(field("Caption", caption));
+          return;
+        }
+        if (type === "embed") {
+          const url = textInput(item.url || "");
+          url.addEventListener("input", () => {
+            item.url = url.value;
+            changed();
+          });
+          holder.appendChild(field("Embed URL", url));
+          return;
+        }
+        if (type === "faq") {
+          const question = textInput(item.question || "");
+          const answer = textArea(item.answer || "", 4);
+          question.addEventListener("input", () => {
+            item.question = question.value;
+            changed();
+          });
+          answer.addEventListener("input", () => {
+            item.answer = answer.value;
+            changed();
+          });
+          holder.appendChild(field("Question", question));
+          holder.appendChild(field("Answer", answer));
+          return;
+        }
+        if (type === "spacer") {
+          const height = numberInput(item.height || 24, 8, 180);
+          height.addEventListener("input", () => {
+            item.height = Number(height.value || 24);
+            changed();
+          });
+          holder.appendChild(field("Height (px)", height));
+          return;
+        }
+        if (type === "html") {
+          const html = textArea(item.html || "", 6);
+          html.addEventListener("input", () => {
+            item.html = html.value;
+            changed();
+          });
+          holder.appendChild(field("HTML", html));
+        }
+      }
+
+      function renderColumnEditor(columnBlock, key, labelText) {
+        if (!Array.isArray(columnBlock[key])) columnBlock[key] = normalizeColumnItems(columnBlock[key]);
+        const list = columnBlock[key];
+
+        const section = document.createElement("section");
+        section.className = "be-columns-editor";
+
+        const head = document.createElement("div");
+        head.className = "be-columns-editor-head";
+        const title = document.createElement("strong");
+        title.textContent = labelText;
+        const addWrap = document.createElement("div");
+        addWrap.className = "be-columns-add";
+        const addType = selectInput(
+          COLUMN_CHILD_TYPES.map((childType) => {
+            const meta = blockMeta(childType);
+            return { value: childType, label: meta.label };
+          }),
+          "paragraph"
+        );
+        const addBtn = document.createElement("button");
+        addBtn.type = "button";
+        addBtn.className = "button";
+        addBtn.textContent = "Add";
+        addBtn.addEventListener("click", () => {
+          list.push(defaultsFor(addType.value));
+          changed();
+        });
+        addWrap.appendChild(addType);
+        addWrap.appendChild(addBtn);
+        head.appendChild(title);
+        head.appendChild(addWrap);
+        section.appendChild(head);
+
+        if (!list.length) {
+          const empty = document.createElement("p");
+          empty.className = "be-columns-empty";
+          empty.textContent = "No blocks in this column.";
+          section.appendChild(empty);
+          return section;
+        }
+
+        list.forEach((item, index) => {
+          const block = normalizeLegacyBlock(item);
+          list[index] = block;
+          const itemType = String(block.type || "paragraph");
+
+          const card = document.createElement("article");
+          card.className = "be-columns-item";
+
+          const bar = document.createElement("div");
+          bar.className = "be-columns-item-top";
+          const num = document.createElement("span");
+          num.textContent = `#${index + 1}`;
+          num.className = "be-columns-index";
+          const typeSelect = selectInput(
+            COLUMN_CHILD_TYPES.map((childType) => {
+              const meta = blockMeta(childType);
+              return { value: childType, label: meta.label };
+            }),
+            itemType
+          );
+          typeSelect.addEventListener("change", () => {
+            list[index] = defaultsFor(typeSelect.value);
+            changed();
+          });
+
+          const up = document.createElement("button");
+          up.type = "button";
+          up.className = "button";
+          up.textContent = "↑";
+          up.disabled = index === 0;
+          up.addEventListener("click", () => {
+            if (index < 1) return;
+            const tmp = list[index - 1];
+            list[index - 1] = list[index];
+            list[index] = tmp;
+            changed();
+          });
+
+          const down = document.createElement("button");
+          down.type = "button";
+          down.className = "button";
+          down.textContent = "↓";
+          down.disabled = index === list.length - 1;
+          down.addEventListener("click", () => {
+            if (index >= list.length - 1) return;
+            const tmp = list[index + 1];
+            list[index + 1] = list[index];
+            list[index] = tmp;
+            changed();
+          });
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "button deletelink";
+          remove.textContent = "×";
+          remove.addEventListener("click", () => {
+            list.splice(index, 1);
+            changed();
+          });
+
+          bar.appendChild(num);
+          bar.appendChild(typeSelect);
+          bar.appendChild(up);
+          bar.appendChild(down);
+          bar.appendChild(remove);
+          card.appendChild(bar);
+
+          const body = document.createElement("div");
+          body.className = "be-columns-item-body";
+          renderColumnChildFields(block, body);
+          card.appendChild(body);
+          section.appendChild(card);
+        });
+
+        return section;
+      }
+
       const type = String(selected.type || "paragraph");
       if (type === "paragraph") {
         const input = textArea(selected.text || "", 8);
@@ -630,18 +962,23 @@
         });
         form.appendChild(field("Buttons (label|url|style)", items));
       } else if (type === "columns") {
-        const leftText = textArea(selected.left || "", 6);
-        const rightText = textArea(selected.right || "", 6);
-        leftText.addEventListener("input", () => {
-          selected.left = leftText.value;
+        if (!Array.isArray(selected.left_blocks)) selected.left_blocks = normalizeColumnItems(selected.left_blocks ?? selected.left);
+        if (!Array.isArray(selected.right_blocks)) selected.right_blocks = normalizeColumnItems(selected.right_blocks ?? selected.right);
+        delete selected.left;
+        delete selected.right;
+        form.appendChild(renderColumnEditor(selected, "left_blocks", "Left column"));
+        form.appendChild(renderColumnEditor(selected, "right_blocks", "Right column"));
+      } else if (type === "rows" || type === "raws") {
+        const rows = textArea(Array.isArray(selected.items) ? selected.items.join("\n") : "", 10);
+        rows.placeholder = "One line = one row";
+        rows.addEventListener("input", () => {
+          selected.items = rows.value
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean);
           changed();
         });
-        rightText.addEventListener("input", () => {
-          selected.right = rightText.value;
-          changed();
-        });
-        form.appendChild(field("Left column", leftText));
-        form.appendChild(field("Right column", rightText));
+        form.appendChild(field("Rows (one line = one row)", rows));
       } else if (type === "cards_slider") {
         const title = textInput(selected.title || "");
         const subtitle = textArea(selected.subtitle || "", 4);

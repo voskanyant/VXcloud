@@ -402,6 +402,7 @@ textarea,
 .post-content > .block-image,
 .post-content > .block-embed,
 .post-content > .block-columns,
+.post-content > .block-rows,
 .post-content > .block-cards-slider,
 .post-content > .block-faq,
 .post-content > .block-spacer {
@@ -484,6 +485,32 @@ textarea,
   border-radius: 14px;
   background: #fff;
   padding: 12px;
+}
+
+.block-column > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.block-column > * + * {
+  margin-top: 10px;
+}
+
+.block-rows {
+  margin: var(--space-3) 0;
+  display: grid;
+  gap: 10px;
+}
+
+.block-row {
+  border: 1px solid #dce5f3;
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+}
+
+.block-row p {
+  margin: 0;
 }
 
 .block-cards-slider {
