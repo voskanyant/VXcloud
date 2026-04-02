@@ -161,6 +161,20 @@
     root.appendChild(center);
     root.appendChild(right);
 
+    function applyResponsiveMode() {
+      const width = root.getBoundingClientRect().width || 0;
+      root.classList.toggle("be-mode-compact", width > 0 && width < 1160);
+      root.classList.toggle("be-mode-stack", width > 0 && width < 860);
+    }
+
+    applyResponsiveMode();
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(() => applyResponsiveMode());
+      observer.observe(root);
+    } else {
+      window.addEventListener("resize", applyResponsiveMode);
+    }
+
     const state = {
       blocks: parseJSON(source.value),
       selectedIndex: -1,
