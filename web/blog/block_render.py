@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from html import escape
 from typing import Any
 
@@ -119,8 +120,26 @@ def _parse_slider_line(line: str) -> dict[str, str]:
     return {"title": left.strip(), "text": right.strip()}
 
 
+def _parse_legacy_json_blocks(raw: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw, str):
+        return []
+    payload = raw.strip()
+    if not payload or payload[0] not in "[{":
+        return []
+    try:
+        parsed = json.loads(payload)
+    except Exception:
+        return []
+    if isinstance(parsed, list):
+        return [item for item in parsed if isinstance(item, dict)]
+    return []
+
+
 def render_content_blocks(blocks: Any, legacy_html: str = ""):
     if not isinstance(blocks, list) or not blocks:
+        parsed_legacy_blocks = _parse_legacy_json_blocks(legacy_html)
+        if parsed_legacy_blocks:
+            return render_content_blocks(parsed_legacy_blocks, "")
         return mark_safe(legacy_html or "")
 
     output: list[str] = []

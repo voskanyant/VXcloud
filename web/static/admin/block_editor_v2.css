@@ -230,11 +230,24 @@
   padding: 12px;
   background: #fff;
   cursor: pointer;
+  user-select: none;
 }
 
 .be-canvas-block.is-selected {
   border-color: #3858e9;
   box-shadow: 0 0 0 1px #3858e9 inset;
+}
+
+.be-canvas-block.is-dragging {
+  opacity: 0.5;
+}
+
+.be-canvas-block.is-drop-before {
+  box-shadow: inset 0 3px 0 #3858e9;
+}
+
+.be-canvas-block.is-drop-after {
+  box-shadow: inset 0 -3px 0 #3858e9;
 }
 
 .be-canvas-block-top {

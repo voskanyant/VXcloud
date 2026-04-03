@@ -353,6 +353,7 @@
       blocks: parseJSON(source.value),
       selectedIndex: -1,
       search: "",
+      dragIndex: -1,
     };
     if (state.blocks.length) state.selectedIndex = 0;
 
@@ -515,11 +516,36 @@
         empty.appendChild(quickAdd);
         stage.appendChild(empty);
       } else {
+        const clearDropMarkers = () => {
+          stage.querySelectorAll(".be-canvas-block.is-drop-before, .be-canvas-block.is-drop-after").forEach((el) => {
+            el.classList.remove("is-drop-before", "is-drop-after");
+          });
+        };
+
+        const moveBlockByDrag = (fromIndex, targetIndexRaw) => {
+          if (fromIndex < 0 || fromIndex >= state.blocks.length) return;
+          let targetIndex = Math.max(0, Math.min(targetIndexRaw, state.blocks.length));
+          if (targetIndex === fromIndex || targetIndex === fromIndex + 1) {
+            state.dragIndex = -1;
+            clearDropMarkers();
+            return;
+          }
+          const moved = state.blocks.splice(fromIndex, 1)[0];
+          if (targetIndex > fromIndex) targetIndex -= 1;
+          state.blocks.splice(targetIndex, 0, moved);
+          state.selectedIndex = targetIndex;
+          state.dragIndex = -1;
+          renderCanvas();
+          renderInspector();
+          sync();
+        };
+
         state.blocks.forEach((block, index) => {
           const meta = blockMeta(block.type || "paragraph");
           const card = document.createElement("article");
           card.className = "be-canvas-block";
           if (state.selectedIndex === index) card.classList.add("is-selected");
+          card.draggable = true;
           card.innerHTML =
             "<div class='be-canvas-block-top'>" +
             `<span class='be-canvas-type'>${meta.icon} ${meta.label}</span>` +
@@ -528,6 +554,35 @@
             "<div class='be-canvas-preview'></div>";
           card.querySelector(".be-canvas-preview").textContent = blockPreview(block);
           card.addEventListener("click", () => selectBlock(index));
+          card.addEventListener("dragstart", (event) => {
+            state.dragIndex = index;
+            card.classList.add("is-dragging");
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", String(index));
+            }
+          });
+          card.addEventListener("dragover", (event) => {
+            if (state.dragIndex < 0 || state.dragIndex === index) return;
+            event.preventDefault();
+            clearDropMarkers();
+            const rect = card.getBoundingClientRect();
+            const before = event.clientY < rect.top + rect.height / 2;
+            card.classList.add(before ? "is-drop-before" : "is-drop-after");
+          });
+          card.addEventListener("drop", (event) => {
+            if (state.dragIndex < 0 || state.dragIndex === index) return;
+            event.preventDefault();
+            const rect = card.getBoundingClientRect();
+            const before = event.clientY < rect.top + rect.height / 2;
+            const target = before ? index : index + 1;
+            moveBlockByDrag(state.dragIndex, target);
+          });
+          card.addEventListener("dragend", () => {
+            card.classList.remove("is-dragging");
+            state.dragIndex = -1;
+            clearDropMarkers();
+          });
           stage.appendChild(card);
         });
 
