@@ -36,12 +36,54 @@ show_port_occupant() {
   docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep '127.0.0.1:8088->' || true
 }
 
+stop_legacy_systemd_unit() {
+  if ! systemctl list-unit-files | grep -q '^vxcloud-web\.service'; then
+    return 0
+  fi
+
+  echo "Stopping legacy systemd unit vxcloud-web.service..."
+  # 1) try direct stop (works if current user is privileged)
+  if systemctl stop vxcloud-web.service 2>/dev/null; then
+    return 0
+  fi
+  # 2) try non-interactive sudo (works if NOPASSWD is configured)
+  if sudo -n systemctl stop vxcloud-web.service 2>/dev/null; then
+    return 0
+  fi
+  echo "Could not stop vxcloud-web.service via systemctl (no non-interactive privileges)."
+}
+
+kill_gunicorn_on_8088() {
+  local pids pid cmdline killed_any=0
+  pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
+  [[ -z "$pids" ]] && return 0
+
+  for pid in $pids; do
+    cmdline="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+    if [[ "$cmdline" == *gunicorn* ]]; then
+      echo "Stopping process on 8088: pid=$pid ($cmdline)"
+      kill -TERM "$pid" 2>/dev/null || true
+      killed_any=1
+    fi
+  done
+
+  if [[ "$killed_any" -eq 1 ]]; then
+    sleep 2
+    # Force-kill remaining gunicorn listeners on the port if needed.
+    pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
+    for pid in $pids; do
+      cmdline="$(ps -p "$pid" -o args= 2>/dev/null || true)"
+      if [[ "$cmdline" == *gunicorn* ]]; then
+        kill -KILL "$pid" 2>/dev/null || true
+      fi
+    done
+  fi
+}
+
 cleanup_legacy_bindings() {
   # Older installs used a host systemd service on the same port.
-  if systemctl list-unit-files | grep -q '^vxcloud-web\.service'; then
-    echo "Stopping legacy systemd unit vxcloud-web.service..."
-    systemctl stop vxcloud-web.service || true
-  fi
+  stop_legacy_systemd_unit
+  kill_gunicorn_on_8088
 
   # Stop previous compose containers from this project and remove orphans.
   docker compose --env-file .env down --remove-orphans || true
