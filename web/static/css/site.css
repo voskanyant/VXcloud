@@ -402,6 +402,7 @@ textarea,
 .post-content > .block-image,
 .post-content > .block-embed,
 .post-content > .block-columns,
+.post-content > .block-rows-layout,
 .post-content > .block-rows,
 .post-content > .block-cards-slider,
 .post-content > .block-faq,
@@ -500,6 +501,34 @@ textarea,
   margin: var(--space-3) 0;
   display: grid;
   gap: 10px;
+}
+
+.block-rows-layout {
+  margin: var(--space-3) 0;
+  display: grid;
+  gap: 12px;
+}
+
+.block-row-layout {
+  display: grid;
+  grid-template-columns: repeat(var(--row-cols, 1), minmax(0, 1fr));
+  gap: 12px;
+}
+
+.block-row-column {
+  border: 1px solid #dce5f3;
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+}
+
+.block-row-column > * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.block-row-column > * + * {
+  margin-top: 10px;
 }
 
 .block-row {
@@ -738,6 +767,10 @@ textarea,
 
   .site-footer-inner {
     padding: 12px 0;
+  }
+
+  .block-row-layout {
+    grid-template-columns: 1fr !important;
   }
 }
 

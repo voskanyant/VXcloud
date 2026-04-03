@@ -19,7 +19,20 @@
   ];
 
   const GROUPS = ["Text", "Media", "Design", "Layout", "Advanced"];
-  const COLUMN_CHILD_TYPES = ["paragraph", "heading", "list", "quote", "button", "image", "embed", "faq", "spacer", "html"];
+  const COLUMN_CHILD_TYPES = [
+    "paragraph",
+    "heading",
+    "list",
+    "quote",
+    "button",
+    "buttons",
+    "image",
+    "embed",
+    "cards_slider",
+    "faq",
+    "spacer",
+    "html",
+  ];
 
   function parseJSON(raw) {
     if (!raw || !raw.trim()) return [];
@@ -61,6 +74,56 @@
       .filter((item) => item.title || item.text);
   }
 
+  function normalizeNestedBlocks(value) {
+    if (Array.isArray(value)) {
+      return value
+        .filter((item) => item && typeof item === "object")
+        .map((item) => normalizeLegacyBlock(item));
+    }
+    if (typeof value === "string" && value.trim()) {
+      return [{ type: "paragraph", text: value.trim() }];
+    }
+    return [];
+  }
+
+  function normalizeRowsLayout(value) {
+    if (!Array.isArray(value)) {
+      if (typeof value === "string" && value.trim()) {
+        return [{ columns: [{ blocks: [{ type: "paragraph", text: value.trim() }] }] }];
+      }
+      return [];
+    }
+
+    return value
+      .map((row) => {
+        if (typeof row === "string" && row.trim()) {
+          return { columns: [{ blocks: [{ type: "paragraph", text: row.trim() }] }] };
+        }
+        if (!row || typeof row !== "object") return null;
+
+        let columns = [];
+        if (Array.isArray(row.columns)) {
+          columns = row.columns
+            .map((col) => {
+              if (!col || typeof col !== "object") return null;
+              const blocks = normalizeNestedBlocks(col.blocks ?? col.items ?? col.text ?? "");
+              return { blocks: blocks.length ? blocks : [{ type: "paragraph", text: "Column text" }] };
+            })
+            .filter(Boolean);
+        }
+
+        if (!columns.length) {
+          const leftBlocks = normalizeNestedBlocks(row.left_blocks ?? row.left ?? "");
+          const rightBlocks = normalizeNestedBlocks(row.right_blocks ?? row.right ?? "");
+          if (leftBlocks.length) columns.push({ blocks: leftBlocks });
+          if (rightBlocks.length) columns.push({ blocks: rightBlocks });
+        }
+
+        return columns.length ? { columns } : null;
+      })
+      .filter(Boolean);
+  }
+
   function normalizeLegacyBlock(block) {
     if (!block || typeof block !== "object") return defaultsFor("paragraph");
     const originalType = String(block.type || "paragraph").trim().toLowerCase();
@@ -81,25 +144,19 @@
     }
 
     if (String(block.type || "") === "columns") {
-      const toChildBlocks = (value) => {
-        if (Array.isArray(value)) {
-          return value
-            .filter((item) => item && typeof item === "object")
-            .map((item) => normalizeLegacyBlock(item));
-        }
-        if (typeof value === "string" && value.trim()) {
-          return [{ type: "paragraph", text: value.trim() }];
-        }
-        return [];
-      };
       if (!Array.isArray(block.left_blocks)) {
-        block.left_blocks = toChildBlocks(block.left_blocks ?? block.left);
+        block.left_blocks = normalizeNestedBlocks(block.left_blocks ?? block.left);
       }
       if (!Array.isArray(block.right_blocks)) {
-        block.right_blocks = toChildBlocks(block.right_blocks ?? block.right);
+        block.right_blocks = normalizeNestedBlocks(block.right_blocks ?? block.right);
       }
       delete block.left;
       delete block.right;
+    }
+
+    if (String(block.type || "") === "rows") {
+      block.rows = normalizeRowsLayout(block.rows ?? block.items);
+      delete block.items;
     }
     return block;
   }
@@ -133,16 +190,26 @@
           right_blocks: [{ type: "paragraph", text: "Right column text" }],
         };
       case "rows":
-        return { type, items: ["First row text", "Second row text"] };
+        return {
+          type,
+          rows: [
+            {
+              columns: [
+                { blocks: [{ type: "heading", level: 3, text: "Column title" }] },
+                { blocks: [{ type: "paragraph", text: "Column text" }] },
+              ],
+            },
+          ],
+        };
       case "cards_slider":
         return {
           type,
-          title: "Почему VXcloud",
-          subtitle: "Коротко о преимуществах сервиса.",
+          title: "Why VXcloud",
+          subtitle: "Quick reasons clients choose the service.",
           items: [
-            { title: "Простой старт", text: "Подключение занимает всего несколько минут." },
-            { title: "Понятный формат", text: "После покупки вы получаете все необходимые данные для подключения." },
-            { title: "Удобное управление", text: "Основные действия доступны через сайт и Telegram." },
+            { title: "Simple start", text: "Connect in minutes without complex setup." },
+            { title: "Clear format", text: "After purchase you immediately get all required access data." },
+            { title: "Convenient control", text: "Main actions are available through site and Telegram." },
           ],
         };
       case "faq":
@@ -238,8 +305,10 @@
       return `Columns (${leftCount}|${rightCount})`;
     }
     if (type === "rows" || type === "raws") {
-      const count = Array.isArray(block.items) ? block.items.length : 0;
-      return `Rows (${count})`;
+      const rows = Array.isArray(block.rows) ? block.rows : [];
+      const rowCount = rows.length;
+      const colCount = rows.reduce((acc, row) => acc + (Array.isArray(row.columns) ? row.columns.length : 0), 0);
+      return `Rows (${rowCount} rows, ${colCount} cols)`;
     }
     if (type === "faq") return String(block.question || "FAQ item");
     if (type === "spacer") return `Spacer ${block.height || 24}px`;
@@ -387,7 +456,7 @@
         const title = document.createElement("button");
         title.type = "button";
         title.className = "be-library-toggle";
-        title.innerHTML = `<span>${group}</span><i>${isOpen ? "−" : "+"}</i>`;
+        title.innerHTML = `<span>${group}</span><i>${isOpen ? "-" : "+"}</i>`;
 
         const grid = document.createElement("div");
         grid.className = "be-library-grid";
@@ -404,7 +473,7 @@
         title.addEventListener("click", () => {
           groupBlock.classList.toggle("is-collapsed");
           const open = !groupBlock.classList.contains("is-collapsed");
-          title.querySelector("i").textContent = open ? "−" : "+";
+          title.querySelector("i").textContent = open ? "-" : "+";
           window.localStorage.setItem(storageKey, open ? "1" : "0");
         });
 
@@ -539,15 +608,7 @@
       }
 
       function normalizeColumnItems(value) {
-        if (Array.isArray(value)) {
-          return value
-            .filter((item) => item && typeof item === "object")
-            .map((item) => normalizeLegacyBlock(item));
-        }
-        if (typeof value === "string" && value.trim()) {
-          return [{ type: "paragraph", text: value.trim() }];
-        }
-        return [];
+        return normalizeNestedBlocks(value);
       }
 
       function renderColumnChildFields(item, holder) {
@@ -646,6 +707,29 @@
           holder.appendChild(field("Style", style));
           return;
         }
+        if (type === "buttons") {
+          const items = textArea(
+            (item.items || []).map((btn) => `${btn.label || ""}|${btn.url || ""}|${btn.style || "primary"}`).join("\n"),
+            6
+          );
+          items.addEventListener("input", () => {
+            item.items = items.value
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .map((line) => {
+                const parts = line.split("|").map((part) => (part || "").trim());
+                return {
+                  label: parts[0] || "",
+                  url: parts[1] || "",
+                  style: parts[2] === "secondary" ? "secondary" : "primary",
+                };
+              });
+            changed();
+          });
+          holder.appendChild(field("Buttons (label|url|style)", items));
+          return;
+        }
         if (type === "image") {
           const src = textInput(item.src || "");
           const alt = textInput(item.alt || "");
@@ -674,6 +758,33 @@
             changed();
           });
           holder.appendChild(field("Embed URL", url));
+          return;
+        }
+        if (type === "cards_slider") {
+          const title = textInput(item.title || "");
+          const subtitle = textArea(item.subtitle || "", 3);
+          const initialItems = Array.isArray(item.items)
+            ? item.items
+            : parseCardsLines(item.items || item.lines || item.line || item.text || "");
+          const cards = textArea(initialItems.map((card) => `${card.title || ""}|${card.text || ""}`).join("\n"), 8);
+          if (!Array.isArray(item.items)) {
+            item.items = initialItems;
+          }
+          title.addEventListener("input", () => {
+            item.title = title.value;
+            changed();
+          });
+          subtitle.addEventListener("input", () => {
+            item.subtitle = subtitle.value;
+            changed();
+          });
+          cards.addEventListener("input", () => {
+            item.items = parseCardsLines(cards.value);
+            changed();
+          });
+          holder.appendChild(field("Section title", title));
+          holder.appendChild(field("Section subtitle", subtitle));
+          holder.appendChild(field("Cards (title|text, one per line)", cards));
           return;
         }
         if (type === "faq") {
@@ -780,7 +891,7 @@
           const up = document.createElement("button");
           up.type = "button";
           up.className = "button";
-          up.textContent = "↑";
+          up.textContent = "Up";
           up.disabled = index === 0;
           up.addEventListener("click", () => {
             if (index < 1) return;
@@ -793,7 +904,7 @@
           const down = document.createElement("button");
           down.type = "button";
           down.className = "button";
-          down.textContent = "↓";
+          down.textContent = "Down";
           down.disabled = index === list.length - 1;
           down.addEventListener("click", () => {
             if (index >= list.length - 1) return;
@@ -806,7 +917,7 @@
           const remove = document.createElement("button");
           remove.type = "button";
           remove.className = "button deletelink";
-          remove.textContent = "×";
+          remove.textContent = "Delete";
           remove.addEventListener("click", () => {
             list.splice(index, 1);
             changed();
@@ -824,6 +935,191 @@
           renderColumnChildFields(block, body);
           card.appendChild(body);
           section.appendChild(card);
+        });
+
+        return section;
+      }
+
+      function defaultRowColumn() {
+        return { blocks: [{ type: "paragraph", text: "Column text" }] };
+      }
+
+      function normalizeRowItem(row) {
+        if (!row || typeof row !== "object") return { columns: [defaultRowColumn()] };
+        const columns = Array.isArray(row.columns)
+          ? row.columns
+              .map((col) => {
+                if (!col || typeof col !== "object") return null;
+                const blocks = normalizeColumnItems(col.blocks ?? col.items ?? col.text ?? "");
+                return { blocks: blocks.length ? blocks : [{ type: "paragraph", text: "Column text" }] };
+              })
+              .filter(Boolean)
+          : [];
+        return { columns: columns.length ? columns : [defaultRowColumn()] };
+      }
+
+      function renderRowsEditor(rowsBlock) {
+        if (!Array.isArray(rowsBlock.rows)) rowsBlock.rows = normalizeRowsLayout(rowsBlock.rows ?? rowsBlock.items);
+        delete rowsBlock.items;
+
+        const section = document.createElement("section");
+        section.className = "be-rows-editor";
+
+        const head = document.createElement("div");
+        head.className = "be-rows-editor-head";
+        const title = document.createElement("strong");
+        title.textContent = "Rows layout";
+        const addRowBtn = document.createElement("button");
+        addRowBtn.type = "button";
+        addRowBtn.className = "button";
+        addRowBtn.textContent = "Add row";
+        addRowBtn.addEventListener("click", () => {
+          rowsBlock.rows.push({ columns: [defaultRowColumn(), defaultRowColumn()] });
+          changed();
+        });
+        head.appendChild(title);
+        head.appendChild(addRowBtn);
+        section.appendChild(head);
+
+        if (!rowsBlock.rows.length) {
+          const empty = document.createElement("p");
+          empty.className = "be-columns-empty";
+          empty.textContent = "No rows yet.";
+          section.appendChild(empty);
+          return section;
+        }
+
+        rowsBlock.rows.forEach((row, rowIndex) => {
+          const normalizedRow = normalizeRowItem(row);
+          rowsBlock.rows[rowIndex] = normalizedRow;
+
+          const rowCard = document.createElement("article");
+          rowCard.className = "be-row-item";
+
+          const rowTop = document.createElement("div");
+          rowTop.className = "be-row-item-top";
+          const rowLabel = document.createElement("strong");
+          rowLabel.textContent = `Row #${rowIndex + 1}`;
+          const rowButtons = document.createElement("div");
+          rowButtons.className = "be-row-actions";
+
+          const addColumnBtn = document.createElement("button");
+          addColumnBtn.type = "button";
+          addColumnBtn.className = "button";
+          addColumnBtn.textContent = "+ Column";
+          addColumnBtn.addEventListener("click", () => {
+            normalizedRow.columns.push(defaultRowColumn());
+            changed();
+          });
+
+          const rowUp = document.createElement("button");
+          rowUp.type = "button";
+          rowUp.className = "button";
+          rowUp.textContent = "Up";
+          rowUp.disabled = rowIndex === 0;
+          rowUp.addEventListener("click", () => {
+            if (rowIndex < 1) return;
+            const tmp = rowsBlock.rows[rowIndex - 1];
+            rowsBlock.rows[rowIndex - 1] = rowsBlock.rows[rowIndex];
+            rowsBlock.rows[rowIndex] = tmp;
+            changed();
+          });
+
+          const rowDown = document.createElement("button");
+          rowDown.type = "button";
+          rowDown.className = "button";
+          rowDown.textContent = "Down";
+          rowDown.disabled = rowIndex === rowsBlock.rows.length - 1;
+          rowDown.addEventListener("click", () => {
+            if (rowIndex >= rowsBlock.rows.length - 1) return;
+            const tmp = rowsBlock.rows[rowIndex + 1];
+            rowsBlock.rows[rowIndex + 1] = rowsBlock.rows[rowIndex];
+            rowsBlock.rows[rowIndex] = tmp;
+            changed();
+          });
+
+          const rowRemove = document.createElement("button");
+          rowRemove.type = "button";
+          rowRemove.className = "button deletelink";
+          rowRemove.textContent = "Delete";
+          rowRemove.addEventListener("click", () => {
+            rowsBlock.rows.splice(rowIndex, 1);
+            changed();
+          });
+
+          rowButtons.appendChild(addColumnBtn);
+          rowButtons.appendChild(rowUp);
+          rowButtons.appendChild(rowDown);
+          rowButtons.appendChild(rowRemove);
+          rowTop.appendChild(rowLabel);
+          rowTop.appendChild(rowButtons);
+          rowCard.appendChild(rowTop);
+
+          const columnsGrid = document.createElement("div");
+          columnsGrid.className = "be-row-columns";
+
+          normalizedRow.columns.forEach((column, colIndex) => {
+            const colCard = document.createElement("div");
+            colCard.className = "be-row-column";
+
+            const colTop = document.createElement("div");
+            colTop.className = "be-row-column-top";
+            const colLabel = document.createElement("span");
+            colLabel.textContent = `Column ${colIndex + 1}`;
+
+            const colActions = document.createElement("div");
+            colActions.className = "be-row-actions";
+
+            const colLeft = document.createElement("button");
+            colLeft.type = "button";
+            colLeft.className = "button";
+            colLeft.textContent = "Left";
+            colLeft.disabled = colIndex === 0;
+            colLeft.addEventListener("click", () => {
+              if (colIndex < 1) return;
+              const tmp = normalizedRow.columns[colIndex - 1];
+              normalizedRow.columns[colIndex - 1] = normalizedRow.columns[colIndex];
+              normalizedRow.columns[colIndex] = tmp;
+              changed();
+            });
+
+            const colRight = document.createElement("button");
+            colRight.type = "button";
+            colRight.className = "button";
+            colRight.textContent = "Right";
+            colRight.disabled = colIndex === normalizedRow.columns.length - 1;
+            colRight.addEventListener("click", () => {
+              if (colIndex >= normalizedRow.columns.length - 1) return;
+              const tmp = normalizedRow.columns[colIndex + 1];
+              normalizedRow.columns[colIndex + 1] = normalizedRow.columns[colIndex];
+              normalizedRow.columns[colIndex] = tmp;
+              changed();
+            });
+
+            const colRemove = document.createElement("button");
+            colRemove.type = "button";
+            colRemove.className = "button deletelink";
+            colRemove.textContent = "Delete";
+            colRemove.disabled = normalizedRow.columns.length <= 1;
+            colRemove.addEventListener("click", () => {
+              if (normalizedRow.columns.length <= 1) return;
+              normalizedRow.columns.splice(colIndex, 1);
+              changed();
+            });
+
+            colActions.appendChild(colLeft);
+            colActions.appendChild(colRight);
+            colActions.appendChild(colRemove);
+            colTop.appendChild(colLabel);
+            colTop.appendChild(colActions);
+            colCard.appendChild(colTop);
+
+            colCard.appendChild(renderColumnEditor(column, "blocks", "Blocks"));
+            columnsGrid.appendChild(colCard);
+          });
+
+          rowCard.appendChild(columnsGrid);
+          section.appendChild(rowCard);
         });
 
         return section;
@@ -969,16 +1265,7 @@
         form.appendChild(renderColumnEditor(selected, "left_blocks", "Left column"));
         form.appendChild(renderColumnEditor(selected, "right_blocks", "Right column"));
       } else if (type === "rows" || type === "raws") {
-        const rows = textArea(Array.isArray(selected.items) ? selected.items.join("\n") : "", 10);
-        rows.placeholder = "One line = one row";
-        rows.addEventListener("input", () => {
-          selected.items = rows.value
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean);
-          changed();
-        });
-        form.appendChild(field("Rows (one line = one row)", rows));
+        form.appendChild(renderRowsEditor(selected));
       } else if (type === "cards_slider") {
         const title = textInput(selected.title || "");
         const subtitle = textArea(selected.subtitle || "", 4);

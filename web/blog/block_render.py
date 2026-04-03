@@ -219,10 +219,48 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
                 "</div>"
             )
         elif block_type in {"rows", "raws"}:
-            items = [str(x).strip() for x in (block.get("items") or []) if str(x).strip()]
-            if items:
-                rendered = "".join(f'<div class="block-row"><p>{_safe_text(item)}</p></div>' for item in items)
-                output.append(f'<div class="block-rows">{rendered}</div>')
+            rows = block.get("rows")
+            rendered_rows: list[str] = []
+
+            if isinstance(rows, list):
+                for row in rows:
+                    if not isinstance(row, dict):
+                        continue
+                    columns = row.get("columns")
+                    if not isinstance(columns, list):
+                        continue
+
+                    rendered_columns: list[str] = []
+                    for col in columns:
+                        if not isinstance(col, dict):
+                            continue
+                        col_html = ""
+                        col_blocks = col.get("blocks")
+                        if isinstance(col_blocks, list):
+                            col_html = str(render_content_blocks(col_blocks, ""))
+                        if not col_html:
+                            legacy_col_text = _safe_text(col.get("text"))
+                            if legacy_col_text:
+                                col_html = f"<p>{legacy_col_text}</p>"
+                        if col_html:
+                            rendered_columns.append(f'<div class="block-row-column">{col_html}</div>')
+
+                    if rendered_columns:
+                        cols_count = len(rendered_columns)
+                        rendered_rows.append(
+                            f'<div class="block-row-layout" style="--row-cols: {cols_count};">'
+                            f'{"".join(rendered_columns)}'
+                            "</div>"
+                        )
+
+            if rendered_rows:
+                output.append(f'<div class="block-rows-layout">{"".join(rendered_rows)}</div>')
+            else:
+                # Legacy fallback: one line = one row
+                items = [str(x).strip() for x in (block.get("items") or []) if str(x).strip()]
+                if items:
+                    rendered = "".join(f'<div class="block-row"><p>{_safe_text(item)}</p></div>' for item in items)
+                    output.append(f'<div class="block-rows">{rendered}</div>')
         elif block_type == "html":
             custom = str(block.get("html") or "").strip()
             if custom:
