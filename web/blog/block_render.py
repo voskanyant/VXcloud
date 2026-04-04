@@ -428,6 +428,187 @@ def _render_bs_nav(block: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _render_bs_modal(block: dict[str, Any]) -> str:
+    button_text = _safe_text(block.get("button_text")) or "Open modal"
+    title = _safe_text(block.get("title")) or "Modal title"
+    text = _safe_text(block.get("text"))
+    if not text:
+        return ""
+    button_variant = _safe_variant(block.get("button_variant"), default="primary")
+    size = str(block.get("size") or "").strip().lower()
+    size_cls = " modal-sm" if size == "sm" else " modal-lg" if size == "lg" else " modal-xl" if size == "xl" else ""
+    dialog_classes = []
+    if bool(block.get("scrollable")):
+        dialog_classes.append("modal-dialog-scrollable")
+    if bool(block.get("centered")):
+        dialog_classes.append("modal-dialog-centered")
+    if bool(block.get("fullscreen")):
+        dialog_classes.append("modal-fullscreen")
+    modal_id = f"modal-{uuid4().hex[:8]}"
+    dialog = f'modal-dialog{size_cls} {" ".join(dialog_classes)}'.strip()
+    secondary = _safe_text(block.get("footer_secondary_text")) or "Close"
+    primary = _safe_text(block.get("footer_primary_text")) or "Got it"
+
+    return (
+        f'<div class="block-bs-modal"><button type="button" class="btn btn-{button_variant}" '
+        f'data-bs-toggle="modal" data-bs-target="#{modal_id}">{button_text}</button>'
+        f'<div class="modal fade" id="{modal_id}" tabindex="-1" aria-hidden="true">'
+        f'<div class="{dialog}"><div class="modal-content">'
+        f'<div class="modal-header"><h5 class="modal-title">{title}</h5>'
+        f'<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>'
+        f'<div class="modal-body"><p class="mb-0">{text}</p></div>'
+        f'<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{secondary}</button>'
+        f'<button type="button" class="btn btn-{button_variant}" data-bs-dismiss="modal">{primary}</button></div>'
+        "</div></div></div></div>"
+    )
+
+
+def _render_bs_toast(block: dict[str, Any]) -> str:
+    title = _safe_text(block.get("title")) or "Notification"
+    text = _safe_text(block.get("text"))
+    if not text:
+        return ""
+    delay = int(block.get("delay") or 5000)
+    delay = 1000 if delay < 1000 else 20000 if delay > 20000 else delay
+    autohide = "true" if bool(block.get("autohide", True)) else "false"
+    variant = _safe_variant(block.get("variant"), default="primary")
+    toast_id = f"toast-{uuid4().hex[:8]}"
+
+    return (
+        f'<div class="block-bs-toast toast align-items-center border-0 text-bg-{variant}" id="{toast_id}" role="alert" '
+        f'aria-live="assertive" aria-atomic="true" data-bs-autohide="{autohide}" data-bs-delay="{delay}">'
+        f'<div class="d-flex"><div class="toast-body"><strong class="d-block">{title}</strong>{text}</div>'
+        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>'
+        "</div></div>"
+        '<script>document.addEventListener("DOMContentLoaded",function(){try{var el=document.getElementById("'
+        f'{toast_id}'
+        '");if(el&&window.bootstrap&&window.bootstrap.Toast){new window.bootstrap.Toast(el).show();}}catch(e){}});</script>'
+    )
+
+
+def _render_bs_offcanvas(block: dict[str, Any]) -> str:
+    button_text = _safe_text(block.get("button_text")) or "Open panel"
+    title = _safe_text(block.get("title")) or "Panel"
+    text = _safe_text(block.get("text"))
+    if not text:
+        return ""
+    button_variant = _safe_variant(block.get("button_variant"), default="primary")
+    placement = str(block.get("placement") or "end").strip().lower()
+    if placement not in {"start", "end", "top", "bottom"}:
+        placement = "end"
+    panel_id = f"offcanvas-{uuid4().hex[:8]}"
+    return (
+        f'<div class="block-bs-offcanvas"><button class="btn btn-{button_variant}" type="button" data-bs-toggle="offcanvas" '
+        f'data-bs-target="#{panel_id}" aria-controls="{panel_id}">{button_text}</button>'
+        f'<div class="offcanvas offcanvas-{placement}" tabindex="-1" id="{panel_id}" aria-labelledby="{panel_id}-label">'
+        f'<div class="offcanvas-header"><h5 class="offcanvas-title" id="{panel_id}-label">{title}</h5>'
+        '<button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button></div>'
+        f'<div class="offcanvas-body"><p class="mb-0">{text}</p></div></div></div>'
+    )
+
+
+def _render_bs_timeline(block: dict[str, Any]) -> str:
+    items = block.get("items")
+    if not isinstance(items, list):
+        return ""
+    normalized: list[dict[str, str]] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        date = _safe_text(item.get("date"))
+        title = _safe_text(item.get("title"))
+        text = _safe_text(item.get("text"))
+        if not title and not text:
+            continue
+        normalized.append({"date": date, "title": title, "text": text})
+    if not normalized:
+        return ""
+    section_title = _safe_text(block.get("title"))
+    parts = ['<section class="block-bs-timeline">']
+    if section_title:
+        parts.append(f'<h3 class="mb-3">{section_title}</h3>')
+    parts.append('<ol class="timeline-list">')
+    for item in normalized:
+        parts.append('<li class="timeline-item">')
+        if item["date"]:
+            parts.append(f'<small class="timeline-date">{item["date"]}</small>')
+        if item["title"]:
+            parts.append(f'<h4 class="timeline-title">{item["title"]}</h4>')
+        if item["text"]:
+            parts.append(f'<p class="timeline-text">{item["text"]}</p>')
+        parts.append("</li>")
+    parts.append("</ol></section>")
+    return "".join(parts)
+
+
+def _render_bs_pricing_table(block: dict[str, Any]) -> str:
+    plans = block.get("plans")
+    if not isinstance(plans, list):
+        return ""
+    normalized: list[dict[str, Any]] = []
+    for plan in plans:
+        if not isinstance(plan, dict):
+            continue
+        title = _safe_text(plan.get("title"))
+        price = _safe_text(plan.get("price"))
+        period = _safe_text(plan.get("period"))
+        features_raw = plan.get("features")
+        features: list[str] = []
+        if isinstance(features_raw, list):
+            features = [_safe_text(x) for x in features_raw if str(x).strip()]
+        if not title and not price and not features:
+            continue
+        normalized.append(
+            {
+                "title": title,
+                "price": price,
+                "period": period,
+                "features": features,
+                "button_label": _safe_text(plan.get("button_label")) or "Choose",
+                "button_url": _safe_url(plan.get("button_url")),
+                "recommended": bool(plan.get("recommended")),
+            }
+        )
+    if not normalized:
+        return ""
+
+    section_title = _safe_text(block.get("title"))
+    section_subtitle = _safe_text(block.get("subtitle"))
+    parts = ['<section class="block-bs-pricing">']
+    if section_title:
+        parts.append(f'<h3 class="mb-2">{section_title}</h3>')
+    if section_subtitle:
+        parts.append(f'<p class="text-muted mb-3">{section_subtitle}</p>')
+    parts.append('<div class="row g-3">')
+    for plan in normalized:
+        card_cls = "card h-100 shadow-sm"
+        if plan["recommended"]:
+            card_cls += " border-primary"
+        parts.append('<div class="col-12 col-md-6 col-xl-4">')
+        parts.append(f'<article class="{card_cls}"><div class="card-body d-flex flex-column">')
+        if plan["recommended"]:
+            parts.append('<span class="badge text-bg-primary mb-2 align-self-start">Popular</span>')
+        if plan["title"]:
+            parts.append(f'<h4 class="h5 card-title">{plan["title"]}</h4>')
+        if plan["price"]:
+            parts.append(f'<p class="display-6 fw-bold mb-1">{plan["price"]}</p>')
+        if plan["period"]:
+            parts.append(f'<p class="text-muted mb-3">{plan["period"]}</p>')
+        if plan["features"]:
+            parts.append('<ul class="list-unstyled small mb-4">')
+            for feature in plan["features"]:
+                parts.append(f'<li class="mb-2">• {feature}</li>')
+            parts.append("</ul>")
+        btn_url = plan["button_url"]
+        btn_variant = "primary" if plan["recommended"] else "outline-primary"
+        parts.append(
+            f'<a class="btn btn-{btn_variant} mt-auto" href="{btn_url if btn_url and btn_url != "#" else "#"}">{plan["button_label"]}</a>'
+        )
+        parts.append("</div></article></div>")
+    parts.append("</div></section>")
+    return "".join(parts)
+
+
 def _render_cards_slider(block: dict[str, Any]) -> str:
     title = _safe_text(block.get("title"))
     subtitle = _safe_text(block.get("subtitle"))
@@ -665,6 +846,26 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
                 output.append(rendered)
         elif block_type == "bs_nav":
             rendered = _render_bs_nav(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_modal":
+            rendered = _render_bs_modal(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_toast":
+            rendered = _render_bs_toast(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_offcanvas":
+            rendered = _render_bs_offcanvas(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_timeline":
+            rendered = _render_bs_timeline(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_pricing_table":
+            rendered = _render_bs_pricing_table(block)
             if rendered:
                 output.append(rendered)
         elif block_type == "columns":

@@ -29,6 +29,11 @@
     { value: "bs_spinner", label: "Bootstrap Spinner", icon: "SP", group: "Bootstrap" },
     { value: "bs_carousel", label: "Bootstrap Carousel", icon: "CR", group: "Bootstrap" },
     { value: "bs_nav", label: "Bootstrap Nav", icon: "NV", group: "Bootstrap" },
+    { value: "bs_modal", label: "Bootstrap Modal", icon: "MO", group: "Bootstrap" },
+    { value: "bs_toast", label: "Bootstrap Toast", icon: "TS", group: "Bootstrap" },
+    { value: "bs_offcanvas", label: "Bootstrap Offcanvas", icon: "OF", group: "Bootstrap" },
+    { value: "bs_timeline", label: "Bootstrap Timeline", icon: "TL", group: "Bootstrap" },
+    { value: "bs_pricing_table", label: "Bootstrap Pricing", icon: "PT", group: "Bootstrap" },
     { value: "bs_divider", label: "Divider", icon: "DV", group: "Bootstrap" },
     { value: "columns", label: "Columns", icon: "C", group: "Layout" },
     { value: "rows", label: "Rows", icon: "R", group: "Layout" },
@@ -62,6 +67,11 @@
     "bs_spinner",
     "bs_carousel",
     "bs_nav",
+    "bs_modal",
+    "bs_toast",
+    "bs_offcanvas",
+    "bs_timeline",
+    "bs_pricing_table",
     "bs_divider",
     "faq",
     "spacer",
@@ -141,6 +151,50 @@
         };
       })
       .filter((item) => item.title || item.text);
+  }
+
+  function parseTimelineLines(raw) {
+    if (!raw) return [];
+    return String(raw)
+      .replace(/\r/g, "\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split("|").map((part) => part.trim());
+        return {
+          date: parts[0] || "",
+          title: parts[1] || "",
+          text: parts.slice(2).join("|"),
+        };
+      })
+      .filter((item) => item.title || item.text);
+  }
+
+  function parsePricingLines(raw) {
+    if (!raw) return [];
+    return String(raw)
+      .replace(/\r/g, "\n")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const parts = line.split("|").map((part) => part.trim());
+        const featureText = parts[3] || "";
+        return {
+          title: parts[0] || "",
+          price: parts[1] || "",
+          period: parts[2] || "",
+          features: featureText
+            .split(";")
+            .map((item) => item.trim())
+            .filter(Boolean),
+          button_label: parts[4] || "Choose",
+          button_url: parts[5] || "#",
+          recommended: String(parts[6] || "").toLowerCase() === "recommended",
+        };
+      })
+      .filter((item) => item.title || item.price || item.features.length);
   }
 
   function parseCsvLine(line) {
@@ -339,6 +393,45 @@
       block.justified = !!block.justified;
       block.vertical = !!block.vertical;
     }
+    if (String(block.type || "") === "bs_modal") {
+      block.button_text = String(block.button_text || "Open modal");
+      block.button_variant = String(block.button_variant || "primary");
+      block.title = String(block.title || "Modal title");
+      block.text = String(block.text || "");
+      block.size = String(block.size || "");
+      block.scrollable = !!block.scrollable;
+      block.centered = !!block.centered;
+      block.fullscreen = !!block.fullscreen;
+      block.footer_primary_text = String(block.footer_primary_text || "Got it");
+      block.footer_secondary_text = String(block.footer_secondary_text || "Close");
+    }
+    if (String(block.type || "") === "bs_toast") {
+      block.title = String(block.title || "Notification");
+      block.text = String(block.text || "");
+      block.delay = Number(block.delay || 5000) || 5000;
+      block.autohide = block.autohide !== false;
+      block.variant = String(block.variant || "primary");
+    }
+    if (String(block.type || "") === "bs_offcanvas") {
+      block.button_text = String(block.button_text || "Open panel");
+      block.button_variant = String(block.button_variant || "primary");
+      block.title = String(block.title || "Panel");
+      block.text = String(block.text || "");
+      block.placement = String(block.placement || "end");
+    }
+    if (String(block.type || "") === "bs_timeline") {
+      block.title = String(block.title || "");
+      if (!Array.isArray(block.items)) {
+        block.items = parseTimelineLines(block.items || "");
+      }
+    }
+    if (String(block.type || "") === "bs_pricing_table") {
+      block.title = String(block.title || "Pricing plans");
+      block.subtitle = String(block.subtitle || "");
+      if (!Array.isArray(block.plans)) {
+        block.plans = parsePricingLines(block.plans || "");
+      }
+    }
     return block;
   }
 
@@ -536,6 +629,74 @@
             { label: "Windows", url: "#", active: false },
           ],
         };
+      case "bs_modal":
+        return {
+          type,
+          button_text: "Открыть детали",
+          button_variant: "primary",
+          title: "Детали подключения",
+          text: "Подробная информация о настройке и доступе.",
+          size: "",
+          scrollable: false,
+          centered: true,
+          fullscreen: false,
+          footer_primary_text: "Понятно",
+          footer_secondary_text: "Закрыть",
+        };
+      case "bs_toast":
+        return {
+          type,
+          title: "Уведомление",
+          text: "Ваш заказ принят и обрабатывается.",
+          delay: 5000,
+          autohide: true,
+          variant: "primary",
+        };
+      case "bs_offcanvas":
+        return {
+          type,
+          button_text: "Открыть меню",
+          button_variant: "primary",
+          title: "Быстрые действия",
+          text: "Здесь можно разместить полезные ссылки и инструкции.",
+          placement: "end",
+        };
+      case "bs_timeline":
+        return {
+          type,
+          title: "Как это работает",
+          items: [
+            { date: "Шаг 1", title: "Оформление", text: "Выберите подходящий тариф и оплатите доступ." },
+            { date: "Шаг 2", title: "Подключение", text: "Получите конфиг и настройте приложение." },
+            { date: "Шаг 3", title: "Использование", text: "Пользуйтесь сервисом на выбранном устройстве." },
+          ],
+        };
+      case "bs_pricing_table":
+        return {
+          type,
+          title: "Тарифы VXcloud",
+          subtitle: "Выберите план под ваш сценарий.",
+          plans: [
+            {
+              title: "Start",
+              price: "10 ⭐",
+              period: "30 дней",
+              features: ["1 устройство", "Базовая скорость", "Поддержка"],
+              button_label: "Подключить",
+              button_url: "/account/buy/",
+              recommended: false,
+            },
+            {
+              title: "Pro",
+              price: "27 ⭐",
+              period: "90 дней",
+              features: ["1 устройство", "Оптимальная цена", "Приоритетная поддержка"],
+              button_label: "Выбрать Pro",
+              button_url: "/account/buy/",
+              recommended: true,
+            },
+          ],
+        };
       case "bs_divider":
         return {
           type,
@@ -643,6 +804,11 @@
     if (type === "bs_spinner") return `${block.spinner_type || "border"} spinner`;
     if (type === "bs_carousel") return `Carousel (${Array.isArray(block.items) ? block.items.length : 0} slides)`;
     if (type === "bs_nav") return `Nav (${Array.isArray(block.items) ? block.items.length : 0} links)`;
+    if (type === "bs_modal") return `${block.button_text || "Modal"} trigger`;
+    if (type === "bs_toast") return `${block.title || "Toast"} notification`;
+    if (type === "bs_offcanvas") return `${block.button_text || "Offcanvas"} panel`;
+    if (type === "bs_timeline") return `Timeline (${Array.isArray(block.items) ? block.items.length : 0} items)`;
+    if (type === "bs_pricing_table") return `Pricing (${Array.isArray(block.plans) ? block.plans.length : 0} plans)`;
     if (type === "bs_divider") return "Divider";
     if (type === "columns") {
       const leftCount = Array.isArray(block.left_blocks) ? block.left_blocks.length : 0;
@@ -1775,6 +1941,240 @@
           holder.appendChild(field("Vertical", vertical));
           return;
         }
+        if (type === "bs_modal") {
+          const buttonText = textInput(item.button_text || "");
+          const buttonVariant = selectInput(
+            [
+              { value: "primary", label: "Primary" },
+              { value: "secondary", label: "Secondary" },
+              { value: "success", label: "Success" },
+              { value: "danger", label: "Danger" },
+              { value: "warning", label: "Warning" },
+              { value: "info", label: "Info" },
+              { value: "dark", label: "Dark" },
+            ],
+            item.button_variant || "primary"
+          );
+          const title = textInput(item.title || "");
+          const text = textArea(item.text || "", 6);
+          const size = selectInput(
+            [
+              { value: "", label: "Default" },
+              { value: "sm", label: "Small" },
+              { value: "lg", label: "Large" },
+              { value: "xl", label: "Extra Large" },
+            ],
+            item.size || ""
+          );
+          const centered = document.createElement("input");
+          centered.type = "checkbox";
+          centered.checked = !!item.centered;
+          const scrollable = document.createElement("input");
+          scrollable.type = "checkbox";
+          scrollable.checked = !!item.scrollable;
+          const fullscreen = document.createElement("input");
+          fullscreen.type = "checkbox";
+          fullscreen.checked = !!item.fullscreen;
+          const footerPrimary = textInput(item.footer_primary_text || "");
+          const footerSecondary = textInput(item.footer_secondary_text || "");
+          buttonText.addEventListener("input", () => {
+            item.button_text = buttonText.value;
+            changed();
+          });
+          buttonVariant.addEventListener("change", () => {
+            item.button_variant = buttonVariant.value;
+            changed();
+          });
+          title.addEventListener("input", () => {
+            item.title = title.value;
+            changed();
+          });
+          text.addEventListener("input", () => {
+            item.text = text.value;
+            changed();
+          });
+          size.addEventListener("change", () => {
+            item.size = size.value;
+            changed();
+          });
+          centered.addEventListener("change", () => {
+            item.centered = centered.checked;
+            changed();
+          });
+          scrollable.addEventListener("change", () => {
+            item.scrollable = scrollable.checked;
+            changed();
+          });
+          fullscreen.addEventListener("change", () => {
+            item.fullscreen = fullscreen.checked;
+            changed();
+          });
+          footerPrimary.addEventListener("input", () => {
+            item.footer_primary_text = footerPrimary.value;
+            changed();
+          });
+          footerSecondary.addEventListener("input", () => {
+            item.footer_secondary_text = footerSecondary.value;
+            changed();
+          });
+          holder.appendChild(field("Button text", buttonText));
+          holder.appendChild(field("Button variant", buttonVariant));
+          holder.appendChild(field("Modal title", title));
+          holder.appendChild(field("Modal text", text));
+          holder.appendChild(field("Size", size));
+          holder.appendChild(field("Centered", centered));
+          holder.appendChild(field("Scrollable body", scrollable));
+          holder.appendChild(field("Fullscreen", fullscreen));
+          holder.appendChild(field("Footer primary button", footerPrimary));
+          holder.appendChild(field("Footer secondary button", footerSecondary));
+          return;
+        }
+        if (type === "bs_toast") {
+          const title = textInput(item.title || "");
+          const text = textArea(item.text || "", 6);
+          const delay = numberInput(item.delay || 5000, 1000, 20000);
+          const autohide = document.createElement("input");
+          autohide.type = "checkbox";
+          autohide.checked = item.autohide !== false;
+          const variant = selectInput(
+            [
+              { value: "primary", label: "Primary" },
+              { value: "secondary", label: "Secondary" },
+              { value: "success", label: "Success" },
+              { value: "danger", label: "Danger" },
+              { value: "warning", label: "Warning" },
+              { value: "info", label: "Info" },
+              { value: "dark", label: "Dark" },
+            ],
+            item.variant || "primary"
+          );
+          title.addEventListener("input", () => {
+            item.title = title.value;
+            changed();
+          });
+          text.addEventListener("input", () => {
+            item.text = text.value;
+            changed();
+          });
+          delay.addEventListener("input", () => {
+            item.delay = Number(delay.value || 5000);
+            changed();
+          });
+          autohide.addEventListener("change", () => {
+            item.autohide = autohide.checked;
+            changed();
+          });
+          variant.addEventListener("change", () => {
+            item.variant = variant.value;
+            changed();
+          });
+          holder.appendChild(field("Title", title));
+          holder.appendChild(field("Text", text));
+          holder.appendChild(field("Autohide delay (ms)", delay));
+          holder.appendChild(field("Autohide", autohide));
+          holder.appendChild(field("Variant", variant));
+          return;
+        }
+        if (type === "bs_offcanvas") {
+          const buttonText = textInput(item.button_text || "");
+          const buttonVariant = selectInput(
+            [
+              { value: "primary", label: "Primary" },
+              { value: "secondary", label: "Secondary" },
+              { value: "success", label: "Success" },
+              { value: "danger", label: "Danger" },
+              { value: "warning", label: "Warning" },
+              { value: "info", label: "Info" },
+              { value: "dark", label: "Dark" },
+            ],
+            item.button_variant || "primary"
+          );
+          const title = textInput(item.title || "");
+          const text = textArea(item.text || "", 6);
+          const placement = selectInput(
+            [
+              { value: "start", label: "Left" },
+              { value: "end", label: "Right" },
+              { value: "top", label: "Top" },
+              { value: "bottom", label: "Bottom" },
+            ],
+            item.placement || "end"
+          );
+          buttonText.addEventListener("input", () => {
+            item.button_text = buttonText.value;
+            changed();
+          });
+          buttonVariant.addEventListener("change", () => {
+            item.button_variant = buttonVariant.value;
+            changed();
+          });
+          title.addEventListener("input", () => {
+            item.title = title.value;
+            changed();
+          });
+          text.addEventListener("input", () => {
+            item.text = text.value;
+            changed();
+          });
+          placement.addEventListener("change", () => {
+            item.placement = placement.value;
+            changed();
+          });
+          holder.appendChild(field("Button text", buttonText));
+          holder.appendChild(field("Button variant", buttonVariant));
+          holder.appendChild(field("Panel title", title));
+          holder.appendChild(field("Panel text", text));
+          holder.appendChild(field("Placement", placement));
+          return;
+        }
+        if (type === "bs_timeline") {
+          const title = textInput(item.title || "");
+          const items = textArea(
+            (Array.isArray(item.items) ? item.items : [])
+              .map((row) => `${row.date || ""}|${row.title || ""}|${row.text || ""}`)
+              .join("\n"),
+            8
+          );
+          title.addEventListener("input", () => {
+            item.title = title.value;
+            changed();
+          });
+          items.addEventListener("input", () => {
+            item.items = parseTimelineLines(items.value);
+            changed();
+          });
+          holder.appendChild(field("Section title", title));
+          holder.appendChild(field("Items (date|title|text)", items));
+          return;
+        }
+        if (type === "bs_pricing_table") {
+          const title = textInput(item.title || "");
+          const subtitle = textInput(item.subtitle || "");
+          const plans = textArea(
+            (Array.isArray(item.plans) ? item.plans : [])
+              .map((plan) =>
+                `${plan.title || ""}|${plan.price || ""}|${plan.period || ""}|${(Array.isArray(plan.features) ? plan.features : []).join(";")}|${plan.button_label || ""}|${plan.button_url || ""}|${plan.recommended ? "recommended" : ""}`
+              )
+              .join("\n"),
+            10
+          );
+          title.addEventListener("input", () => {
+            item.title = title.value;
+            changed();
+          });
+          subtitle.addEventListener("input", () => {
+            item.subtitle = subtitle.value;
+            changed();
+          });
+          plans.addEventListener("input", () => {
+            item.plans = parsePricingLines(plans.value);
+            changed();
+          });
+          holder.appendChild(field("Section title", title));
+          holder.appendChild(field("Section subtitle", subtitle));
+          holder.appendChild(field("Plans (title|price|period|f1;f2|button|url|recommended)", plans));
+          return;
+        }
         if (type === "bs_divider") {
           const spacing = numberInput(item.spacing || 24, 0, 120);
           const label = textInput(item.label || "");
@@ -2885,6 +3285,230 @@
         form.appendChild(field("Fill width", fill));
         form.appendChild(field("Justified", justified));
         form.appendChild(field("Vertical", vertical));
+      } else if (type === "bs_modal") {
+        const buttonText = textInput(selected.button_text || "");
+        const buttonVariant = selectInput(
+          [
+            { value: "primary", label: "Primary" },
+            { value: "secondary", label: "Secondary" },
+            { value: "success", label: "Success" },
+            { value: "danger", label: "Danger" },
+            { value: "warning", label: "Warning" },
+            { value: "info", label: "Info" },
+            { value: "dark", label: "Dark" },
+          ],
+          selected.button_variant || "primary"
+        );
+        const title = textInput(selected.title || "");
+        const textField = textArea(selected.text || "", 6);
+        const size = selectInput(
+          [
+            { value: "", label: "Default" },
+            { value: "sm", label: "Small" },
+            { value: "lg", label: "Large" },
+            { value: "xl", label: "Extra Large" },
+          ],
+          selected.size || ""
+        );
+        const centered = document.createElement("input");
+        centered.type = "checkbox";
+        centered.checked = !!selected.centered;
+        const scrollable = document.createElement("input");
+        scrollable.type = "checkbox";
+        scrollable.checked = !!selected.scrollable;
+        const fullscreen = document.createElement("input");
+        fullscreen.type = "checkbox";
+        fullscreen.checked = !!selected.fullscreen;
+        const footerPrimary = textInput(selected.footer_primary_text || "");
+        const footerSecondary = textInput(selected.footer_secondary_text || "");
+        buttonText.addEventListener("input", () => {
+          selected.button_text = buttonText.value;
+          changed();
+        });
+        buttonVariant.addEventListener("change", () => {
+          selected.button_variant = buttonVariant.value;
+          changed();
+        });
+        title.addEventListener("input", () => {
+          selected.title = title.value;
+          changed();
+        });
+        textField.addEventListener("input", () => {
+          selected.text = textField.value;
+          changed();
+        });
+        size.addEventListener("change", () => {
+          selected.size = size.value;
+          changed();
+        });
+        centered.addEventListener("change", () => {
+          selected.centered = centered.checked;
+          changed();
+        });
+        scrollable.addEventListener("change", () => {
+          selected.scrollable = scrollable.checked;
+          changed();
+        });
+        fullscreen.addEventListener("change", () => {
+          selected.fullscreen = fullscreen.checked;
+          changed();
+        });
+        footerPrimary.addEventListener("input", () => {
+          selected.footer_primary_text = footerPrimary.value;
+          changed();
+        });
+        footerSecondary.addEventListener("input", () => {
+          selected.footer_secondary_text = footerSecondary.value;
+          changed();
+        });
+        form.appendChild(field("Button text", buttonText));
+        form.appendChild(field("Button variant", buttonVariant));
+        form.appendChild(field("Modal title", title));
+        form.appendChild(field("Modal text", textField));
+        form.appendChild(field("Size", size));
+        form.appendChild(field("Centered", centered));
+        form.appendChild(field("Scrollable body", scrollable));
+        form.appendChild(field("Fullscreen", fullscreen));
+        form.appendChild(field("Footer primary button", footerPrimary));
+        form.appendChild(field("Footer secondary button", footerSecondary));
+      } else if (type === "bs_toast") {
+        const title = textInput(selected.title || "");
+        const textField = textArea(selected.text || "", 6);
+        const delay = numberInput(selected.delay || 5000, 1000, 20000);
+        const autohide = document.createElement("input");
+        autohide.type = "checkbox";
+        autohide.checked = selected.autohide !== false;
+        const variant = selectInput(
+          [
+            { value: "primary", label: "Primary" },
+            { value: "secondary", label: "Secondary" },
+            { value: "success", label: "Success" },
+            { value: "danger", label: "Danger" },
+            { value: "warning", label: "Warning" },
+            { value: "info", label: "Info" },
+            { value: "dark", label: "Dark" },
+          ],
+          selected.variant || "primary"
+        );
+        title.addEventListener("input", () => {
+          selected.title = title.value;
+          changed();
+        });
+        textField.addEventListener("input", () => {
+          selected.text = textField.value;
+          changed();
+        });
+        delay.addEventListener("input", () => {
+          selected.delay = Number(delay.value || 5000);
+          changed();
+        });
+        autohide.addEventListener("change", () => {
+          selected.autohide = autohide.checked;
+          changed();
+        });
+        variant.addEventListener("change", () => {
+          selected.variant = variant.value;
+          changed();
+        });
+        form.appendChild(field("Title", title));
+        form.appendChild(field("Text", textField));
+        form.appendChild(field("Autohide delay (ms)", delay));
+        form.appendChild(field("Autohide", autohide));
+        form.appendChild(field("Variant", variant));
+      } else if (type === "bs_offcanvas") {
+        const buttonText = textInput(selected.button_text || "");
+        const buttonVariant = selectInput(
+          [
+            { value: "primary", label: "Primary" },
+            { value: "secondary", label: "Secondary" },
+            { value: "success", label: "Success" },
+            { value: "danger", label: "Danger" },
+            { value: "warning", label: "Warning" },
+            { value: "info", label: "Info" },
+            { value: "dark", label: "Dark" },
+          ],
+          selected.button_variant || "primary"
+        );
+        const title = textInput(selected.title || "");
+        const textField = textArea(selected.text || "", 6);
+        const placement = selectInput(
+          [
+            { value: "start", label: "Left" },
+            { value: "end", label: "Right" },
+            { value: "top", label: "Top" },
+            { value: "bottom", label: "Bottom" },
+          ],
+          selected.placement || "end"
+        );
+        buttonText.addEventListener("input", () => {
+          selected.button_text = buttonText.value;
+          changed();
+        });
+        buttonVariant.addEventListener("change", () => {
+          selected.button_variant = buttonVariant.value;
+          changed();
+        });
+        title.addEventListener("input", () => {
+          selected.title = title.value;
+          changed();
+        });
+        textField.addEventListener("input", () => {
+          selected.text = textField.value;
+          changed();
+        });
+        placement.addEventListener("change", () => {
+          selected.placement = placement.value;
+          changed();
+        });
+        form.appendChild(field("Button text", buttonText));
+        form.appendChild(field("Button variant", buttonVariant));
+        form.appendChild(field("Panel title", title));
+        form.appendChild(field("Panel text", textField));
+        form.appendChild(field("Placement", placement));
+      } else if (type === "bs_timeline") {
+        const title = textInput(selected.title || "");
+        const items = textArea(
+          (Array.isArray(selected.items) ? selected.items : [])
+            .map((row) => `${row.date || ""}|${row.title || ""}|${row.text || ""}`)
+            .join("\n"),
+          8
+        );
+        title.addEventListener("input", () => {
+          selected.title = title.value;
+          changed();
+        });
+        items.addEventListener("input", () => {
+          selected.items = parseTimelineLines(items.value);
+          changed();
+        });
+        form.appendChild(field("Section title", title));
+        form.appendChild(field("Items (date|title|text)", items));
+      } else if (type === "bs_pricing_table") {
+        const title = textInput(selected.title || "");
+        const subtitle = textInput(selected.subtitle || "");
+        const plans = textArea(
+          (Array.isArray(selected.plans) ? selected.plans : [])
+            .map((plan) =>
+              `${plan.title || ""}|${plan.price || ""}|${plan.period || ""}|${(Array.isArray(plan.features) ? plan.features : []).join(";")}|${plan.button_label || ""}|${plan.button_url || ""}|${plan.recommended ? "recommended" : ""}`
+            )
+            .join("\n"),
+          10
+        );
+        title.addEventListener("input", () => {
+          selected.title = title.value;
+          changed();
+        });
+        subtitle.addEventListener("input", () => {
+          selected.subtitle = subtitle.value;
+          changed();
+        });
+        plans.addEventListener("input", () => {
+          selected.plans = parsePricingLines(plans.value);
+          changed();
+        });
+        form.appendChild(field("Section title", title));
+        form.appendChild(field("Section subtitle", subtitle));
+        form.appendChild(field("Plans (title|price|period|f1;f2|button|url|recommended)", plans));
       } else if (type === "bs_divider") {
         const spacing = numberInput(selected.spacing || 24, 0, 120);
         const label = textInput(selected.label || "");
