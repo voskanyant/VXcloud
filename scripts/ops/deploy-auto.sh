@@ -80,10 +80,28 @@ kill_gunicorn_on_8088() {
   fi
 }
 
+kill_any_on_8088() {
+  local pids pid
+  pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
+  [[ -z "$pids" ]] && return 0
+
+  for pid in $pids; do
+    echo "Stopping listener on 8088: pid=$pid"
+    kill -TERM "$pid" 2>/dev/null || true
+  done
+
+  sleep 1
+  pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
+  for pid in $pids; do
+    kill -KILL "$pid" 2>/dev/null || true
+  done
+}
+
 cleanup_legacy_bindings() {
   # Older installs used a host systemd service on the same port.
   stop_legacy_systemd_unit
   kill_gunicorn_on_8088
+  kill_any_on_8088
 
   # Stop previous compose containers from this project and remove orphans.
   docker compose --env-file .env down --remove-orphans || true
@@ -111,6 +129,7 @@ start_web_with_port_takeover() {
   while [[ "$attempt" -le "$max_attempts" ]]; do
     echo "Starting web container (attempt $attempt/$max_attempts)..."
     kill_gunicorn_on_8088
+    kill_any_on_8088
 
     if docker compose --env-file .env up -d web; then
       echo "vxcloud-web started."

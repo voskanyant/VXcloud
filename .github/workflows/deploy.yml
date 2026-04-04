@@ -25,6 +25,20 @@ jobs:
           script: |
             set -euo pipefail
             cd /srv/apps/vxcloud/app
+            echo "[preflight] free 127.0.0.1:8088 if occupied..."
+            if ss -lntH "( sport = :8088 )" | grep -q .; then
+              sudo -n systemctl stop vxcloud-web.service 2>/dev/null || true
+              sudo -n systemctl disable vxcloud-web.service 2>/dev/null || true
+              pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
+              for pid in $pids; do
+                kill -TERM "$pid" 2>/dev/null || true
+              done
+              sleep 1
+              pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
+              for pid in $pids; do
+                kill -KILL "$pid" 2>/dev/null || true
+              done
+            fi
             git fetch origin main
             git reset --hard origin/main
             bash scripts/ops/deploy-auto.sh
