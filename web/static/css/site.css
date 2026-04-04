@@ -111,6 +111,20 @@ a:hover {
   letter-spacing: 0.06em;
 }
 
+.vx-navbar-offcanvas .offcanvas-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.vx-navbar-offcanvas .navbar-nav .nav-link {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.vx-navbar-offcanvas .btn {
+  width: 100%;
+}
+
 .site-menu-toggle {
   display: none !important;
   appearance: none;
@@ -170,6 +184,12 @@ a:hover {
   padding: 10px 16px;
   border-radius: 12px;
   white-space: nowrap;
+}
+
+.site-cta-price {
+  margin-left: 8px;
+  font-weight: 700;
+  opacity: 0.95;
 }
 
 .site-footer {
@@ -870,6 +890,61 @@ textarea,
   padding: 14px;
 }
 
+.cabinet-page {
+  position: relative;
+}
+
+.cabinet-sections .cabinet-fold {
+  padding: 0;
+  overflow: hidden;
+}
+
+.cabinet-fold-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid transparent;
+  font-weight: 700;
+}
+
+.cabinet-fold-summary::-webkit-details-marker {
+  display: none;
+}
+
+.cabinet-fold[open] .cabinet-fold-summary {
+  border-bottom-color: #e6edf7;
+}
+
+.cabinet-fold-content {
+  padding: 14px 18px 18px;
+}
+
+.cabinet-mobile-actions {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1050;
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid #dde6f4;
+  backdrop-filter: blur(10px);
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  box-shadow: 0 -8px 20px rgba(15, 23, 42, 0.08);
+}
+
+.cabinet-mobile-actions .btn {
+  min-height: 40px;
+  font-size: 12px;
+  padding: 8px;
+}
+
 .vx-rename-details summary {
   cursor: pointer;
   user-select: none;
@@ -980,6 +1055,10 @@ textarea,
   .block-card {
     flex-basis: min(88%, 360px);
   }
+
+  .vx-navbar-offcanvas {
+    --bs-offcanvas-width: min(88vw, 360px);
+  }
 }
 
 @media (max-width: 640px) {
@@ -1012,6 +1091,14 @@ textarea,
 
   .cabinet-hero-actions .btn {
     width: 100%;
+  }
+
+  .cabinet-hero .cabinet-hero-actions {
+    display: none !important;
+  }
+
+  .cabinet-page {
+    padding-bottom: 86px;
   }
 
   .card,
@@ -1069,6 +1156,16 @@ textarea,
   .block-row-layout {
     grid-template-columns: 1fr !important;
   }
+
+  .cabinet-fold-summary {
+    padding: 12px 14px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .cabinet-fold-content {
+    padding: 12px 14px 14px;
+  }
 }
 
 @media (min-width: 981px) {
@@ -1104,5 +1201,9 @@ textarea,
 
   .block-card {
     flex-basis: min(34%, 360px);
+  }
+
+  .cabinet-mobile-actions {
+    display: none !important;
   }
 }
