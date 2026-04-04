@@ -10,26 +10,41 @@
 {% cms_text "cabinet.config.back_action" "Назад в кабинет" as cabinet_config_back_action %}
 {% cms_text "cabinet.config.open_action" "Открыть в приложении" as cabinet_config_open_action %}
 
-<section class="surface-card">
+<section class="surface-card config-shell">
   <div class="row g-4 align-items-start">
-    <div class="col-lg-5">
-      <h1 class="h3 mb-3">{{ cabinet_config_heading }}: {{ display_name }}</h1>
-      <img id="qr" class="img-fluid border rounded-4 p-2 bg-white shadow-sm" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
-      <div class="d-grid gap-2 mt-3">
+    <div class="col-12 col-lg-5">
+      <h1 class="h3 mb-3">{{ cabinet_config_heading }}</h1>
+      <p class="text-secondary small mb-3">{{ display_name }}</p>
+      <div class="config-qr-wrap">
+        <img id="qr" class="img-fluid config-qr-img" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
+      </div>
+      <div class="config-actions-grid d-grid gap-2 mt-3">
         <a class="btn btn-primary" href="/open-app/?u={{ copy_text|urlencode }}">🚀 {{ cabinet_config_open_action }}</a>
         <button class="btn btn-outline-primary" type="button" onclick="copyCfg()">📋 {{ cabinet_config_copy_action }}</button>
         <a class="btn btn-outline-secondary" href="/account/">{{ cabinet_config_back_action }}</a>
       </div>
     </div>
 
-    <div class="col-lg-7">
-      <div class="surface-panel mb-3">
-        <div class="small text-secondary mb-1">Действует до</div>
-        <div class="fw-semibold">{{ subscription.expires_at|date:'d.m.Y H:i' }}</div>
-      </div>
-      <div class="surface-panel mb-3">
-        <div class="small text-secondary mb-1">Способ оплаты</div>
-        <div class="fw-semibold">{{ last_payment_method }}</div>
+    <div class="col-12 col-lg-7">
+      <div class="row g-2 mb-3">
+        <div class="col-12 col-md-6">
+          <div class="surface-panel h-100">
+            <div class="small text-secondary mb-1">Статус</div>
+            <div class="fw-semibold">
+              {% if has_active %}
+                <span class="badge text-bg-success">Активна</span>
+              {% else %}
+                <span class="badge text-bg-secondary">Неактивна</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-md-6">
+          <div class="surface-panel h-100">
+            <div class="small text-secondary mb-1">Действует до</div>
+            <div class="fw-semibold">{{ subscription.expires_at|date:'d.m.Y H:i' }}</div>
+          </div>
+        </div>
       </div>
       {% if subscription.user and subscription.user.client_code %}
         <div class="surface-panel mb-3">
@@ -51,9 +66,11 @@
         </div>
       {% endif %}
 
-      <label class="form-label" for="cfg">Ссылка конфигурации</label>
-      <textarea id="cfg" class="form-control" rows="7" readonly>{{ copy_text }}</textarea>
-      <p class="small text-secondary mt-2 mb-0">Нажмите «Открыть в приложении» или скопируйте ссылку и импортируйте в клиент вручную.</p>
+      <div class="surface-panel">
+        <label class="form-label fw-semibold" for="cfg">Ссылка конфигурации</label>
+        <textarea id="cfg" class="form-control config-link-field" rows="7" readonly>{{ copy_text }}</textarea>
+        <p class="small text-secondary mt-2 mb-0">Нажмите «Открыть в приложении» или скопируйте ссылку и импортируйте в клиент вручную.</p>
+      </div>
     </div>
   </div>
 </section>

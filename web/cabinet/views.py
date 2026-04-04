@@ -81,8 +81,8 @@ def _format_minor_amount_rub(amount_minor: int | None) -> str:
     rub = value // 100
     kop = value % 100
     if kop == 0:
-        return f"{rub} ₽"
-    return f"{rub}.{kop:02d} ₽"
+        return f"{rub} RUB"
+    return f"{rub}.{kop:02d} RUB"
 
 
 def _format_payment_method(method: str | None, currency: str | None = None) -> str:
@@ -244,6 +244,8 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
                 "expires_at": expires_at,
             }
         )
+    active_configs = sum(1 for row in subscription_rows if bool(row["is_active"]))
+    inactive_configs = max(len(subscription_rows) - active_configs, 0)
     return render(
         request,
         "cabinet/dashboard.html",
@@ -257,6 +259,8 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
             "card_price_label": _format_minor_amount_rub(settings.CARD_PAYMENT_AMOUNT_MINOR),
             "now": now,
             "subscription_rows": subscription_rows,
+            "active_configs": active_configs,
+            "inactive_configs": inactive_configs,
         },
     )
 

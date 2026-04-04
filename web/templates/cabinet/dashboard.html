@@ -6,18 +6,21 @@
 
 {% block content %}
 {% cms_text "cabinet.dashboard.heading" "Личный кабинет" as cabinet_heading %}
-{% cms_text "cabinet.dashboard.buy_new_action" "⭐ Купить доступ" as cabinet_buy_new_action %}
+{% cms_text "cabinet.dashboard.buy_new_action" "💳 Купить доступ" as cabinet_buy_new_action %}
 {% cms_text "cabinet.dashboard.renew_action_short" "🔄 Продлить" as cabinet_renew_action_short %}
 {% cms_text "cabinet.dashboard.support_action" "🆘 Поддержка" as cabinet_support_action %}
 {% cms_text "cabinet.empty_configs" "Пока нет активных доступов. Оформите первый доступ, чтобы он появился здесь." as cabinet_empty_configs %}
 {% cms_text "cabinet.error_loading" "Не удалось загрузить данные аккаунта. Попробуйте обновить страницу." as cabinet_error_loading %}
 
-<section class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-  <div>
-    <h1 class="display-6 fw-bold mb-2">{{ cabinet_heading }}</h1>
-    <p class="text-secondary mb-0">Управляйте подпиской, конфигами и подключением в одном месте.</p>
+<section class="surface-card cabinet-hero mb-4">
+  <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+    <div>
+      <h1 class="display-6 fw-bold mb-2">{{ cabinet_heading }}</h1>
+      <p class="text-secondary mb-0">Управляйте доступами, конфигами и подключением в одном месте.</p>
+    </div>
+    <span class="badge text-bg-light border fw-semibold align-self-start">{{ subscription_rows|length }} доступов</span>
   </div>
-  <div class="d-flex flex-wrap gap-2">
+  <div class="cabinet-hero-actions d-grid d-sm-flex gap-2 mt-3">
     <a class="btn btn-primary" href="/account/buy/">{{ cabinet_buy_new_action }} · {{ card_price_label }}</a>
     <a class="btn btn-outline-primary" href="/account/renew/">{{ cabinet_renew_action_short }} · {{ card_price_label }}</a>
     <a class="btn btn-outline-secondary" href="/instructions/">{{ cabinet_support_action }}</a>
@@ -28,19 +31,25 @@
   <div class="surface-card"><div class="alert alert-danger mb-0">{{ cabinet_error_loading }}</div></div>
 {% else %}
   <section class="row g-3 mb-4">
-    <div class="col-12 col-md-6 col-xl-3">
+    <div class="col-6 col-lg-3">
       <article class="surface-card h-100 stat-card">
         <div class="stat-label">Пользователь</div>
         <div class="stat-value">{{ request.user.username }}</div>
       </article>
     </div>
-    <div class="col-12 col-md-6 col-xl-3">
+    <div class="col-6 col-lg-3">
       <article class="surface-card h-100 stat-card">
         <div class="stat-label">ID клиента</div>
         <div class="stat-value">{% if bot_user.client_code %}<code>{{ bot_user.client_code }}</code>{% else %}-{% endif %}</div>
       </article>
     </div>
-    <div class="col-12 col-md-6 col-xl-3">
+    <div class="col-6 col-lg-3">
+      <article class="surface-card h-100 stat-card">
+        <div class="stat-label">Активные</div>
+        <div class="stat-value">{{ active_configs }}</div>
+      </article>
+    </div>
+    <div class="col-6 col-lg-3">
       <article class="surface-card h-100 stat-card">
         <div class="stat-label">Telegram</div>
         <div class="stat-value">
@@ -49,15 +58,9 @@
             <div class="small text-secondary mt-2"><code>{{ linked.telegram_id }}</code></div>
           {% else %}
             <span class="badge text-bg-warning">Не привязан</span>
-            <div class="small mt-2"><a href="/account/link/">Привязать</a></div>
+            <div class="small mt-2"><a href="/account/link/">Привязать</a> · <span class="text-secondary">{{ inactive_configs }} неактивных</span></div>
           {% endif %}
         </div>
-      </article>
-    </div>
-    <div class="col-12 col-md-6 col-xl-3">
-      <article class="surface-card h-100 stat-card">
-        <div class="stat-label">Последний способ оплаты</div>
-        <div class="stat-value">{{ last_payment_method }}</div>
       </article>
     </div>
   </section>
@@ -66,55 +69,120 @@
 <section class="surface-card">
   <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <h2 class="h4 mb-0">Ваши устройства</h2>
-    <span class="text-secondary small">{{ subscription_rows|length }} конфигов</span>
+    <span class="text-secondary small">Активных: {{ active_configs }} · Неактивных: {{ inactive_configs }}</span>
   </div>
 
   {% if subscription_rows %}
-    <div class="row g-3">
-      {% for row in subscription_rows %}
-        <div class="col-12 col-xl-6">
-          <article class="surface-panel h-100">
-            <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
-              <div>
-                <h3 class="h5 mb-1">{{ row.display_name }}</h3>
-                <div class="small text-secondary">ID: {{ row.id }}</div>
+    <div class="d-none d-lg-block">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle vx-config-table mb-0">
+          <thead>
+            <tr>
+              <th>Устройство</th>
+              <th>Статус</th>
+              <th>До</th>
+              <th>Ссылка</th>
+              <th class="text-nowrap">Действия</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in subscription_rows %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ row.display_name }}</div>
+                  <div class="small text-secondary">ID: {{ row.id }}</div>
+                </td>
+                <td>
+                  {% if row.is_active %}
+                    <span class="badge text-bg-success">{{ row.status_text }}</span>
+                  {% else %}
+                    <span class="badge text-bg-secondary">{{ row.status_text }}</span>
+                  {% endif %}
+                </td>
+                <td class="small text-secondary text-nowrap">
+                  {% if row.expires_at %}
+                    {{ row.expires_at|date:'d.m.Y H:i' }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  <div class="vx-link-input-wrap">
+                    <input type="text" class="form-control form-control-sm" value="{{ row.obj.vless_url|default:'' }}" readonly>
+                    <button type="button" class="btn btn-sm btn-outline-secondary js-copy-config js-copy-icon" data-copy-text="{{ row.obj.vless_url|default:'' }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+                      <i class="bi bi-clipboard"></i>
+                    </button>
+                  </div>
+                </td>
+                <td class="text-nowrap">
+                  <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <a class="btn btn-sm btn-outline-secondary" href="/account/config/{{ row.id }}/#qr">QR</a>
+                    <form method="post" action="/account/subscriptions/{{ row.id }}/rename/" class="d-flex align-items-center gap-2 mb-0 flex-nowrap">
+                      {% csrf_token %}
+                      <input type="text" class="form-control form-control-sm vx-rename-input" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Имя" />
+                      <button type="submit" class="btn btn-sm btn-outline-secondary js-rename-icon" title="Переименовать" aria-label="Переименовать">
+                        <i class="bi bi-pencil"></i>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="d-lg-none">
+      <div class="row g-3">
+        {% for row in subscription_rows %}
+          <div class="col-12">
+            <article class="surface-panel h-100 config-mobile-card">
+              <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                <div>
+                  <h3 class="h5 mb-1">{{ row.display_name }}</h3>
+                  <div class="small text-secondary">ID: {{ row.id }}</div>
+                </div>
+                {% if row.is_active %}
+                  <span class="badge text-bg-success">{{ row.status_text }}</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">{{ row.status_text }}</span>
+                {% endif %}
               </div>
-              {% if row.is_active %}
-                <span class="badge text-bg-success">{{ row.status_text }}</span>
-              {% else %}
-                <span class="badge text-bg-secondary">{{ row.status_text }}</span>
-              {% endif %}
-            </div>
 
-            <p class="small text-secondary mb-3">
-              {% if row.expires_at %}
-                Действует до: {{ row.expires_at|date:'d.m.Y H:i' }}
-              {% else %}
-                Дата окончания: -
-              {% endif %}
-            </p>
+              <p class="small text-secondary mb-2">
+                {% if row.expires_at %}
+                  Действует до: {{ row.expires_at|date:'d.m.Y H:i' }}
+                {% else %}
+                  Дата окончания: -
+                {% endif %}
+              </p>
 
-            <div class="d-flex flex-wrap gap-2 mb-3">
-              <a class="btn btn-sm btn-outline-primary" href="/account/config/{{ row.id }}/">🚀 Открыть</a>
-              <a class="btn btn-sm btn-outline-secondary" href="/account/config/{{ row.id }}/#qr">📷 QR-код</a>
-              <button type="button" class="btn btn-sm btn-outline-secondary js-copy-config" data-copy-text="{{ row.obj.vless_url|default:'' }}">📋 Скопировать</button>
-              <a class="btn btn-sm btn-outline-secondary" href="/account/renew/?subscription_id={{ row.id }}">🔄 Продлить · {{ card_price_label }}</a>
-            </div>
+              <div class="vx-link-input-wrap mb-3">
+                <input type="text" class="form-control form-control-sm" value="{{ row.obj.vless_url|default:'' }}" readonly>
+                <button type="button" class="btn btn-sm btn-outline-secondary js-copy-config js-copy-icon" data-copy-text="{{ row.obj.vless_url|default:'' }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+                  <i class="bi bi-clipboard"></i>
+                </button>
+              </div>
 
-            <div class="d-flex flex-wrap gap-2 align-items-center">
-              <form method="post" action="/account/subscriptions/{{ row.id }}/rename/" class="d-flex flex-wrap gap-2 flex-grow-1">
-                {% csrf_token %}
-                <input type="text" class="form-control form-control-sm" style="max-width: 220px;" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Новое имя" />
-                <button type="submit" class="btn btn-sm btn-outline-secondary">✏️ Переименовать</button>
-              </form>
-              <form method="post" action="/account/subscriptions/{{ row.id }}/revoke/">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-sm btn-outline-danger">❌ Отключить</button>
-              </form>
-            </div>
-          </article>
-        </div>
-      {% endfor %}
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <a class="btn btn-sm btn-outline-secondary" href="/account/config/{{ row.id }}/#qr">QR</a>
+              </div>
+
+              <details class="vx-rename-details">
+                <summary>Переименовать устройство</summary>
+                <form method="post" action="/account/subscriptions/{{ row.id }}/rename/" class="d-flex gap-2 align-items-center mt-2">
+                  {% csrf_token %}
+                  <input type="text" class="form-control form-control-sm" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Имя устройства" />
+                  <button type="submit" class="btn btn-sm btn-outline-secondary js-rename-icon" title="Переименовать" aria-label="Переименовать">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                </form>
+              </details>
+            </article>
+          </div>
+        {% endfor %}
+      </div>
     </div>
   {% else %}
     <div class="alert alert-info mb-0">{{ cabinet_empty_configs }}</div>
@@ -128,10 +196,14 @@
       if (!text) return;
       try {
         await navigator.clipboard.writeText(text);
-        const previous = btn.textContent;
-        btn.textContent = 'Скопировано';
+        const icon = btn.querySelector('i');
+        const previousClass = icon ? icon.className : '';
+        const previousTitle = btn.getAttribute('title') || '';
+        if (icon) icon.className = 'bi bi-check2';
+        btn.setAttribute('title', 'Скопировано');
         setTimeout(() => {
-          btn.textContent = previous;
+          if (icon) icon.className = previousClass;
+          btn.setAttribute('title', previousTitle || 'Скопировать ссылку');
         }, 1200);
       } catch (e) {
         console.debug('copy failed', e);
