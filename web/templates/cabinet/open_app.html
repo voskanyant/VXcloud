@@ -1,24 +1,22 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load cms %}
 
 {% cms_text "cabinet.open_app.page_title" "Открытие в приложении - VXcloud" as open_app_page_title %}
 {% block title %}{{ open_app_page_title }}{% endblock %}
 
 {% block content %}
-<article class="section-card" style="max-width: 760px;">
+<section class="surface-card auth-shell">
   {% cms_text "cabinet.open_app.heading" "Открытие в приложении" as open_app_heading %}
-  {% cms_text "cabinet.open_app.description" "Сейчас откроем конфиг в приложении автоматически. Если не открылось, нажмите кнопку ниже." as open_app_description %}
-  {% cms_text "cabinet.open_app.open_action" "Открыть конфиг" as open_app_open_action %}
-  {% cms_text "cabinet.open_app.copy_action" "Скопировать ссылку" as open_app_copy_action %}
-  {% cms_text "cabinet.open_app.invalid" "Некорректная ссылка. Вернитесь в бот и нажмите \"Моя подписка\" снова." as open_app_invalid %}
-  <h1 class="h2 mb-3">{{ open_app_heading }}</h1>
+  {% cms_text "cabinet.open_app.description" "Сейчас откроем конфиг в приложении автоматически. Если не открылось, используйте кнопку ниже." as open_app_description %}
+  <h1 class="display-6 fw-bold mb-3">{{ open_app_heading }}</h1>
+
   {% if deeplink %}
     <p class="text-secondary mb-3">{{ open_app_description }}</p>
-    <div class="d-flex gap-2 flex-wrap">
-      <a class="btn btn-primary" href="{{ deeplink }}">{{ open_app_open_action }}</a>
-      <button class="btn btn-outline-secondary" type="button" onclick="copyLink()">{{ open_app_copy_action }}</button>
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <a class="btn btn-primary" href="{{ deeplink }}">🚀 Открыть конфиг</a>
+      <button class="btn btn-outline-secondary" type="button" onclick="copyLink()">📋 Скопировать ссылку</button>
     </div>
-    <textarea id="deeplink-box" class="form-control mt-3" rows="4" readonly>{{ deeplink }}</textarea>
+    <textarea id="deeplink-box" class="form-control" rows="5" readonly>{{ deeplink }}</textarea>
     <script>
       (function () {
         const url = "{{ deeplink|escapejs }}";
@@ -34,7 +32,8 @@
       }
     </script>
   {% else %}
-    <p class="text-danger mb-0">{{ open_app_invalid }}</p>
+    {% cms_text "cabinet.open_app.invalid" "Некорректная ссылка. Вернитесь в бот и нажмите «Моя подписка» снова." as open_app_invalid %}
+    <div class="alert alert-danger mb-0">{{ open_app_invalid }}</div>
   {% endif %}
-</article>
+</section>
 {% endblock %}

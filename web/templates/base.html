@@ -4,37 +4,72 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  {% cms_text "base.default_title" "VXcloud Guide" as base_default_title %}
-  {% cms_text "base.default_description" "VXcloud: стабильный доступ к интернету и простое подключение на всех устройствах." as base_default_description %}
+  {% cms_text "base.default_title" "VXcloud" as base_default_title %}
+  {% cms_text "base.default_description" "VXcloud: быстрый и понятный VPN/прокси для повседневного использования." as base_default_description %}
   <title>{% block title %}{% if page %}{% if page.seo_title %}{{ page.seo_title }}{% else %}{{ page.title }}{% endif %}{% else %}{{ base_default_title }}{% endif %}{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}{% if page and page.search_description %}{{ page.search_description }}{% else %}{{ base_default_description }}{% endif %}{% endblock %}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/site.css' %}" />
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="vx-body">
   {% include "partials/_header.html" %}
-  <main class="site-main">
-    <div class="container content-shell">
+
+  <main class="site-main py-4 py-lg-5">
+    <div class="container-xxl">
       {% if messages %}
-        <section class="alert-wrap mb-2">
+        <section class="mb-4">
           {% for message in messages %}
-            <div class="alert alert-info py-2">{{ message }}</div>
+            <div class="alert {% if 'error' in message.tags %}alert-danger{% elif 'success' in message.tags %}alert-success{% elif 'warning' in message.tags %}alert-warning{% else %}alert-info{% endif %} shadow-sm mb-2" role="alert">
+              {{ message }}
+            </div>
           {% endfor %}
         </section>
       {% endif %}
       {% block content %}{% endblock %}
     </div>
   </main>
+
   {% include "partials/_footer.html" %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    document.querySelectorAll('input, select, textarea').forEach((el) => {
-      if (el.type === 'checkbox' || el.type === 'radio') return;
-      el.classList.add('form-control');
-    });
-    document.querySelectorAll('button[type="submit"], button.btn').forEach((el) => {
-      el.classList.add('btn', 'btn-primary');
-    });
+    function bootstrapizeForms() {
+      document.querySelectorAll("form p").forEach((row) => row.classList.add("mb-3"));
+      document.querySelectorAll("form label").forEach((label) => {
+        if (!label.classList.contains("form-label")) label.classList.add("form-label");
+      });
+      document.querySelectorAll("form input, form select, form textarea").forEach((el) => {
+        const tag = el.tagName.toLowerCase();
+        const type = String(el.type || "").toLowerCase();
+        if (type === "hidden") return;
+        if (type === "checkbox" || type === "radio") {
+          el.classList.add("form-check-input");
+          return;
+        }
+        if (tag === "select") {
+          el.classList.add("form-select");
+          return;
+        }
+        el.classList.add("form-control");
+      });
+      document.querySelectorAll("form button[type='submit'], form input[type='submit']").forEach((btn) => {
+        btn.classList.add("btn");
+        if (
+          !btn.classList.contains("btn-primary") &&
+          !btn.classList.contains("btn-secondary") &&
+          !btn.classList.contains("btn-outline-primary") &&
+          !btn.classList.contains("btn-outline-secondary")
+        ) {
+          btn.classList.add("btn-primary");
+        }
+      });
+    }
+
     async function syncTelegramWebAppSession() {
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
       if (!tg || !tg.initData) return;
@@ -60,40 +95,6 @@
         console.debug("telegram webapp auth failed", err);
       }
     }
-
-    (function initSiteMobileMenu() {
-      const toggle = document.querySelector(".site-menu-toggle");
-      const nav = document.querySelector("#site-nav");
-      if (!toggle || !nav) return;
-      function isMobile() {
-        return window.matchMedia("(max-width: 980px)").matches;
-      }
-      toggle.addEventListener("click", function () {
-        if (!isMobile()) return;
-        const opened = document.body.classList.toggle("site-nav-open");
-        toggle.setAttribute("aria-expanded", opened ? "true" : "false");
-      });
-      nav.querySelectorAll("a").forEach(function (link) {
-        link.addEventListener("click", function () {
-          if (!isMobile()) return;
-          document.body.classList.remove("site-nav-open");
-          toggle.setAttribute("aria-expanded", "false");
-        });
-      });
-      document.addEventListener("click", function (event) {
-        if (!isMobile()) return;
-        if (!document.body.classList.contains("site-nav-open")) return;
-        if (nav.contains(event.target) || toggle.contains(event.target)) return;
-        document.body.classList.remove("site-nav-open");
-        toggle.setAttribute("aria-expanded", "false");
-      });
-      window.addEventListener("resize", function () {
-        if (!isMobile()) {
-          document.body.classList.remove("site-nav-open");
-          toggle.setAttribute("aria-expanded", "false");
-        }
-      });
-    })();
 
     (function initCardsSlider() {
       document.querySelectorAll(".block-cards-slider .block-cards-track").forEach(function (track) {
@@ -215,6 +216,7 @@
       });
     })();
 
+    bootstrapizeForms();
     syncTelegramWebAppSession();
   </script>
 </body>

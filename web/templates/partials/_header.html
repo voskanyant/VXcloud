@@ -1,35 +1,42 @@
 ﻿{% load cms %}
-<header class="site-header">
-  <div class="container site-header-inner">
-    {% cms_text "nav.logo" "VXcloud" as nav_logo %}
-    {% cms_text "nav.home" "Главная" as nav_home %}
-    {% cms_text "nav.how_it_works" "Как это работает" as nav_how %}
-    {% cms_text "nav.instructions" "Инструкции" as nav_instructions %}
-    {% cms_text "nav.faq" "FAQ" as nav_faq %}
-    {% cms_text "nav.blog" "Блог" as nav_blog %}
-    {% cms_text "nav.account" "Личный кабинет" as nav_account %}
-    {% cms_text "nav.buy_cta" "⭐ Купить доступ" as nav_buy_cta %}
+<header class="site-header sticky-top">
+  <nav class="navbar navbar-expand-lg border-bottom bg-white">
+    <div class="container-xxl">
+      {% cms_text "nav.logo" "VXcloud" as nav_logo %}
+      {% cms_text "nav.home" "Главная" as nav_home %}
+      {% cms_text "nav.instructions" "Инструкции" as nav_instructions %}
+      {% cms_text "nav.blog" "Блог" as nav_blog %}
+      {% cms_text "nav.account" "Личный кабинет" as nav_account %}
+      {% cms_text "nav.buy_cta" "⭐ Купить доступ" as nav_buy_cta %}
 
-    <div class="site-header-top">
-      <a class="site-logo" href="/">{{ nav_logo }}</a>
-      <button class="site-menu-toggle" type="button" aria-label="Открыть меню" aria-controls="site-nav" aria-expanded="false">
-        ☰
+      <a class="navbar-brand site-brand" href="/">{{ nav_logo }}</a>
+
+      <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#vxNavbar" aria-controls="vxNavbar" aria-expanded="false" aria-label="Переключить меню">
+        <span class="navbar-toggler-icon"></span>
       </button>
-      <nav class="site-nav" id="site-nav" aria-label="Главное меню">
-        {% if nav_pages %}
-          {% for nav_page in nav_pages %}
-            <a href="{{ nav_page.path }}" class="site-nav-link{% if request.path == nav_page.path %} is-active{% endif %}">{{ nav_page.nav_label }}</a>
-          {% endfor %}
-        {% else %}
-          <a href="/" class="site-nav-link{% if request.path == '/' %} is-active{% endif %}">{{ nav_home }}</a>
-          <a href="/how-it-works/" class="site-nav-link{% if request.path|slice:':14' == '/how-it-works/' %} is-active{% endif %}">{{ nav_how }}</a>
-          <a href="/help/" class="site-nav-link{% if request.path|slice:':6' == '/help/' or request.path|slice:':14' == '/instructions/' %} is-active{% endif %}">{{ nav_instructions }}</a>
-          <a href="/faq/" class="site-nav-link{% if request.path|slice:':5' == '/faq/' %} is-active{% endif %}">{{ nav_faq }}</a>
-          <a href="/blog/" class="site-nav-link{% if request.path|slice:':6' == '/blog/' %} is-active{% endif %}">{{ nav_blog }}</a>
-        {% endif %}
-        <a href="/account/" class="site-nav-link{% if request.path|slice:':9' == '/account/' or request.path|slice:':10' == '/accounts/' %} is-active{% endif %}">{{ nav_account }}</a>
-      </nav>
-      <a href="/account/" class="btn btn-primary site-cta">{{ nav_buy_cta }}</a>
+
+      <div class="collapse navbar-collapse" id="vxNavbar">
+        <ul class="navbar-nav align-items-lg-center gap-lg-1 mx-lg-auto my-3 my-lg-0">
+          {% with path=request.path %}
+            {% if nav_pages %}
+              {% for nav_page in nav_pages %}
+                <li class="nav-item">
+                  <a href="{{ nav_page.path }}" class="nav-link vx-nav-link {% if path == nav_page.path %}active{% endif %}">{{ nav_page.nav_label }}</a>
+                </li>
+              {% endfor %}
+            {% else %}
+              <li class="nav-item"><a href="/" class="nav-link vx-nav-link {% if path == '/' %}active{% endif %}">{{ nav_home }}</a></li>
+              <li class="nav-item"><a href="/instructions/" class="nav-link vx-nav-link {% if path|slice:':14' == '/instructions/' %}active{% endif %}">{{ nav_instructions }}</a></li>
+              <li class="nav-item"><a href="/blog/" class="nav-link vx-nav-link {% if path|slice:':6' == '/blog/' %}active{% endif %}">{{ nav_blog }}</a></li>
+            {% endif %}
+            <li class="nav-item"><a href="/account/" class="nav-link vx-nav-link {% if path|slice:':9' == '/account/' or path|slice:':10' == '/accounts/' %}active{% endif %}">{{ nav_account }}</a></li>
+          {% endwith %}
+        </ul>
+
+        <div class="d-grid d-lg-block">
+          <a class="btn btn-primary px-4" href="/account/buy/">{{ nav_buy_cta }}</a>
+        </div>
+      </div>
     </div>
-  </div>
+  </nav>
 </header>

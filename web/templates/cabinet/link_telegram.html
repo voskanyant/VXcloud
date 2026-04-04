@@ -1,40 +1,40 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load cms %}
 
 {% cms_text "cabinet.link.page_title" "Привязка Telegram - VXcloud" as cabinet_link_page_title %}
 {% block title %}{{ cabinet_link_page_title }}{% endblock %}
 
 {% block content %}
-<article class="section-card" style="max-width:560px;">
-  {% cms_text "cabinet.link.heading" "Привязка Telegram" as cabinet_link_heading %}
-  {% cms_text "cabinet.link.current_label" "Сейчас привязан Telegram ID:" as cabinet_link_current_label %}
-  {% cms_text "cabinet.link.description" "Нажмите кнопку ниже и откройте Telegram-бота. Бот привяжет аккаунт автоматически." as cabinet_link_description %}
-  {% cms_text "cabinet.link.code_label" "Код привязки:" as cabinet_link_code_label %}
-  {% cms_text "cabinet.link.expires_label" "Код действует до:" as cabinet_link_expires_label %}
-  {% cms_text "cabinet.link.open_bot_action" "Открыть бота и привязать" as cabinet_link_open_bot_action %}
-  {% cms_text "cabinet.link.fallback_hint" "Если кнопка не сработала, отправьте боту команду:" as cabinet_link_fallback_hint %}
-  {% cms_text "cabinet.link.regen_action" "Сгенерировать новый код" as cabinet_link_regen_action %}
-  <h1 class="h2 mb-3">{{ cabinet_link_heading }}</h1>
+{% cms_text "cabinet.link.heading" "Привязка Telegram" as cabinet_link_heading %}
+{% cms_text "cabinet.link.description" "Нажмите кнопку ниже и откройте Telegram-бота. Бот привяжет аккаунт автоматически." as cabinet_link_description %}
+{% cms_text "cabinet.link.open_bot_action" "Открыть бота и привязать" as cabinet_link_open_bot_action %}
+{% cms_text "cabinet.link.regen_action" "Сгенерировать новый код" as cabinet_link_regen_action %}
+
+<section class="surface-card auth-shell">
+  <h1 class="display-6 fw-bold mb-3">{{ cabinet_link_heading }}</h1>
+  <p class="text-secondary mb-3">{{ cabinet_link_description }}</p>
+
   {% if linked %}
-    <p class="mb-2">{{ cabinet_link_current_label }} <code>{{ linked.telegram_id }}</code></p>
+    <div class="alert alert-success">Сейчас привязан Telegram ID: <code>{{ linked.telegram_id }}</code></div>
   {% endif %}
-  <p class="text-secondary">{{ cabinet_link_description }}</p>
-  <p class="mb-1">{{ cabinet_link_code_label }} <code>{{ link_code }}</code></p>
-  <p class="text-secondary">{{ cabinet_link_expires_label }} {{ expires_at|date:'d.m.Y H:i' }}</p>
+
+  <div class="surface-panel mb-3">
+    <div class="small text-secondary mb-1">Код привязки</div>
+    <div class="h4 fw-bold mb-1"><code>{{ link_code }}</code></div>
+    <div class="small text-secondary">Код действует до: {{ expires_at|date:'d.m.Y H:i' }}</div>
+  </div>
 
   {% if deep_link %}
-    <p class="mb-3">
-      <a class="btn btn-primary" href="{{ deep_link }}" target="_blank" rel="noopener">{{ cabinet_link_open_bot_action }}</a>
-    </p>
-    <p class="text-secondary mb-3">{{ cabinet_link_fallback_hint }} <code>/start link_{{ link_code }}</code></p>
+    <a class="btn btn-primary" href="{{ deep_link }}" target="_blank" rel="noopener">{{ cabinet_link_open_bot_action }}</a>
+    <p class="text-secondary mt-3 mb-0">Если кнопка не сработала, отправьте боту команду: <code>/start link_{{ link_code }}</code></p>
   {% else %}
-    <p class="text-danger mb-3">Не задан TELEGRAM_BOT_USERNAME в окружении сайта. Укажите username бота, чтобы работала кнопка deep-link.</p>
-    <p class="text-secondary mb-3">Временный способ: отправьте боту вручную команду <code>/start link_{{ link_code }}</code>.</p>
+    <div class="alert alert-warning">Не задан TELEGRAM_BOT_USERNAME в окружении сайта. Укажите username бота для deep-link кнопки.</div>
+    <p class="text-secondary">Временный способ: отправьте боту команду <code>/start link_{{ link_code }}</code>.</p>
   {% endif %}
 
-  <form method="post">
+  <form method="post" class="mt-4">
     {% csrf_token %}
-    <button type="submit">{{ cabinet_link_regen_action }}</button>
+    <button type="submit" class="btn btn-outline-primary">{{ cabinet_link_regen_action }}</button>
   </form>
-</article>
+</section>
 {% endblock %}

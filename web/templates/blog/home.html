@@ -1,21 +1,65 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 {% load cms %}
 
 {% cms_text "home.page_title" "VXcloud - Главная" as home_page_title %}
 {% block title %}{{ home_page_title }}{% endblock %}
 
 {% block content %}
-<section class="section-card mb-3">
-  {% cms_text "home.hero_title" "VXcloud: быстрый VPN для повседневного использования" as home_hero_title %}
-  {% cms_text "home.hero_description" "Откройте Инструкцию для подключения или зайдите в Личный кабинет для управления подпиской." as home_hero_description %}
-  <h1 class="h2 mb-2">{{ home_hero_title }}</h1>
-  <p class="mb-0">{{ home_hero_description }}</p>
+{% cms_text "home.hero_badge" "VPN + Proxy" as home_hero_badge %}
+{% cms_text "home.hero_title" "VXcloud — быстрый VPN для доступа к открытому интернету" as home_hero_title %}
+{% cms_text "home.hero_description" "Открывайте привычные сайты и приложения без лишней сложности. Понятное подключение, быстрый старт и удобное управление через сайт и Telegram." as home_hero_description %}
+{% cms_text "home.primary_cta" "Подключить" as home_primary_cta %}
+{% cms_text "home.secondary_cta" "Открыть инструкции" as home_secondary_cta %}
+
+<section class="surface-card hero-card mb-4">
+  <div class="row g-4 align-items-center">
+    <div class="col-lg-8">
+      <span class="badge text-bg-light border mb-3">{{ home_hero_badge }}</span>
+      <h1 class="display-6 fw-bold mb-3">{{ home_hero_title }}</h1>
+      <p class="lead text-secondary mb-4">{{ home_hero_description }}</p>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-primary btn-lg" href="/account/buy/">{{ home_primary_cta }}</a>
+        <a class="btn btn-outline-primary btn-lg" href="/instructions/">{{ home_secondary_cta }}</a>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="hero-stat">
+        <h2 class="h5 mb-3">Почему VXcloud</h2>
+        <ul class="list-unstyled m-0 d-grid gap-2">
+          <li><i class="bi bi-check-circle-fill text-success me-2"></i>Простой старт за несколько минут</li>
+          <li><i class="bi bi-check-circle-fill text-success me-2"></i>Инструкции для iOS, Android, Windows</li>
+          <li><i class="bi bi-check-circle-fill text-success me-2"></i>Личный кабинет и управление в Telegram</li>
+          <li><i class="bi bi-check-circle-fill text-success me-2"></i>Поддержка, если нужна помощь</li>
+        </ul>
+      </div>
+    </div>
+  </div>
 </section>
 
-<section class="section-card">
-  <div class="d-flex flex-wrap gap-2">
-    <a class="btn btn-primary" href="/instructions/">Инструкции</a>
-    <a class="btn btn-outline-primary" href="/account/">Личный кабинет</a>
+<section class="row g-3">
+  <div class="col-md-6 col-xl-3">
+    <article class="surface-card h-100 feature-card">
+      <h3 class="h5">Понятный формат</h3>
+      <p class="text-secondary mb-0">После покупки вы получаете все данные для подключения без сложной настройки.</p>
+    </article>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <article class="surface-card h-100 feature-card">
+      <h3 class="h5">Удобное управление</h3>
+      <p class="text-secondary mb-0">Проверка подписки, продление и доступ к конфигу доступны в пару кликов.</p>
+    </article>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <article class="surface-card h-100 feature-card">
+      <h3 class="h5">Стабильная скорость</h3>
+      <p class="text-secondary mb-0">Подключение настроено для стабильной работы сайтов, приложений и мессенджеров.</p>
+    </article>
+  </div>
+  <div class="col-md-6 col-xl-3">
+    <article class="surface-card h-100 feature-card">
+      <h3 class="h5">Поддержка</h3>
+      <p class="text-secondary mb-0">Если появляются вопросы, вы не остаетесь один на один с настройкой.</p>
+    </article>
   </div>
 </section>
 {% endblock %}

@@ -1,0 +1,44 @@
+﻿{% extends "backoffice/base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="bo-form-grid">
+        {% for field in form %}
+          <div class="bo-field {% if field.field.widget.input_type == 'checkbox' %}bo-field-checkbox{% endif %}">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+            {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-4">
+        <button type="submit" class="btn btn-dark">Сохранить</button>
+        <a href="javascript:history.back()" class="btn btn-outline-secondary">Назад</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_head %}
+  {% if form.content_blocks %}
+    <link rel="stylesheet" href="{% static 'admin/block_editor_v2.css' %}">
+  {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if form.content_blocks %}
+    <script src="{% static 'admin/block_editor_v2.js' %}"></script>
+  {% endif %}
+{% endblock %}

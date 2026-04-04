@@ -1,0 +1,74 @@
+﻿{% extends "backoffice/base.html" %}
+
+{% block content %}
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+      <form class="d-flex gap-2" method="get">
+        <input class="form-control" type="search" name="q" placeholder="Поиск" value="{{ query }}">
+        <button class="btn btn-outline-secondary" type="submit">Найти</button>
+      </form>
+
+      <div class="d-flex gap-2">
+        {% if add_url_name %}
+          <a href="{% url add_url_name %}" class="btn btn-dark">+ Создать</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead>
+          <tr>
+            {% for header in headers %}
+              <th>{{ header }}</th>
+            {% endfor %}
+            {% if not readonly and edit_url_name %}
+              <th class="text-end" style="width: 170px;">Действия</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              {% for cell in row.cells %}
+                <td>{{ cell }}</td>
+              {% endfor %}
+              {% if not readonly and edit_url_name %}
+                <td class="text-end">
+                  <a href="{% url edit_url_name row.obj.pk %}" class="btn btn-sm btn-outline-primary">Изменить</a>
+                  {% if delete_url_name %}
+                    <a href="{% url delete_url_name row.obj.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
+                  {% endif %}
+                </td>
+              {% endif %}
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="{{ headers|length|add:'1' }}" class="text-muted">Данные не найдены</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {% if is_paginated %}
+      <nav class="mt-3">
+        <ul class="pagination mb-0">
+          {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&q={{ query|urlencode }}">Назад</a></li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Назад</span></li>
+          {% endif %}
+          <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+          {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&q={{ query|urlencode }}">Вперёд</a></li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">Вперёд</span></li>
+          {% endif %}
+        </ul>
+      </nav>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

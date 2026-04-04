@@ -1,0 +1,34 @@
+﻿from django.urls import path
+
+from . import views
+
+app_name = "backoffice"
+
+urlpatterns = [
+    path("", views.DashboardView.as_view(), name="dashboard"),
+    path("login/", views.BackofficeLoginView.as_view(), name="login"),
+    path("logout/", views.BackofficeLogoutView.as_view(), name="logout"),
+    path("posts/", views.PostListView.as_view(), name="post_list"),
+    path("posts/new/", views.PostCreateView.as_view(), name="post_create"),
+    path("posts/<int:pk>/edit/", views.PostUpdateView.as_view(), name="post_update"),
+    path("posts/<int:pk>/delete/", views.PostDeleteView.as_view(), name="post_delete"),
+    path("pages/", views.PageListView.as_view(), name="page_list"),
+    path("pages/new/", views.PageCreateView.as_view(), name="page_create"),
+    path("pages/<int:pk>/edit/", views.PageUpdateView.as_view(), name="page_update"),
+    path("pages/<int:pk>/delete/", views.PageDeleteView.as_view(), name="page_delete"),
+    path("categories/", views.CategoryListView.as_view(), name="category_list"),
+    path("categories/new/", views.CategoryCreateView.as_view(), name="category_create"),
+    path("categories/<int:pk>/edit/", views.CategoryUpdateView.as_view(), name="category_update"),
+    path("categories/<int:pk>/delete/", views.CategoryDeleteView.as_view(), name="category_delete"),
+    path("post-types/", views.PostTypeListView.as_view(), name="post_type_list"),
+    path("post-types/new/", views.PostTypeCreateView.as_view(), name="post_type_create"),
+    path("post-types/<int:pk>/edit/", views.PostTypeUpdateView.as_view(), name="post_type_update"),
+    path("post-types/<int:pk>/delete/", views.PostTypeDeleteView.as_view(), name="post_type_delete"),
+    path("site-texts/", views.SiteTextListView.as_view(), name="site_text_list"),
+    path("site-texts/new/", views.SiteTextCreateView.as_view(), name="site_text_create"),
+    path("site-texts/<int:pk>/edit/", views.SiteTextUpdateView.as_view(), name="site_text_update"),
+    path("site-texts/<int:pk>/delete/", views.SiteTextDeleteView.as_view(), name="site_text_delete"),
+    path("bot/users/", views.BotUserListView.as_view(), name="bot_user_list"),
+    path("bot/subscriptions/", views.BotSubscriptionListView.as_view(), name="bot_subscription_list"),
+    path("bot/orders/", views.BotOrderListView.as_view(), name="bot_order_list"),
+]

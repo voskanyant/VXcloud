@@ -5,17 +5,18 @@
 {% block title %}{{ signup_page_title }}{% endblock %}
 
 {% block content %}
-<article class="section-card" style="max-width:560px;">
+<section class="surface-card auth-shell">
   {% cms_text "auth.signup.heading" "Регистрация" as signup_heading %}
   {% cms_text "auth.signup.submit" "Создать аккаунт" as signup_submit %}
   {% cms_text "auth.signup.has_account" "Уже есть аккаунт?" as signup_has_account %}
   {% cms_text "auth.signup.login_action" "Войти" as signup_login_action %}
-  <h1 class="h2 mb-3">{{ signup_heading }}</h1>
+
+  <h1 class="display-6 fw-bold mb-4">{{ signup_heading }}</h1>
   <form method="post" class="vstack gap-3">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">{{ signup_submit }}</button>
+    <button type="submit" class="btn btn-primary w-100">{{ signup_submit }}</button>
   </form>
-  <p class="mt-3 mb-0">{{ signup_has_account }} <a href="/accounts/login/">{{ signup_login_action }}</a></p>
-</article>
+  <p class="mt-3 mb-0 text-secondary">{{ signup_has_account }} <a href="/accounts/login/">{{ signup_login_action }}</a></p>
+</section>
 {% endblock %}

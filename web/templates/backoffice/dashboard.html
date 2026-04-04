@@ -1,0 +1,82 @@
+﻿{% extends "backoffice/base.html" %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  {% for metric in metrics %}
+    <div class="col-12 col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="text-muted small mb-1">{{ metric.label }}</div>
+          <div class="display-6 fw-semibold lh-1">{{ metric.value }}</div>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 m-0">Последние страницы</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Заголовок</th>
+              <th>Путь</th>
+              <th>Обновлена</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for page in recent_pages %}
+              <tr>
+                <td>{{ page.id }}</td>
+                <td><a href="{% url 'backoffice:page_update' page.id %}">{{ page.title }}</a></td>
+                <td><code>{{ page.path }}</code></td>
+                <td>{{ page.updated_at|date:"d.m.Y H:i" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-muted">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-6">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white border-0 pt-3">
+        <h2 class="h6 m-0">Последние посты</h2>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Заголовок</th>
+              <th>Slug</th>
+              <th>Обновлён</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for post in recent_posts %}
+              <tr>
+                <td>{{ post.id }}</td>
+                <td><a href="{% url 'backoffice:post_update' post.id %}">{{ post.title }}</a></td>
+                <td><code>{{ post.slug }}</code></td>
+                <td>{{ post.updated_at|date:"d.m.Y H:i" }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="4" class="text-muted">Нет данных</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

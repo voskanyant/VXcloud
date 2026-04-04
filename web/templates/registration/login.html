@@ -5,19 +5,20 @@
 {% block title %}{{ login_page_title }}{% endblock %}
 
 {% block content %}
-<article class="section-card" style="max-width:560px;">
+<section class="surface-card auth-shell">
   {% cms_text "auth.login.heading" "Вход" as login_heading %}
   {% cms_text "auth.login.submit" "Войти" as login_submit %}
   {% cms_text "auth.login.no_account" "Нет аккаунта?" as login_no_account %}
   {% cms_text "auth.login.signup_action" "Регистрация" as login_signup_action %}
   {% cms_text "auth.login.forgot_password" "Забыли пароль?" as login_forgot_password %}
-  <h1 class="h2 mb-3">{{ login_heading }}</h1>
+
+  <h1 class="display-6 fw-bold mb-4">{{ login_heading }}</h1>
   <form method="post" class="vstack gap-3">
     {% csrf_token %}
     {{ form.as_p }}
-    <button type="submit">{{ login_submit }}</button>
+    <button type="submit" class="btn btn-primary w-100">{{ login_submit }}</button>
   </form>
-  <p class="mt-3 mb-0"><a href="/accounts/password_reset/">{{ login_forgot_password }}</a></p>
-  <p class="mt-3 mb-0">{{ login_no_account }} <a href="/account/signup/">{{ login_signup_action }}</a></p>
-</article>
+  <p class="mt-3 mb-1"><a href="/accounts/password_reset/">{{ login_forgot_password }}</a></p>
+  <p class="mb-0 text-secondary">{{ login_no_account }} <a href="/account/signup/">{{ login_signup_action }}</a></p>
+</section>
 {% endblock %}

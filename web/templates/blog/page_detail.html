@@ -1,26 +1,29 @@
-{% extends 'base.html' %}
+﻿{% extends 'base.html' %}
 
 {% block title %}{{ page.title }} - VXcloud{% endblock %}
 
 {% block content %}
-<article class="section-card">
-  <h1 class="h2 mb-1">{{ page.title }}</h1>
+<section class="surface-card mb-4">
+  <h1 class="display-6 fw-bold mb-2">{{ page.title }}</h1>
   {% if page.summary %}
-    <p class="text-secondary mt-2 mb-3">{{ page.summary }}</p>
+    <p class="lead text-secondary mb-0">{{ page.summary }}</p>
   {% endif %}
-  <div class="post-content">{{ page.rendered_content }}</div>
-</article>
+</section>
+
+<article class="surface-card post-content">{{ page.rendered_content }}</article>
 
 {% if page_posts %}
-  <section class="section-card mt-3">
-    <h2 class="h4 mb-3">{{ page.posts_title|default:"Публикации" }}</h2>
-    <div class="vstack gap-3">
+  <section class="mt-4">
+    <h2 class="h3 fw-bold mb-3">{{ page.posts_title|default:"Публикации" }}</h2>
+    <div class="row g-3">
       {% for post in page_posts %}
-        <article class="post-card">
-          <h3 class="h5 mb-2"><a href="{% url 'blog_post_detail' slug=post.slug %}">{{ post.title }}</a></h3>
-          {% if post.summary %}<p class="text-secondary mb-2">{{ post.summary }}</p>{% endif %}
-          <small class="text-secondary">{{ post.published_at|date:'d.m.Y H:i' }}</small>
-        </article>
+        <div class="col-12 col-lg-6">
+          <article class="surface-card h-100">
+            <h3 class="h5 mb-2"><a href="{% url 'blog_post_detail' slug=post.slug %}" class="link-dark text-decoration-none">{{ post.title }}</a></h3>
+            {% if post.summary %}<p class="text-secondary mb-3">{{ post.summary }}</p>{% endif %}
+            <div class="small text-secondary">{{ post.published_at|date:'d.m.Y H:i' }}</div>
+          </article>
+        </div>
       {% endfor %}
     </div>
   </section>

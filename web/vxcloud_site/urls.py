@@ -12,7 +12,8 @@ from cabinet.views import (
 )
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path("admin/", include("backoffice.urls")),
+    path("django-admin/", admin.site.urls),
     path("accounts/login/", EmailLoginView.as_view(), name="login"),
     path("accounts/", include("django.contrib.auth.urls")),
     path("api/auth/magic-link", create_magic_link, name="api_magic_link"),
