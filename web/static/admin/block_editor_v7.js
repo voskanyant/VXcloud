@@ -47,6 +47,7 @@
   ];
 
   const GROUPS = ["Bootstrap Content", "Bootstrap Components", "Bootstrap Layout"];
+  const BLOCK_UID = Symbol("be_uid");
   const COLUMN_CHILD_TYPES = [
     "bs_paragraph",
     "bs_heading",
@@ -815,7 +816,23 @@
     input.className = "vLargeTextField";
     input.rows = rows || 4;
     input.value = value || "";
+    autoResizeTextarea(input, rows || 4);
     return input;
+  }
+
+  function autoResizeTextarea(input, minRows) {
+    if (!input) return;
+    const minHeight = Math.max(68, (Number(minRows || input.rows || 4) * 20) + 16);
+
+    const resize = () => {
+      input.style.height = "auto";
+      const next = Math.max(minHeight, input.scrollHeight + 2);
+      input.style.height = `${next}px`;
+    };
+
+    resize();
+    input.addEventListener("input", resize);
+    input.addEventListener("focus", resize);
   }
 
   function numberInput(value, min, max) {
@@ -947,6 +964,11 @@
       search: "",
       dragIndex: -1,
       groupCollapsed: {},
+      collapsedBlocks: {},
+      rowCollapsed: {},
+      colCollapsed: {},
+      compactMode: safeStorageGet("be.compactMode") === "1",
+      uidSeq: 1,
     };
     if (state.blocks.length) state.selectedIndex = 0;
 
@@ -974,6 +996,37 @@
         })
         .join("-");
       return ROW_PRESETS.some((preset) => preset.value === key) ? key : "custom";
+    }
+
+    function blockUid(block) {
+      if (!block || typeof block !== "object") return "";
+      if (!block[BLOCK_UID]) {
+        block[BLOCK_UID] = `b${state.uidSeq++}`;
+      }
+      return block[BLOCK_UID];
+    }
+
+    function setCompactMode(nextValue) {
+      state.compactMode = !!nextValue;
+      safeStorageSet("be.compactMode", state.compactMode ? "1" : "0");
+    }
+
+    function allBlocksCollapsed() {
+      if (!state.blocks.length) return false;
+      return state.blocks.every((block) => !!state.collapsedBlocks[blockUid(block)]);
+    }
+
+    function setAllBlocksCollapsed(collapsed) {
+      state.blocks.forEach((block) => {
+        state.collapsedBlocks[blockUid(block)] = !!collapsed;
+      });
+    }
+
+    function isTypingContext(target) {
+      if (!target || !(target instanceof Element)) return false;
+      if (target.closest("textarea, input, select, [contenteditable='true']")) return true;
+      if (target.closest(".be-inspector-form")) return true;
+      return false;
     }
 
     function sync() {
@@ -1212,13 +1265,69 @@
 
       const top = document.createElement("header");
       top.className = "be-canvas-head";
-      top.innerHTML =
-        "<div class='be-doc-meta'><strong>Document</strong><small>Type / to choose a block · drag cards to reorder</small></div>" +
-        "<div class='be-doc-count'></div>";
-      top.querySelector(".be-doc-count").textContent = `${state.blocks.length} blocks`;
+
+      const meta = document.createElement("div");
+      meta.className = "be-doc-meta";
+      const metaTitle = document.createElement("strong");
+      metaTitle.textContent = "Document";
+      const metaHint = document.createElement("small");
+      metaHint.textContent = "Type / to choose a block · drag cards to reorder";
+      meta.appendChild(metaTitle);
+      meta.appendChild(metaHint);
+
+      const actions = document.createElement("div");
+      actions.className = "be-canvas-head-actions";
+
+      const count = document.createElement("span");
+      count.className = "be-doc-count";
+      count.textContent = `${state.blocks.length} blocks`;
+
+      const compactToggle = document.createElement("button");
+      compactToggle.type = "button";
+      compactToggle.className = "button";
+      compactToggle.textContent = state.compactMode ? "Expanded view" : "Compact view";
+      compactToggle.title = "Switch preview density for long pages";
+      compactToggle.addEventListener("click", () => {
+        setCompactMode(!state.compactMode);
+        renderCanvas();
+      });
+
+      const collapseToggle = document.createElement("button");
+      collapseToggle.type = "button";
+      collapseToggle.className = "button";
+      collapseToggle.textContent = allBlocksCollapsed() ? "Expand all" : "Collapse all";
+      collapseToggle.title = "Collapse/expand all blocks";
+      collapseToggle.addEventListener("click", () => {
+        const collapse = !allBlocksCollapsed();
+        setAllBlocksCollapsed(collapse);
+        renderCanvas();
+      });
+
+      const quickAdd = document.createElement("div");
+      quickAdd.className = "be-head-quick-add";
+      [
+        { type: "bs_paragraph", label: "+ Paragraph" },
+        { type: "bs_heading", label: "+ Heading" },
+        { type: "bs_rows", label: "+ Rows" },
+      ].forEach((item) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "button";
+        btn.textContent = item.label;
+        btn.addEventListener("click", () => addBlock(item.type));
+        quickAdd.appendChild(btn);
+      });
+
+      actions.appendChild(count);
+      actions.appendChild(compactToggle);
+      actions.appendChild(collapseToggle);
+      actions.appendChild(quickAdd);
+      top.appendChild(meta);
+      top.appendChild(actions);
 
       const stage = document.createElement("div");
       stage.className = "be-canvas-stage";
+      if (state.compactMode) stage.classList.add("is-compact");
 
       if (!state.blocks.length) {
         const empty = document.createElement("article");
@@ -1269,19 +1378,84 @@
 
         state.blocks.forEach((block, index) => {
           const meta = blockMeta(toBootstrapType(block.type || "bs_paragraph"));
+          const uid = blockUid(block);
+          const isCollapsed = !!state.collapsedBlocks[uid];
           const card = document.createElement("article");
           card.className = "be-canvas-block";
+          if (state.compactMode) card.classList.add("is-compact");
+          if (isCollapsed) card.classList.add("is-collapsed");
           if (state.selectedIndex === index) card.classList.add("is-selected");
           card.draggable = true;
           card.innerHTML =
             "<div class='be-canvas-block-top'>" +
             `<span class='be-canvas-type'><span class='be-drag-handle' title='Drag to reorder'>⋮⋮</span>${meta.icon} ${meta.label}</span>` +
-            `<span class='be-canvas-index'>#${index + 1}</span>` +
+            "<div class='be-canvas-top-right'></div>" +
             "</div>" +
             "<div class='be-canvas-preview'></div>";
+          const topRight = card.querySelector(".be-canvas-top-right");
+
+          const indexBadge = document.createElement("span");
+          indexBadge.className = "be-canvas-index";
+          indexBadge.textContent = `#${index + 1}`;
+
+          const collapseBtn = document.createElement("button");
+          collapseBtn.type = "button";
+          collapseBtn.className = "button be-mini-btn";
+          collapseBtn.textContent = isCollapsed ? "Expand" : "Collapse";
+          collapseBtn.title = "Collapse block settings";
+          collapseBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.collapsedBlocks[uid] = !state.collapsedBlocks[uid];
+            renderCanvas();
+            sync();
+          });
+
+          const insertAfterBtn = document.createElement("button");
+          insertAfterBtn.type = "button";
+          insertAfterBtn.className = "button be-mini-btn";
+          insertAfterBtn.textContent = "+P";
+          insertAfterBtn.title = "Insert paragraph below";
+          insertAfterBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            insertBlockAt(index + 1, "bs_paragraph");
+          });
+
+          const duplicateBtn = document.createElement("button");
+          duplicateBtn.type = "button";
+          duplicateBtn.className = "button be-mini-btn";
+          duplicateBtn.textContent = "Dup";
+          duplicateBtn.title = "Duplicate block";
+          duplicateBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.selectedIndex = index;
+            duplicateSelected();
+          });
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "button be-mini-btn deletelink";
+          deleteBtn.textContent = "Del";
+          deleteBtn.title = "Delete block";
+          deleteBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            state.selectedIndex = index;
+            removeSelected();
+          });
+
+          topRight.appendChild(indexBadge);
+          topRight.appendChild(collapseBtn);
+          topRight.appendChild(insertAfterBtn);
+          topRight.appendChild(duplicateBtn);
+          topRight.appendChild(deleteBtn);
+
           card.querySelector(".be-canvas-preview").textContent = blockPreview(block);
           card.addEventListener("click", (event) => {
             if (event.target && event.target.closest && event.target.closest(".be-inline-editor")) return;
+            state.collapsedBlocks[uid] = false;
             selectBlock(index);
           });
           card.addEventListener("dragstart", (event) => {
@@ -1323,7 +1497,7 @@
             state.dragIndex = -1;
             clearDropMarkers();
           });
-          if (state.selectedIndex === index) {
+          if (state.selectedIndex === index && !isCollapsed) {
             const inline = document.createElement("div");
             inline.className = "be-inline-editor";
             card.appendChild(inline);
@@ -2867,19 +3041,33 @@
           return section;
         }
 
+        const parentUid = blockUid(rowsBlock);
+
         rowsBlock.rows.forEach((row, rowIndex) => {
           const normalizedRow = normalizeRowItem(row);
           rowsBlock.rows[rowIndex] = normalizedRow;
+          const rowKey = `${parentUid}:r:${rowIndex}`;
+          const rowCollapsed = !!state.rowCollapsed[rowKey];
 
           const rowCard = document.createElement("article");
           rowCard.className = "be-row-item";
+          if (rowCollapsed) rowCard.classList.add("is-collapsed");
 
           const rowTop = document.createElement("div");
           rowTop.className = "be-row-item-top";
           const rowLabel = document.createElement("strong");
-          rowLabel.textContent = `Row #${rowIndex + 1}`;
+          rowLabel.textContent = `Row #${rowIndex + 1} · ${normalizedRow.columns.length} cols`;
           const rowButtons = document.createElement("div");
           rowButtons.className = "be-row-actions";
+
+          const rowToggle = document.createElement("button");
+          rowToggle.type = "button";
+          rowToggle.className = "button be-mini-btn";
+          rowToggle.textContent = rowCollapsed ? "Expand" : "Collapse";
+          rowToggle.addEventListener("click", () => {
+            state.rowCollapsed[rowKey] = !state.rowCollapsed[rowKey];
+            changed();
+          });
 
           const addColumnBtn = document.createElement("button");
           addColumnBtn.type = "button";
@@ -2925,6 +3113,7 @@
             changed();
           });
 
+          rowButtons.appendChild(rowToggle);
           rowButtons.appendChild(addColumnBtn);
           rowButtons.appendChild(rowUp);
           rowButtons.appendChild(rowDown);
@@ -2932,6 +3121,15 @@
           rowTop.appendChild(rowLabel);
           rowTop.appendChild(rowButtons);
           rowCard.appendChild(rowTop);
+
+          if (rowCollapsed) {
+            const rowSummary = document.createElement("p");
+            rowSummary.className = "be-collapse-summary";
+            rowSummary.textContent = `Gap ${normalizedRow.gutter} · Align ${normalizedRow.align}`;
+            rowCard.appendChild(rowSummary);
+            section.appendChild(rowCard);
+            return;
+          }
 
           const rowSettings = document.createElement("div");
           rowSettings.className = "be-row-settings";
@@ -2983,8 +3181,11 @@
           columnsGrid.className = "be-row-columns";
 
           normalizedRow.columns.forEach((column, colIndex) => {
+            const colKey = `${rowKey}:c:${colIndex}`;
+            const colCollapsed = !!state.colCollapsed[colKey];
             const colCard = document.createElement("div");
             colCard.className = "be-row-column";
+            if (colCollapsed) colCard.classList.add("is-collapsed");
 
             const colTop = document.createElement("div");
             colTop.className = "be-row-column-top";
@@ -2993,6 +3194,15 @@
 
             const colActions = document.createElement("div");
             colActions.className = "be-row-actions";
+
+            const colToggle = document.createElement("button");
+            colToggle.type = "button";
+            colToggle.className = "button be-mini-btn";
+            colToggle.textContent = colCollapsed ? "Expand" : "Collapse";
+            colToggle.addEventListener("click", () => {
+              state.colCollapsed[colKey] = !state.colCollapsed[colKey];
+              changed();
+            });
 
             const colLeft = document.createElement("button");
             colLeft.type = "button";
@@ -3031,6 +3241,7 @@
               changed();
             });
 
+            colActions.appendChild(colToggle);
             colActions.appendChild(colLeft);
             colActions.appendChild(colRight);
             colActions.appendChild(colRemove);
@@ -3058,7 +3269,15 @@
             });
             colCard.appendChild(field("Desktop width", widthSelect));
 
-            colCard.appendChild(renderColumnEditor(column, "blocks", "Blocks"));
+            if (colCollapsed) {
+              const colSummary = document.createElement("p");
+              colSummary.className = "be-collapse-summary";
+              const nested = Array.isArray(column.blocks) ? column.blocks.length : 0;
+              colSummary.textContent = `${nested} nested block${nested === 1 ? "" : "s"}`;
+              colCard.appendChild(colSummary);
+            } else {
+              colCard.appendChild(renderColumnEditor(column, "blocks", "Blocks"));
+            }
             columnsGrid.appendChild(colCard);
           });
 
@@ -4244,6 +4463,36 @@
       renderCanvas();
       sync();
     }
+
+    root.addEventListener("keydown", (event) => {
+      if (state.selectedIndex < 0) return;
+      const key = String(event.key || "");
+      const lower = key.toLowerCase();
+
+      if ((event.ctrlKey || event.metaKey) && lower === "d") {
+        if (isTypingContext(event.target)) return;
+        event.preventDefault();
+        duplicateSelected();
+        return;
+      }
+
+      if (event.altKey && key === "ArrowUp") {
+        event.preventDefault();
+        moveSelected(-1);
+        return;
+      }
+
+      if (event.altKey && key === "ArrowDown") {
+        event.preventDefault();
+        moveSelected(1);
+        return;
+      }
+
+      if ((key === "Delete" || key === "Backspace") && !isTypingContext(event.target)) {
+        event.preventDefault();
+        removeSelected();
+      }
+    });
 
     renderAll();
 
