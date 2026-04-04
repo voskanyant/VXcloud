@@ -609,6 +609,153 @@ def _render_bs_pricing_table(block: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+def _normalize_bs_columns(raw_columns: Any) -> list[dict[str, Any]]:
+    if not isinstance(raw_columns, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for col in raw_columns:
+        if not isinstance(col, dict):
+            continue
+        width = int(col.get("width") or 6)
+        width = 1 if width < 1 else 12 if width > 12 else width
+        blocks = col.get("blocks")
+        if not isinstance(blocks, list):
+            blocks = []
+        normalized.append({"width": width, "blocks": blocks})
+    return normalized
+
+
+def _render_bs_row(block: dict[str, Any]) -> str:
+    columns = _normalize_bs_columns(block.get("columns"))
+    if not columns:
+        return ""
+    gutter = int(block.get("gutter") or 3)
+    gutter = 0 if gutter < 0 else 5 if gutter > 5 else gutter
+    align = str(block.get("align") or "start").strip().lower()
+    align_class = (
+        "align-items-center"
+        if align == "center"
+        else "align-items-end"
+        if align == "end"
+        else "align-items-stretch"
+        if align == "stretch"
+        else "align-items-start"
+    )
+
+    rendered_columns: list[str] = []
+    for col in columns:
+        col_html = str(render_content_blocks(col.get("blocks") or [], ""))
+        if col_html.strip():
+            rendered_columns.append(f'<div class="col-12 col-md-{col["width"]}">{col_html}</div>')
+    if not rendered_columns:
+        return ""
+    return f'<div class="row g-{gutter} {align_class}">{"".join(rendered_columns)}</div>'
+
+
+def _render_bs_container(block: dict[str, Any]) -> str:
+    rows = block.get("rows")
+    if not isinstance(rows, list) or not rows:
+        return ""
+    fluid = bool(block.get("fluid"))
+    container_cls = "container-fluid" if fluid else "container"
+    rendered_rows: list[str] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        rendered = _render_bs_row(row)
+        if rendered:
+            rendered_rows.append(rendered)
+    if not rendered_rows:
+        return ""
+    return f'<section class="block-bs-container {container_cls}">{"".join(rendered_rows)}</section>'
+
+
+def _render_bs_dropdown(block: dict[str, Any]) -> str:
+    button_label = _safe_text(block.get("button_label")) or "Open menu"
+    button_variant = _safe_variant(block.get("button_variant"), default="primary")
+    align = str(block.get("align") or "start").strip().lower()
+    align_cls = " dropdown-menu-end" if align == "end" else ""
+    items = block.get("items")
+    if not isinstance(items, list):
+        return ""
+    menu_items: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        label = _safe_text(item.get("label"))
+        href = _safe_url(item.get("url"))
+        if not label:
+            continue
+        menu_items.append(f'<li><a class="dropdown-item" href="{href}">{label}</a></li>')
+    if not menu_items:
+        return ""
+    dd_id = f"dd-{uuid4().hex[:8]}"
+    return (
+        f'<div class="dropdown">'
+        f'<button class="btn btn-{button_variant} dropdown-toggle" type="button" id="{dd_id}" '
+        f'data-bs-toggle="dropdown" aria-expanded="false">{button_label}</button>'
+        f'<ul class="dropdown-menu{align_cls}" aria-labelledby="{dd_id}">{"".join(menu_items)}</ul>'
+        f"</div>"
+    )
+
+
+def _render_bs_navbar(block: dict[str, Any]) -> str:
+    brand = _safe_text(block.get("brand")) or "VXcloud"
+    expand = str(block.get("expand") or "lg").strip().lower()
+    variant = str(block.get("variant") or "dark").strip().lower()
+    bg = str(block.get("bg") or "dark").strip().lower()
+    items = block.get("items")
+    if not isinstance(items, list):
+        items = []
+    nav_id = f"nav-{uuid4().hex[:8]}"
+    nav_items: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        label = _safe_text(item.get("label"))
+        href = _safe_url(item.get("url"))
+        active = " active" if bool(item.get("active")) else ""
+        if not label:
+            continue
+        nav_items.append(f'<li class="nav-item"><a class="nav-link{active}" href="{href}">{label}</a></li>')
+    return (
+        f'<nav class="navbar navbar-expand-{expand} navbar-{variant} bg-{bg} rounded-3 mb-3">'
+        f'<div class="container-fluid">'
+        f'<a class="navbar-brand" href="#">{brand}</a>'
+        f'<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#{nav_id}" '
+        f'aria-controls="{nav_id}" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>'
+        f'<div class="collapse navbar-collapse" id="{nav_id}">'
+        f'<ul class="navbar-nav me-auto mb-2 mb-lg-0">{"".join(nav_items)}</ul>'
+        f"</div></div></nav>"
+    )
+
+
+def _render_bs_ratio(block: dict[str, Any]) -> str:
+    ratio = str(block.get("ratio") or "16x9").strip().lower()
+    allowed = {"1x1", "4x3", "16x9", "21x9"}
+    ratio = ratio if ratio in allowed else "16x9"
+    src = _safe_url(block.get("url"))
+    if not src or src == "#":
+        return ""
+    return (
+        f'<div class="ratio ratio-{ratio}">'
+        f'<iframe src="{src}" title="Embedded media" allowfullscreen loading="lazy"></iframe>'
+        f"</div>"
+    )
+
+
+def _render_bs_placeholder(block: dict[str, Any]) -> str:
+    lines = int(block.get("lines") or 3)
+    lines = 1 if lines < 1 else 8 if lines > 8 else lines
+    width = int(block.get("width") or 100)
+    width = 10 if width < 10 else 100 if width > 100 else width
+    parts = ['<div class="placeholder-glow">']
+    for _ in range(lines):
+        parts.append(f'<span class="placeholder col-{max(1, min(12, round(width / 8.33)))}"></span>')
+    parts.append("</div>")
+    return "".join(parts)
+
+
 def _render_cards_slider(block: dict[str, Any]) -> str:
     title = _safe_text(block.get("title"))
     subtitle = _safe_text(block.get("subtitle"))
@@ -725,24 +872,24 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
             continue
         block_type = str(block.get("type") or "").strip().lower()
 
-        if block_type == "paragraph":
+        if block_type in {"paragraph", "bs_paragraph"}:
             text = _safe_text(block.get("text"))
             if text:
                 output.append(f"<p>{text}</p>")
-        elif block_type == "heading":
+        elif block_type in {"heading", "bs_heading"}:
             text = _safe_text(block.get("text"))
             level = int(block.get("level") or 2)
             level = 2 if level < 1 or level > 6 else level
             if text:
                 output.append(f"<h{level}>{text}</h{level}>")
-        elif block_type == "list":
+        elif block_type in {"list", "bs_list"}:
             items = [str(x).strip() for x in (block.get("items") or []) if str(x).strip()]
             ordered = bool(block.get("ordered"))
             if items:
                 tag = "ol" if ordered else "ul"
                 rendered = "".join(f"<li>{_safe_text(item)}</li>" for item in items)
                 output.append(f"<{tag}>{rendered}</{tag}>")
-        elif block_type == "quote":
+        elif block_type in {"quote", "bs_quote"}:
             text = _safe_text(block.get("text"))
             cite = _safe_text(block.get("cite"))
             if text:
@@ -750,7 +897,7 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
                     output.append(f"<blockquote><p>{text}</p><cite>{cite}</cite></blockquote>")
                 else:
                     output.append(f"<blockquote><p>{text}</p></blockquote>")
-        elif block_type == "image":
+        elif block_type in {"image", "bs_image"}:
             src = _safe_url(block.get("src"))
             alt = _safe_text(block.get("alt"))
             caption = _safe_text(block.get("caption"))
@@ -760,7 +907,7 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
                     figure.append(f"<figcaption>{caption}</figcaption>")
                 figure.append("</figure>")
                 output.append("".join(figure))
-        elif block_type == "embed":
+        elif block_type in {"embed", "bs_embed"}:
             url = _safe_url(block.get("url"))
             if url and url != "#":
                 output.append(
@@ -768,22 +915,22 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
                     f'<a href="{url}" target="_blank" rel="noopener noreferrer">{url}</a>'
                     "</div>"
                 )
-        elif block_type == "button":
+        elif block_type in {"button", "bs_button"}:
             label = _safe_text(block.get("label"))
             href = _safe_url(block.get("url"))
             style = str(block.get("style") or "primary").strip().lower()
             css = "btn btn-primary" if style != "secondary" else "btn btn-secondary"
             if label:
                 output.append(f'<div class="block-buttons"><a class="{css}" href="{href}">{label}</a></div>')
-        elif block_type == "buttons":
+        elif block_type in {"buttons", "bs_button_group"}:
             items = block.get("items") or []
             if isinstance(items, list):
                 output.append(_render_buttons(items))
-        elif block_type == "spacer":
+        elif block_type in {"spacer", "bs_spacer"}:
             px = int(block.get("height") or 24)
             px = 16 if px < 8 else min(px, 180)
             output.append(f'<div class="block-spacer" style="height:{px}px"></div>')
-        elif block_type == "faq":
+        elif block_type in {"faq", "bs_faq"}:
             q = _safe_text(block.get("question"))
             a = _safe_text(block.get("answer"))
             if q:
@@ -868,6 +1015,22 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
             rendered = _render_bs_pricing_table(block)
             if rendered:
                 output.append(rendered)
+        elif block_type == "bs_dropdown":
+            rendered = _render_bs_dropdown(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_navbar":
+            rendered = _render_bs_navbar(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_ratio":
+            rendered = _render_bs_ratio(block)
+            if rendered:
+                output.append(rendered)
+        elif block_type == "bs_placeholder":
+            rendered = _render_bs_placeholder(block)
+            if rendered:
+                output.append(rendered)
         elif block_type == "columns":
             left_html = ""
             right_html = ""
@@ -894,7 +1057,12 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
                 f'<div class="block-column">{right_html}</div>'
                 "</div>"
             )
-        elif block_type in {"rows", "raws"}:
+        elif block_type in {"rows", "raws", "bs_container", "bs_rows", "bs_columns"}:
+            if block_type in {"bs_container", "bs_rows", "bs_columns"}:
+                rendered = _render_bs_container(block)
+                if rendered:
+                    output.append(rendered)
+                continue
             rows = block.get("rows")
             rendered_rows: list[str] = []
 
@@ -952,11 +1120,11 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
                 if items:
                     rendered = "".join(f'<div class="block-row"><p>{_safe_text(item)}</p></div>' for item in items)
                     output.append(f'<div class="block-rows">{rendered}</div>')
-        elif block_type == "html":
+        elif block_type in {"html", "bs_html"}:
             custom = str(block.get("html") or "").strip()
             if custom:
                 output.append(custom)
-        elif block_type in {"cards_slider", "cards-slider", "cards slider", "cs_cards_slider"}:
+        elif block_type in {"cards_slider", "cards-slider", "cards slider", "cs_cards_slider", "bs_cards_slider"}:
             rendered = _render_cards_slider(block)
             if rendered:
                 output.append(rendered)
