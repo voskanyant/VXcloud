@@ -231,6 +231,7 @@
   background: #fff;
   cursor: pointer;
   user-select: none;
+  cursor: grab;
 }
 
 .be-canvas-block.is-selected {
@@ -240,6 +241,7 @@
 
 .be-canvas-block.is-dragging {
   opacity: 0.5;
+  cursor: grabbing;
 }
 
 .be-canvas-block.is-drop-before {
@@ -261,6 +263,15 @@
   font-size: 12px;
   font-weight: 700;
   color: #1f2937;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.be-drag-handle {
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .be-canvas-index {

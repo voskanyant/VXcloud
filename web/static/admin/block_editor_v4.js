@@ -961,9 +961,9 @@
         const groupBlock = document.createElement("section");
         groupBlock.className = "be-library-group";
 
-        const storageKey = `be.group.${group}`;
+        const storageKey = `be.v5.group.${group}`;
         const stored = safeStorageGet(storageKey);
-        const defaultOpen = group === "Text" || group === "Design";
+        const defaultOpen = group !== "Advanced";
         const isOpen = stored === null ? defaultOpen : stored === "1";
         if (!isOpen) groupBlock.classList.add("is-collapsed");
 
@@ -1008,7 +1008,7 @@
       const top = document.createElement("header");
       top.className = "be-canvas-head";
       top.innerHTML =
-        "<div class='be-doc-meta'><strong>Document</strong><small>Type / to choose a block</small></div>" +
+        "<div class='be-doc-meta'><strong>Document</strong><small>Type / to choose a block · drag cards to reorder</small></div>" +
         "<div class='be-doc-count'></div>";
       top.querySelector(".be-doc-count").textContent = `${state.blocks.length} blocks`;
 
@@ -1061,7 +1061,7 @@
           card.draggable = true;
           card.innerHTML =
             "<div class='be-canvas-block-top'>" +
-            `<span class='be-canvas-type'>${meta.icon} ${meta.label}</span>` +
+            `<span class='be-canvas-type'><span class='be-drag-handle' title='Drag to reorder'>⋮⋮</span>${meta.icon} ${meta.label}</span>` +
             `<span class='be-canvas-index'>#${index + 1}</span>` +
             "</div>" +
             "<div class='be-canvas-preview'></div>";

@@ -33,12 +33,12 @@
 
 {% block extra_head %}
   {% if form.content_blocks %}
-    <link rel="stylesheet" href="{% static 'admin/block_editor_v4.css' %}">
+    <link rel="stylesheet" href="{% static 'admin/block_editor_v4.css' %}?v=20260404-v5">
   {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
   {% if form.content_blocks %}
-    <script src="{% static 'admin/block_editor_v4.js' %}"></script>
+    <script src="{% static 'admin/block_editor_v4.js' %}?v=20260404-v5"></script>
   {% endif %}
 {% endblock %}
