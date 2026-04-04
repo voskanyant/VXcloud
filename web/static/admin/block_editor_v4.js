@@ -842,16 +842,12 @@
     left.className = "be-left";
     const center = document.createElement("section");
     center.className = "be-canvas";
-    const right = document.createElement("aside");
-    right.className = "be-right";
     root.appendChild(left);
     root.appendChild(center);
-    root.appendChild(right);
 
     function applyResponsiveMode() {
       const width = root.getBoundingClientRect().width || 0;
-      root.classList.toggle("be-mode-compact", width > 0 && width < 1160);
-      root.classList.toggle("be-mode-stack", width > 0 && width < 860);
+      root.classList.toggle("be-mode-stack", width > 0 && width < 980);
     }
 
     applyResponsiveMode();
@@ -877,7 +873,6 @@
     function selectBlock(index) {
       state.selectedIndex = index;
       renderCanvas();
-      renderInspector();
       sync();
     }
 
@@ -885,7 +880,6 @@
       state.blocks.push(defaultsFor(type));
       state.selectedIndex = state.blocks.length - 1;
       renderCanvas();
-      renderInspector();
       sync();
     }
 
@@ -895,7 +889,6 @@
       if (!state.blocks.length) state.selectedIndex = -1;
       else if (state.selectedIndex >= state.blocks.length) state.selectedIndex = state.blocks.length - 1;
       renderCanvas();
-      renderInspector();
       sync();
     }
 
@@ -909,7 +902,6 @@
       state.blocks[current] = tmp;
       state.selectedIndex = target;
       renderCanvas();
-      renderInspector();
       sync();
     }
 
@@ -920,7 +912,6 @@
       state.blocks.splice(index + 1, 0, clone);
       state.selectedIndex = index + 1;
       renderCanvas();
-      renderInspector();
       sync();
     }
 
@@ -1049,7 +1040,6 @@
           state.selectedIndex = targetIndex;
           state.dragIndex = -1;
           renderCanvas();
-          renderInspector();
           sync();
         };
 
@@ -1058,7 +1048,7 @@
           const card = document.createElement("article");
           card.className = "be-canvas-block";
           if (state.selectedIndex === index) card.classList.add("is-selected");
-          card.draggable = true;
+          card.draggable = state.selectedIndex !== index;
           card.innerHTML =
             "<div class='be-canvas-block-top'>" +
             `<span class='be-canvas-type'><span class='be-drag-handle' title='Drag to reorder'>⋮⋮</span>${meta.icon} ${meta.label}</span>` +
@@ -1066,7 +1056,10 @@
             "</div>" +
             "<div class='be-canvas-preview'></div>";
           card.querySelector(".be-canvas-preview").textContent = blockPreview(block);
-          card.addEventListener("click", () => selectBlock(index));
+          card.addEventListener("click", (event) => {
+            if (event.target && event.target.closest && event.target.closest(".be-inline-editor")) return;
+            selectBlock(index);
+          });
           card.addEventListener("dragstart", (event) => {
             state.dragIndex = index;
             card.classList.add("is-dragging");
@@ -1096,6 +1089,12 @@
             state.dragIndex = -1;
             clearDropMarkers();
           });
+          if (state.selectedIndex === index) {
+            const inline = document.createElement("div");
+            inline.className = "be-inline-editor";
+            card.appendChild(inline);
+            renderInspector(inline);
+          }
           stage.appendChild(card);
         });
 
@@ -1111,19 +1110,16 @@
       center.appendChild(stage);
     }
 
-    function renderInspector() {
-      right.innerHTML = "";
-
-      const head = document.createElement("header");
-      head.className = "be-right-head";
-      head.innerHTML = "<div class='be-right-tabs'><span>Post</span><span class='is-active'>Block</span></div>";
-      right.appendChild(head);
+    function renderInspector(host) {
+      const target = host || null;
+      if (!target) return;
+      target.innerHTML = "";
 
       if (state.selectedIndex < 0 || state.selectedIndex >= state.blocks.length) {
         const empty = document.createElement("p");
         empty.className = "be-right-empty";
         empty.textContent = "Select a block to edit settings.";
-        right.appendChild(empty);
+        target.appendChild(empty);
         return;
       }
 
@@ -1133,7 +1129,7 @@
       const title = document.createElement("div");
       title.className = "be-selected-title";
       title.textContent = `${meta.icon} ${meta.label}`;
-      right.appendChild(title);
+      target.appendChild(title);
 
       const actions = document.createElement("div");
       actions.className = "be-inspector-actions";
@@ -1164,11 +1160,11 @@
       actions.appendChild(down);
       actions.appendChild(duplicate);
       actions.appendChild(remove);
-      right.appendChild(actions);
+      target.appendChild(actions);
 
       const form = document.createElement("div");
       form.className = "be-inspector-form";
-      right.appendChild(form);
+      target.appendChild(form);
 
       function changed() {
         renderCanvas();
@@ -3594,7 +3590,6 @@
     function renderAll() {
       renderLeft();
       renderCanvas();
-      renderInspector();
       sync();
     }
 
