@@ -3,7 +3,7 @@ from django.contrib import admin
 
 from .models import Category, Page, Post, PostType, SiteText
 
-BLOCK_EDITOR_ASSET_VERSION = "20260404-bootstrap-suite-v7"
+BLOCK_EDITOR_ASSET_VERSION = "20260404-flatsome-ux-v8"
 
 
 class RichTextAdminForm(forms.ModelForm):
@@ -23,8 +23,8 @@ class RichTextAdminForm(forms.ModelForm):
         }
 
     class Media:
-        css = {"all": ("admin/block_editor_v7.css",)}
-        js = ("admin/block_editor_v7.js",)
+        css = {"all": ("admin/block_editor_v8.css",)}
+        js = ("admin/block_editor_v8.js",)
 
 
 class PostAdminForm(RichTextAdminForm):
