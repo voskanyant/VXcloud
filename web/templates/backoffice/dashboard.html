@@ -1,6 +1,11 @@
-﻿{% extends "backoffice/base.html" %}
+{% extends "backoffice/base.html" %}
 
 {% block content %}
+<div class="alert alert-light border shadow-sm mb-4">
+  <div class="fw-semibold mb-1">Migration boundary</div>
+  <div class="small text-muted">WordPress + Flatsome owns public pages, blog, instructions, navigation, and footer. Django stays responsible for account flows, Telegram auth, payments, APIs, and operational data.</div>
+</div>
+
 <div class="row g-3 mb-4">
   {% for metric in metrics %}
     <div class="col-12 col-sm-6 col-xl-3">

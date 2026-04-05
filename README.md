@@ -175,17 +175,20 @@ The project includes:
 - `scripts/docker/web-entrypoint.sh`
 - `scripts/docker/bot-entrypoint.sh`
 
-### Start DB + Web (bot disabled)
+### Start Full Stack (bot disabled)
 
 ```bash
 cp .env.example .env
-# set real values in .env (token, domain, POSTGRES_PASSWORD, etc.)
+# set real values in .env (token, domain, Postgres, WordPress, etc.)
 
-docker compose up -d --build db web
+docker compose up -d --build db wpdb wordpress web proxy
 ```
 
-Note: `web/staticfiles` is bind-mounted from host to container so nginx alias
-`/srv/apps/vxcloud/app/web/staticfiles/` works after every deploy.
+Public traffic now goes through the local nginx reverse proxy on `127.0.0.1:8088`.
+
+- WordPress owns `/`, `/instructions/`, `/blog/`, and other public content routes
+- Django keeps `/account/`, `/accounts/`, `/api/`, `/auth/tg/`, `/open-app/`, `/django-admin/`, and `/ops/`
+- Old `/admin/` requests redirect to `/ops/`
 
 ### Start Bot (cutover step)
 
@@ -226,6 +229,45 @@ chmod +x scripts/ops/deploy-auto.sh
 ```bash
 docker compose --env-file .env exec -T web python /app/web/manage.py bootstrap_site_pages
 ```
+
+## WordPress Public Site
+
+The public marketing/content site is now scaffolded for WordPress + Flatsome.
+
+- WordPress admin: `/wp-admin/`
+- Django ops panel: `/ops/`
+- Django admin: `/django-admin/`
+- repo-managed WordPress files live in [`wordpress/`](wordpress/README.md)
+
+### Django to WordPress export
+
+Export the existing Django CMS content into the shared WordPress import directory:
+
+```bash
+docker compose --env-file .env exec -T web python /app/web/manage.py export_wordpress_content
+```
+
+This creates:
+
+- `wordpress/import-data/django-wordpress-export.json`
+- `wordpress/import-data/pages.csv`
+- `wordpress/import-data/posts.csv`
+- `wordpress/import-data/site_texts.csv`
+
+### WordPress import
+
+After WordPress starts:
+
+1. Install the licensed Flatsome parent theme in WordPress
+2. Activate `VX Flatsome Child`
+3. Activate `VX Site Integration`
+4. Open `Tools -> Django Import`
+5. Import `/var/www/html/import-data/django-wordpress-export.json`
+
+### Legacy Django CMS
+
+The old Django content screens remain available under `/ops/` for migration support and operational review.
+Set `WORDPRESS_CONTENT_READONLY=1` when you want to freeze legacy content editing in Django.
 
 ## Directus Content Sync From Git
 
@@ -372,7 +414,7 @@ python manage.py runserver 0.0.0.0:8088
 Open:
 
 - Guide: `http://127.0.0.1:8088/`
-- Admin: `http://127.0.0.1:8088/admin/`
+- Ops Panel: `http://127.0.0.1:8088/ops/`
 
 Add posts in admin (`Post`) and they appear on the public guide page.
 

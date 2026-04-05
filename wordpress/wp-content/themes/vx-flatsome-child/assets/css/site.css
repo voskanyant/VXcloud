@@ -1,0 +1,49 @@
+:root {
+  --vx-accent: #bb6b2d;
+  --vx-ink: #122033;
+  --vx-sand: #f6efe3;
+}
+
+body.blog .page-wrapper,
+body.archive .page-wrapper,
+body.single-post .page-wrapper {
+  background:
+    radial-gradient(circle at top left, rgba(187, 107, 45, 0.09), transparent 32%),
+    linear-gradient(180deg, #fffdf8, #ffffff 42%);
+}
+
+.blog-wrapper,
+.archive-page-header,
+.post-item .box-text {
+  color: var(--vx-ink);
+}
+
+.blog-archive .post-item,
+.archive-page-header .is-divider,
+.single-post .article-inner {
+  border-color: rgba(18, 32, 51, 0.08);
+}
+
+.single-post .article-inner {
+  padding: clamp(1.25rem, 3vw, 2.5rem);
+  border-radius: 1.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 18px 48px rgba(17, 24, 39, 0.08);
+}
+
+.single-post .entry-header-text-top {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vx-accent);
+}
+
+.archive-page-header h1,
+.single-post .entry-title {
+  font-weight: 700;
+  line-height: 1;
+}
+
+.blog-archive .box-text p,
+.single-post .entry-content p {
+  color: rgba(18, 32, 51, 0.76);
+}

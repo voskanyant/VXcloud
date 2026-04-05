@@ -1,5 +1,6 @@
-﻿from django.contrib import admin
-from django.urls import include, path
+from django.contrib import admin
+from django.urls import include, path, re_path
+from django.views.generic import RedirectView
 
 from blog import views as blog_views
 from cabinet.views import (
@@ -12,7 +13,8 @@ from cabinet.views import (
 )
 
 urlpatterns = [
-    path("admin/", include("backoffice.urls")),
+    re_path(r"^admin(?:/.*)?$", RedirectView.as_view(url="/ops/", permanent=True)),
+    path("ops/", include("backoffice.urls")),
     path("django-admin/", admin.site.urls),
     path("accounts/login/", EmailLoginView.as_view(), name="login"),
     path("accounts/", include("django.contrib.auth.urls")),

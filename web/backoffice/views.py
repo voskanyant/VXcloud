@@ -1,7 +1,8 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from typing import Any
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
@@ -26,6 +27,11 @@ from .forms import (
     StaffAuthenticationForm,
 )
 
+LEGACY_CONTENT_NOTICE = (
+    "Публичный контент переносится в WordPress + Flatsome. "
+    "Этот раздел больше не является целевой CMS для сайта."
+)
+
 
 class StaffRequiredMixin:
     login_url = reverse_lazy("backoffice:login")
@@ -35,6 +41,33 @@ class StaffRequiredMixin:
             return redirect(f"{self.login_url}?next={request.path}")
         if not request.user.is_staff:
             raise PermissionDenied("Доступ только для staff")
+        return super().dispatch(request, *args, **kwargs)
+
+
+class LegacyContentContextMixin:
+    content_management = False
+
+    def is_content_readonly(self) -> bool:
+        return self.content_management and settings.WORDPRESS_CONTENT_READONLY
+
+    def get_wordpress_notice(self) -> str:
+        return LEGACY_CONTENT_NOTICE if self.content_management else ""
+
+    def add_wordpress_context(self, ctx: dict[str, Any]) -> dict[str, Any]:
+        ctx["wordpress_notice"] = self.get_wordpress_notice()
+        ctx["wordpress_public_site_enabled"] = settings.WORDPRESS_PUBLIC_SITE_ENABLED
+        ctx["wordpress_content_readonly"] = self.is_content_readonly()
+        ctx["wordpress_public_site_url"] = settings.WORDPRESS_PUBLIC_SITE_URL or "/"
+        return ctx
+
+
+class LegacyContentMutationGuardMixin(LegacyContentContextMixin):
+    success_url_name = ""
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        if self.is_content_readonly():
+            messages.warning(request, "Редактирование legacy CMS отключено. Вносите публичный контент в WordPress.")
+            return redirect(reverse(self.success_url_name))
         return super().dispatch(request, *args, **kwargs)
 
 
@@ -77,7 +110,11 @@ class DashboardView(StaffRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
-        ctx["title"] = "Панель управления"
+        ctx["title"] = "Ops Panel"
+        ctx["wordpress_notice"] = LEGACY_CONTENT_NOTICE
+        ctx["wordpress_public_site_enabled"] = settings.WORDPRESS_PUBLIC_SITE_ENABLED
+        ctx["wordpress_content_readonly"] = settings.WORDPRESS_CONTENT_READONLY
+        ctx["wordpress_public_site_url"] = settings.WORDPRESS_PUBLIC_SITE_URL or "/"
         ctx["metrics"] = [
             {"label": "Страницы", "value": safe_count(Page.objects.all())},
             {"label": "Посты", "value": safe_count(Post.objects.all())},
@@ -102,7 +139,7 @@ class DashboardView(StaffRequiredMixin, TemplateView):
         return ctx
 
 
-class BaseListView(StaffRequiredMixin, ListView):
+class BaseListView(LegacyContentContextMixin, StaffRequiredMixin, ListView):
     template_name = "backoffice/list.html"
     paginate_by = 25
     context_object_name = "items"
@@ -144,8 +181,8 @@ class BaseListView(StaffRequiredMixin, ListView):
         ctx["add_url_name"] = self.add_url_name
         ctx["edit_url_name"] = self.edit_url_name
         ctx["delete_url_name"] = self.delete_url_name
-        ctx["readonly"] = self.readonly
-        return ctx
+        ctx["readonly"] = self.readonly or self.is_content_readonly()
+        return self.add_wordpress_context(ctx)
 
 
 class PostListView(BaseListView):
@@ -163,6 +200,7 @@ class PostListView(BaseListView):
         ("updated_at", "Обновлён"),
     ]
     search_fields = ["title", "slug", "summary"]
+    content_management = True
 
     def get_queryset(self):
         return super().get_queryset().order_by("-published_at", "-id")
@@ -183,6 +221,7 @@ class PageListView(BaseListView):
         ("updated_at", "Обновлена"),
     ]
     search_fields = ["title", "slug", "path", "summary"]
+    content_management = True
 
     def get_queryset(self):
         return super().get_queryset().order_by("nav_order", "title")
@@ -202,6 +241,7 @@ class CategoryListView(BaseListView):
         ("updated_at", "Обновлена"),
     ]
     search_fields = ["title", "slug"]
+    content_management = True
 
 
 class PostTypeListView(BaseListView):
@@ -218,6 +258,7 @@ class PostTypeListView(BaseListView):
         ("updated_at", "Обновлён"),
     ]
     search_fields = ["title", "slug"]
+    content_management = True
 
 
 class SiteTextListView(BaseListView):
@@ -232,6 +273,7 @@ class SiteTextListView(BaseListView):
         ("updated_at", "Обновлён"),
     ]
     search_fields = ["key", "value"]
+    content_management = True
 
 
 class BotUserListView(BaseListView):
@@ -287,7 +329,7 @@ class BotOrderListView(BaseListView):
         return super().get_queryset().order_by("-id")
 
 
-class BaseEditView(StaffRequiredMixin):
+class BaseEditView(LegacyContentMutationGuardMixin, StaffRequiredMixin):
     template_name = "backoffice/form.html"
     success_url_name = ""
     title_create = "Создать"
@@ -300,7 +342,7 @@ class BaseEditView(StaffRequiredMixin):
         ctx = super().get_context_data(**kwargs)
         ctx["title"] = self.title_update if getattr(self, "object", None) else self.title_create
         ctx["block_editor_asset_version"] = BLOCK_EDITOR_ASSET_VERSION
-        return ctx
+        return self.add_wordpress_context(ctx)
 
     def form_valid(self, form):
         response = super().form_valid(form)
@@ -308,11 +350,16 @@ class BaseEditView(StaffRequiredMixin):
         return response
 
 
+class LegacyContentDeleteView(LegacyContentMutationGuardMixin, StaffRequiredMixin, DeleteView):
+    content_management = True
+
+
 class PostCreateView(BaseEditView, CreateView):
     model = Post
     form_class = BackofficePostForm
     success_url_name = "backoffice:post_list"
     title_create = "Новый пост"
+    content_management = True
 
 
 class PostUpdateView(BaseEditView, UpdateView):
@@ -320,11 +367,13 @@ class PostUpdateView(BaseEditView, UpdateView):
     form_class = BackofficePostForm
     success_url_name = "backoffice:post_list"
     title_update = "Редактирование поста"
+    content_management = True
 
 
-class PostDeleteView(StaffRequiredMixin, DeleteView):
+class PostDeleteView(LegacyContentDeleteView):
     model = Post
     template_name = "backoffice/confirm_delete.html"
+    success_url_name = "backoffice:post_list"
     success_url = reverse_lazy("backoffice:post_list")
 
 
@@ -333,6 +382,7 @@ class PageCreateView(BaseEditView, CreateView):
     form_class = BackofficePageForm
     success_url_name = "backoffice:page_list"
     title_create = "Новая страница"
+    content_management = True
 
 
 class PageUpdateView(BaseEditView, UpdateView):
@@ -340,11 +390,13 @@ class PageUpdateView(BaseEditView, UpdateView):
     form_class = BackofficePageForm
     success_url_name = "backoffice:page_list"
     title_update = "Редактирование страницы"
+    content_management = True
 
 
-class PageDeleteView(StaffRequiredMixin, DeleteView):
+class PageDeleteView(LegacyContentDeleteView):
     model = Page
     template_name = "backoffice/confirm_delete.html"
+    success_url_name = "backoffice:page_list"
     success_url = reverse_lazy("backoffice:page_list")
 
 
@@ -353,6 +405,7 @@ class CategoryCreateView(BaseEditView, CreateView):
     form_class = BackofficeCategoryForm
     success_url_name = "backoffice:category_list"
     title_create = "Новая категория"
+    content_management = True
 
 
 class CategoryUpdateView(BaseEditView, UpdateView):
@@ -360,11 +413,13 @@ class CategoryUpdateView(BaseEditView, UpdateView):
     form_class = BackofficeCategoryForm
     success_url_name = "backoffice:category_list"
     title_update = "Редактирование категории"
+    content_management = True
 
 
-class CategoryDeleteView(StaffRequiredMixin, DeleteView):
+class CategoryDeleteView(LegacyContentDeleteView):
     model = Category
     template_name = "backoffice/confirm_delete.html"
+    success_url_name = "backoffice:category_list"
     success_url = reverse_lazy("backoffice:category_list")
 
 
@@ -373,6 +428,7 @@ class PostTypeCreateView(BaseEditView, CreateView):
     form_class = BackofficePostTypeForm
     success_url_name = "backoffice:post_type_list"
     title_create = "Новый тип поста"
+    content_management = True
 
 
 class PostTypeUpdateView(BaseEditView, UpdateView):
@@ -380,11 +436,13 @@ class PostTypeUpdateView(BaseEditView, UpdateView):
     form_class = BackofficePostTypeForm
     success_url_name = "backoffice:post_type_list"
     title_update = "Редактирование типа поста"
+    content_management = True
 
 
-class PostTypeDeleteView(StaffRequiredMixin, DeleteView):
+class PostTypeDeleteView(LegacyContentDeleteView):
     model = PostType
     template_name = "backoffice/confirm_delete.html"
+    success_url_name = "backoffice:post_type_list"
     success_url = reverse_lazy("backoffice:post_type_list")
 
 
@@ -393,6 +451,7 @@ class SiteTextCreateView(BaseEditView, CreateView):
     form_class = BackofficeSiteTextForm
     success_url_name = "backoffice:site_text_list"
     title_create = "Новый текст"
+    content_management = True
 
 
 class SiteTextUpdateView(BaseEditView, UpdateView):
@@ -400,9 +459,11 @@ class SiteTextUpdateView(BaseEditView, UpdateView):
     form_class = BackofficeSiteTextForm
     success_url_name = "backoffice:site_text_list"
     title_update = "Редактирование текста"
+    content_management = True
 
 
-class SiteTextDeleteView(StaffRequiredMixin, DeleteView):
+class SiteTextDeleteView(LegacyContentDeleteView):
     model = SiteText
     template_name = "backoffice/confirm_delete.html"
+    success_url_name = "backoffice:site_text_list"
     success_url = reverse_lazy("backoffice:site_text_list")
