@@ -1,6 +1,7 @@
-﻿{% load cms %}
+{% load cms %}
 <footer class="site-footer border-top mt-5">
   <div class="container-xxl py-4 py-lg-5">
+    {% with wp_shell=wordpress_shell %}
     {% cms_text "footer.support" "Поддержка" as footer_support %}
     {% cms_text "footer.docs_label" "Документы" as footer_docs_label %}
     {% cms_text "footer.terms" "Условия" as footer_terms %}
@@ -12,15 +13,21 @@
 
     <div class="row g-4">
       <div class="col-12 col-lg-5">
-        <h5 class="mb-2">{{ footer_copy }}</h5>
-        <p class="text-secondary mb-0">{{ footer_tagline }}</p>
+        <h5 class="mb-2">{% if wp_shell %}{{ wp_shell.footer.copy }}{% else %}{{ footer_copy }}{% endif %}</h5>
+        <p class="text-secondary mb-0">{% if wp_shell %}{{ wp_shell.footer.tagline }}{% else %}{{ footer_tagline }}{% endif %}</p>
       </div>
       <div class="col-6 col-lg-3">
         <h6 class="text-uppercase text-secondary small mb-2">Сервис</h6>
         <ul class="list-unstyled m-0 d-grid gap-1">
-          <li><a href="/instructions/">{{ footer_support }}</a></li>
-          <li><a href="/account/">Личный кабинет</a></li>
-          <li><a href="/blog/">Блог</a></li>
+          {% if wp_shell and wp_shell.footer_menu %}
+            {% for item in wp_shell.footer_menu %}
+              <li><a href="{{ item.url }}">{{ item.label }}</a></li>
+            {% endfor %}
+          {% else %}
+            <li><a href="/instructions/">{{ footer_support }}</a></li>
+            <li><a href="/account/">Личный кабинет</a></li>
+            <li><a href="/blog/">Блог</a></li>
+          {% endif %}
         </ul>
       </div>
       <div class="col-6 col-lg-4">
@@ -33,5 +40,6 @@
         </ul>
       </div>
     </div>
+    {% endwith %}
   </div>
 </footer>

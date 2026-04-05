@@ -29,6 +29,116 @@ function vx_site_get_options() {
     return wp_parse_args(get_option('vx_site_options', array()), vx_site_default_options());
 }
 
+function vx_site_build_shell_url($path) {
+    $path = trim((string) $path);
+    if ($path === '') {
+        return home_url('/');
+    }
+    if (preg_match('#^https?://#i', $path)) {
+        return esc_url_raw($path);
+    }
+    return home_url('/' . ltrim($path, '/'));
+}
+
+function vx_site_normalize_shell_path($url) {
+    $url = trim((string) $url);
+    if ($url === '') {
+        return '';
+    }
+
+    $parts = wp_parse_url($url);
+    if (!$parts) {
+        return '';
+    }
+
+    $path = isset($parts['path']) ? $parts['path'] : '';
+    $query = isset($parts['query']) && $parts['query'] !== '' ? '?' . $parts['query'] : '';
+    return $path . $query;
+}
+
+function vx_site_pick_menu_location($preferred) {
+    $locations = get_nav_menu_locations();
+    if (empty($locations) || !is_array($locations)) {
+        return 0;
+    }
+
+    foreach ($preferred as $location_name) {
+        if (!empty($locations[$location_name])) {
+            return (int) $locations[$location_name];
+        }
+    }
+
+    $first_menu_id = reset($locations);
+    return $first_menu_id ? (int) $first_menu_id : 0;
+}
+
+function vx_site_build_menu_items($menu_id) {
+    if (!$menu_id) {
+        return array();
+    }
+
+    $items = wp_get_nav_menu_items($menu_id);
+    if (!is_array($items)) {
+        return array();
+    }
+
+    $menu = array();
+    foreach ($items as $item) {
+        if ((int) $item->menu_item_parent !== 0) {
+            continue;
+        }
+
+        $url = isset($item->url) ? (string) $item->url : '';
+        $menu[] = array(
+            'label' => wp_strip_all_tags($item->title ?: ''),
+            'url' => esc_url_raw($url),
+            'path' => vx_site_normalize_shell_path($url),
+        );
+    }
+
+    return $menu;
+}
+
+function vx_site_build_shell_payload() {
+    $options = vx_site_get_options();
+    $site_name = get_bloginfo('name') ?: 'VXcloud';
+    $site_description = get_bloginfo('description') ?: 'Стабильный VPN/прокси для повседневного доступа к интернету.';
+
+    $header_menu_id = vx_site_pick_menu_location(array('primary', 'main-menu', 'main_menu', 'header', 'desktop'));
+    $footer_menu_id = vx_site_pick_menu_location(array('footer', 'footer-1', 'footer_menu', 'footer-menu', 'secondary'));
+
+    return array(
+        'brand' => array(
+            'label' => $site_name,
+            'url' => home_url('/'),
+        ),
+        'header_menu' => vx_site_build_menu_items($header_menu_id),
+        'footer_menu' => vx_site_build_menu_items($footer_menu_id),
+        'cta' => array(
+            'label' => (string) $options['cta_label'],
+            'price_label' => (string) $options['price_label'],
+            'account_url' => vx_site_build_shell_url((string) $options['django_account_url']),
+            'buy_url' => vx_site_build_shell_url(trailingslashit((string) $options['django_account_url']) . 'buy/'),
+            'open_app_url' => vx_site_build_shell_url((string) $options['django_open_app_url']),
+        ),
+        'footer' => array(
+            'copy' => '© ' . $site_name,
+            'tagline' => $site_description,
+        ),
+    );
+}
+
+function vx_site_register_rest_routes() {
+    register_rest_route('vx-site/v1', '/shell', array(
+        'methods' => 'GET',
+        'callback' => function () {
+            return rest_ensure_response(vx_site_build_shell_payload());
+        },
+        'permission_callback' => '__return_true',
+    ));
+}
+add_action('rest_api_init', 'vx_site_register_rest_routes');
+
 function vx_site_register_page_meta() {
     $meta_config = array(
         'single' => true,
