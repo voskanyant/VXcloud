@@ -22,9 +22,9 @@
     <span class="vx-pill vx-pill-muted align-self-start cabinet-hero-count">{{ subscription_rows|length }} доступов</span>
   </div>
   <div class="cabinet-hero-actions d-grid d-sm-flex gap-2 mt-3">
-    <a class="btn btn-primary" href="/account/buy/">{{ cabinet_buy_new_action }} · {{ card_price_label }}</a>
-    <a class="btn btn-outline-primary" href="/account/renew/">{{ cabinet_renew_action_short }} · {{ card_price_label }}</a>
-    <a class="btn btn-outline-secondary" href="/instructions/">{{ cabinet_support_action }}</a>
+    <a class="btn btn-primary" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>{{ cabinet_buy_new_action }} · {{ card_price_label }}</a>
+    <a class="btn btn-outline-primary" href="{{ backend_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>{{ cabinet_renew_action_short }} · {{ card_price_label }}</a>
+    <a class="btn btn-outline-secondary" href="{{ support_url }}"{% if embed_mode %} target="_top"{% endif %}>{{ cabinet_support_action }}</a>
   </div>
 </section>
 
@@ -59,7 +59,7 @@
             <code class="stat-code">{{ linked.telegram_id }}</code>
           {% else %}
             <span class="vx-pill vx-pill-warning status-pill">Не привязан</span>
-            <div class="small stat-linkline"><a href="/account/link/">Привязать</a><span class="text-secondary"> · {{ inactive_configs }} неактивных</span></div>
+            <div class="small stat-linkline"><a href="{{ backend_link_url }}">Привязать</a><span class="text-secondary"> · {{ inactive_configs }} неактивных</span></div>
           {% endif %}
         </div>
       </article>
@@ -121,10 +121,10 @@
               </div>
 
               <div class="config-card-actions">
-                <a class="btn btn-sm btn-outline-secondary" href="/account/config/{{ row.id }}/#qr">QR</a>
+                <a class="btn btn-sm btn-outline-secondary" href="{{ backend_config_prefix }}{{ row.id }}/#qr">QR</a>
                 <details class="vx-rename-details config-rename-block">
                   <summary>Переименовать</summary>
-                  <form method="post" action="/account/subscriptions/{{ row.id }}/rename/" class="config-rename-form">
+                  <form method="post" action="{{ backend_rename_prefix }}{{ row.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="config-rename-form">
                     {% csrf_token %}
                     <input type="text" class="form-control form-control-sm" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Имя устройства" />
                     <button type="submit" class="btn btn-sm btn-outline-secondary js-rename-icon" title="Переименовать" aria-label="Переименовать">
@@ -144,8 +144,8 @@
 </section>
 
 <div class="cabinet-mobile-actions d-lg-none">
-  <a class="btn btn-primary" href="/account/buy/">{{ cabinet_buy_new_action }}</a>
-  <a class="btn btn-outline-secondary" href="/instructions/">{{ cabinet_support_action }}</a>
+  <a class="btn btn-primary" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>{{ cabinet_buy_new_action }}</a>
+  <a class="btn btn-outline-secondary" href="{{ support_url }}"{% if embed_mode %} target="_top"{% endif %}>{{ cabinet_support_action }}</a>
 </div>
 </div>
 

@@ -166,6 +166,36 @@ function vx_site_get_shell_bridge_page() {
     return $page instanceof WP_Post ? $page : null;
 }
 
+function vx_site_get_account_host_page() {
+    $page = get_page_by_path('account', OBJECT, 'page');
+    if ($page instanceof WP_Post) {
+        if (strpos((string) $page->post_content, '[vx_account_app]') === false) {
+            wp_update_post(array(
+                'ID' => (int) $page->ID,
+                'post_content' => '[vx_account_app]',
+            ));
+            $page = get_post((int) $page->ID);
+        }
+        return $page instanceof WP_Post ? $page : null;
+    }
+
+    $page_id = wp_insert_post(array(
+        'post_type' => 'page',
+        'post_status' => 'publish',
+        'post_title' => 'Мой аккаунт',
+        'post_name' => 'account',
+        'post_content' => '[vx_account_app]',
+        'comment_status' => 'closed',
+        'ping_status' => 'closed',
+    ), true);
+
+    if (is_wp_error($page_id) || !$page_id) {
+        return null;
+    }
+
+    return get_post((int) $page_id);
+}
+
 function vx_site_extract_shell_fragments_from_html($html) {
     $html = (string) $html;
     if ($html === '' || strpos($html, VX_SITE_SHELL_MARKER) === false) {
@@ -241,6 +271,70 @@ function vx_site_register_rest_routes() {
     ));
 }
 add_action('rest_api_init', 'vx_site_register_rest_routes');
+
+function vx_site_account_app_shortcode() {
+    $iframe_src = home_url('/account-app/?embed=1');
+    ob_start();
+    ?>
+    <div class="vx-account-host" data-vx-account-host>
+        <iframe
+            class="vx-account-frame"
+            src="<?php echo esc_url($iframe_src); ?>"
+            loading="eager"
+            referrerpolicy="same-origin"
+            allowfullscreen
+        ></iframe>
+    </div>
+    <script>
+    (function () {
+      const host = document.currentScript.previousElementSibling;
+      if (!host || host.dataset.vxAccountMounted === '1') return;
+      host.dataset.vxAccountMounted = '1';
+
+      const frame = host.querySelector('.vx-account-frame');
+      if (!frame) return;
+
+      const mapToBackend = function () {
+        const url = new URL(window.location.href);
+        let backendPath = url.pathname.replace(/^\/account\b/, '/account-app');
+        if (backendPath === url.pathname) backendPath = '/account-app/';
+        url.pathname = backendPath || '/account-app/';
+        url.searchParams.set('embed', '1');
+        return url.toString();
+      };
+
+      const setFrameSrc = function () {
+        const nextSrc = mapToBackend();
+        if (frame.src !== nextSrc) {
+          frame.src = nextSrc;
+        }
+      };
+
+      window.addEventListener('message', function (event) {
+        if (event.origin !== window.location.origin) return;
+        const data = event.data || {};
+        if (data.type !== 'vx-account-embed') return;
+
+        if (data.height) {
+          frame.style.height = Math.max(640, Number(data.height) || 0) + 'px';
+        }
+
+        if (data.path && typeof data.path === 'string') {
+          const current = window.location.pathname + window.location.search + window.location.hash;
+          if (current !== data.path) {
+            window.history.replaceState({}, '', data.path);
+          }
+        }
+      });
+
+      window.addEventListener('popstate', setFrameSrc);
+      setFrameSrc();
+    })();
+    </script>
+    <?php
+    return (string) ob_get_clean();
+}
+add_shortcode('vx_account_app', 'vx_site_account_app_shortcode');
 
 function vx_site_register_page_meta() {
     $meta_config = array(
@@ -572,6 +666,14 @@ function vx_site_resolve_custom_page_path($wp) {
         return;
     }
 
+    if ($wp->request === 'account' || strpos($wp->request, 'account/') === 0) {
+        $account_page = vx_site_get_account_host_page();
+        if ($account_page instanceof WP_Post) {
+            $wp->query_vars = array('page_id' => (int) $account_page->ID);
+            return;
+        }
+    }
+
     $path = vx_site_normalize_path($wp->request);
     $page_id = vx_site_find_page_by_path($path);
     if ($page_id) {
@@ -579,6 +681,16 @@ function vx_site_resolve_custom_page_path($wp) {
     }
 }
 add_action('parse_request', 'vx_site_resolve_custom_page_path', 1);
+
+function vx_site_disable_account_canonical_redirect($redirect_url, $requested_url) {
+    $path = wp_parse_url((string) $requested_url, PHP_URL_PATH);
+    $path = trim((string) $path, '/');
+    if ($path === 'account' || strpos($path, 'account/') === 0) {
+        return false;
+    }
+    return $redirect_url;
+}
+add_filter('redirect_canonical', 'vx_site_disable_account_canonical_redirect', 10, 2);
 
 function vx_site_find_page_by_path($path) {
     global $wpdb;

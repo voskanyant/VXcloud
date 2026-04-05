@@ -37,6 +37,10 @@ body {
   line-height: 1.62;
 }
 
+body.vx-account-embed {
+  background: transparent;
+}
+
 a {
   color: #b91c1c;
   text-decoration: none;
@@ -60,6 +64,17 @@ a:hover {
 .site-main {
   min-height: calc(100vh - 126px);
   padding: var(--space-3) 0 var(--space-4);
+}
+
+.vx-embed-main {
+  min-height: 100vh;
+  padding: 0;
+}
+
+.vx-embed-container {
+  width: 100%;
+  max-width: 100%;
+  padding: 0;
 }
 
 .content-shell > * + * {

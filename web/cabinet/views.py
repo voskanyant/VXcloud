@@ -50,6 +50,49 @@ WEB_ORDER_SESSION_KEY = "web_order_checkout_state_v1"
 WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
 
 
+def _account_embed_mode(request: HttpRequest) -> bool:
+    return (request.GET.get("embed") or "").strip() == "1"
+
+
+def _account_backend_base(request: HttpRequest) -> str:
+    return "/account-app/" if _account_embed_mode(request) else "/account/"
+
+
+def _account_frontend_url(path: str = "") -> str:
+    base = "/account/"
+    suffix = str(path or "").lstrip("/")
+    return base if not suffix else f"{base}{suffix}"
+
+
+def _account_backend_url(request: HttpRequest, path: str = "") -> str:
+    base = _account_backend_base(request)
+    suffix = str(path or "").lstrip("/")
+    url = base if not suffix else f"{base}{suffix}"
+    if _account_embed_mode(request):
+        separator = "&" if "?" in url else "?"
+        return f"{url}{separator}embed=1"
+    return url
+
+
+def _account_redirect(request: HttpRequest, path: str = "") -> HttpResponse:
+    target = _account_backend_url(request, path) if _account_embed_mode(request) else _account_frontend_url(path)
+    return redirect(target)
+
+
+def _account_template_urls(request: HttpRequest) -> dict[str, object]:
+    return {
+        "embed_mode": _account_embed_mode(request),
+        "frontend_dashboard_url": _account_frontend_url(),
+        "backend_dashboard_url": _account_backend_url(request),
+        "backend_link_url": _account_backend_url(request, "link/"),
+        "backend_buy_url": _account_backend_url(request, "buy/"),
+        "backend_renew_url": _account_backend_url(request, "renew/"),
+        "backend_config_prefix": _account_backend_base(request) + "config/",
+        "backend_rename_prefix": _account_backend_base(request) + "subscriptions/",
+        "support_url": "/instructions/",
+    }
+
+
 def _log_payment_event(
     *,
     order_id: int | None,
@@ -269,10 +312,12 @@ def signup_view(request: HttpRequest) -> HttpResponse:
             auth_user = authenticate(request, username=username, password=password)
             if auth_user:
                 login(request, auth_user)
-                return redirect("account_dashboard")
+                return _account_redirect(request)
             return redirect("login")
 
-    return render(request, "cabinet/signup.html", {"form": form})
+    context = {"form": form}
+    context.update(_account_template_urls(request))
+    return render(request, "cabinet/signup.html", context)
 
 
 @login_required
@@ -313,6 +358,7 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
             "subscription_rows": subscription_rows,
             "active_configs": active_configs,
             "inactive_configs": inactive_configs,
+            **_account_template_urls(request),
         },
     )
 
@@ -325,7 +371,7 @@ def link_telegram(request: HttpRequest) -> HttpResponse:
     if request.method == "POST":
         TelegramLinkToken.objects.filter(user=request.user, consumed_at__isnull=True).delete()
         messages.info(request, "Создан новый код для привязки Telegram.")
-        return redirect("account_link")
+        return _account_redirect(request, "link/")
 
     token = (
         TelegramLinkToken.objects.filter(
@@ -355,6 +401,7 @@ def link_telegram(request: HttpRequest) -> HttpResponse:
             "deep_link": deep_link,
             "expires_at": token.expires_at,
             "bot_username": bot_username,
+            **_account_template_urls(request),
         },
     )
 
@@ -369,7 +416,7 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
     linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
     if not bot_user:
         messages.error(request, "Не удалось загрузить данные аккаунта")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     sub, has_active, last_payment_method = _get_subscription_snapshot_for_bot_user(bot_user)
     subscriptions = _list_subscriptions_for_bot_user(bot_user)
@@ -377,12 +424,12 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
         selected = next((s for s in subscriptions if int(s.id) == int(subscription_id)), None)
         if selected is None:
             messages.error(request, "Конфиг не найден")
-            return redirect("account_dashboard")
+            return _account_redirect(request)
         sub = selected
         has_active = bool(sub.is_active and sub.expires_at > timezone.now())
     if not sub:
         messages.error(request, "Подписка не найдена")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     qr_data = sub.vless_url
     img = qrcode.make(qr_data)
@@ -401,6 +448,7 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
             "display_name": _subscription_display_name(sub),
             "qr_b64": qr_b64,
             "copy_text": qr_data,
+            **_account_template_urls(request),
         },
     )
 
@@ -410,7 +458,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
     linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
     if not bot_user:
         messages.error(request, "Не удалось подготовить аккаунт для оплаты. Попробуйте снова через 1-2 минуты.")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     now = timezone.now()
     is_buy_route = request.resolver_match and request.resolver_match.url_name == "account_buy"
@@ -484,7 +532,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
                 pay_url = create_result.pay_url
             except Exception:
                 messages.error(request, "Не удалось восстановить ссылку оплаты. Попробуйте снова через 1-2 минуты.")
-                return redirect("account_dashboard")
+                return _account_redirect(request)
         if pay_url:
             _save_web_order_session_state(
                 request,
@@ -552,7 +600,7 @@ def create_order_stub(request: HttpRequest) -> HttpResponse:
                 messages.info(request, "Оплата уже создаётся. Открываем существующий платеж.")
                 return redirect(pay_url)
         messages.error(request, "Не удалось создать платеж. Попробуйте снова через 1-2 минуты.")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     provider = get_payment_provider(provider_name=provider_name)
     try:
@@ -587,23 +635,23 @@ def rename_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
     linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
     if not bot_user:
         messages.error(request, "Не удалось загрузить данные аккаунта.")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
         messages.error(request, "Конфиг не найден.")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     new_name = (request.POST.get("display_name") or "").strip()
     if not new_name:
         messages.error(request, "Введите имя конфига.")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     subscription.display_name = new_name[:80]
     subscription.updated_at = timezone.now()
     subscription.save(update_fields=["display_name", "updated_at"])
     messages.success(request, "Имя конфига обновлено.")
-    return redirect("account_dashboard")
+    return _account_redirect(request)
 
 
 @login_required
@@ -612,12 +660,12 @@ def revoke_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
     linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
     if not bot_user:
         messages.error(request, "Не удалось загрузить данные аккаунта.")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
         messages.error(request, "Конфиг не найден.")
-        return redirect("account_dashboard")
+        return _account_redirect(request)
 
     now = timezone.now()
     subscription.is_active = False
@@ -625,7 +673,7 @@ def revoke_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
     subscription.updated_at = now
     subscription.save(update_fields=["is_active", "revoked_at", "updated_at"])
     messages.success(request, "Конфиг отключен.")
-    return redirect("account_dashboard")
+    return _account_redirect(request)
 
 
 def open_app_link(request: HttpRequest) -> HttpResponse:

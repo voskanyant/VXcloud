@@ -30,7 +30,7 @@
 
       <div class="config-shell-actions">
         <button class="btn btn-primary" type="button" id="copy-config-button">📋 {{ cabinet_config_copy_action }}</button>
-        <a class="btn btn-outline-secondary" href="/account/">{{ cabinet_config_back_action }}</a>
+        <a class="btn btn-outline-secondary" href="{{ backend_dashboard_url }}">{{ cabinet_config_back_action }}</a>
       </div>
     </div>
 
@@ -65,7 +65,7 @@
           <label class="form-label fw-semibold" for="config-switch">Все конфиги</label>
           <select id="config-switch" class="form-select" onchange="if(this.value){window.location.href=this.value;}">
             {% for sub_item in subscriptions %}
-              <option value="/account/config/{{ sub_item.id }}/" {% if sub_item.id == subscription.id %}selected{% endif %}>
+              <option value="{{ backend_config_prefix }}{{ sub_item.id }}/" {% if sub_item.id == subscription.id %}selected{% endif %}>
                 #{{ sub_item.id }} — {{ sub_item.expires_at|date:'d.m.Y H:i' }} {% if sub_item.is_active %}(active){% endif %}
               </option>
             {% endfor %}

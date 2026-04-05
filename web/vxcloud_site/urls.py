@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/auth/telegram/webapp", telegram_webapp_auth, name="api_telegram_webapp_auth"),
     path("api/webhooks/<str:provider>", payment_webhook, name="api_payment_webhook"),
     path("auth/tg/<str:token>", tg_magic_login, name="tg_magic_login"),
+    path("account-app/", include("cabinet.urls")),
     path("account/", include("cabinet.urls")),
     path("open-app/", open_app_link, name="open_app_link"),
     path("legacy/", include("blog.urls")),
