@@ -14,7 +14,6 @@
     { value: "bs_embed", label: "Bootstrap Embed", icon: "E", group: "Bootstrap Content" },
     { value: "bs_button", label: "Bootstrap Button", icon: "B", group: "Bootstrap Content" },
     { value: "bs_button_group", label: "Bootstrap Button Group", icon: "BG", group: "Bootstrap Content" },
-    { value: "bs_cards_slider", label: "Bootstrap Cards Slider", icon: "CS", group: "Bootstrap Components" },
     { value: "bs_alert", label: "Bootstrap Alert", icon: "AL", group: "Bootstrap Components" },
     { value: "bs_badge", label: "Bootstrap Badge", icon: "BD", group: "Bootstrap Components" },
     { value: "bs_card", label: "Bootstrap Card", icon: "CD", group: "Bootstrap Components" },
@@ -32,17 +31,12 @@
     { value: "bs_modal", label: "Bootstrap Modal", icon: "MO", group: "Bootstrap Components" },
     { value: "bs_toast", label: "Bootstrap Toast", icon: "TS", group: "Bootstrap Components" },
     { value: "bs_offcanvas", label: "Bootstrap Offcanvas", icon: "OF", group: "Bootstrap Components" },
-    { value: "bs_timeline", label: "Bootstrap Timeline", icon: "TL", group: "Bootstrap Components" },
-    { value: "bs_pricing_table", label: "Bootstrap Pricing", icon: "PT", group: "Bootstrap Components" },
-    { value: "bs_faq", label: "Bootstrap FAQ Item", icon: "?", group: "Bootstrap Components" },
-    { value: "bs_divider", label: "Bootstrap Divider", icon: "DV", group: "Bootstrap Components" },
     { value: "bs_dropdown", label: "Bootstrap Dropdown", icon: "DD", group: "Bootstrap Components" },
     { value: "bs_navbar", label: "Bootstrap Navbar", icon: "NB", group: "Bootstrap Components" },
     { value: "bs_ratio", label: "Bootstrap Ratio", icon: "RT", group: "Bootstrap Components" },
     { value: "bs_placeholder", label: "Bootstrap Placeholder", icon: "PH", group: "Bootstrap Components" },
     { value: "bs_container", label: "Bootstrap Container", icon: "CT", group: "Bootstrap Layout" },
     { value: "bs_rows", label: "Bootstrap Rows", icon: "R", group: "Bootstrap Layout" },
-    { value: "bs_columns", label: "Bootstrap Columns", icon: "C", group: "Bootstrap Layout" },
     { value: "bs_spacer", label: "Bootstrap Spacer", icon: "S", group: "Bootstrap Layout" },
   ];
 
@@ -57,7 +51,6 @@
     "bs_button_group",
     "bs_image",
     "bs_embed",
-    "bs_cards_slider",
     "bs_alert",
     "bs_badge",
     "bs_card",
@@ -75,17 +68,12 @@
     "bs_modal",
     "bs_toast",
     "bs_offcanvas",
-    "bs_timeline",
-    "bs_pricing_table",
     "bs_dropdown",
     "bs_navbar",
     "bs_ratio",
     "bs_placeholder",
-    "bs_faq",
-    "bs_divider",
     "bs_container",
     "bs_rows",
-    "bs_columns",
     "bs_spacer",
   ];
 
@@ -866,9 +854,21 @@
     return select;
   }
 
-  function field(label, control, hint) {
+  function field(label, control, hint, options) {
     const wrapper = document.createElement("label");
     wrapper.className = "be-field";
+    const opts = options || {};
+    if (opts.compact) wrapper.classList.add("is-compact");
+    if (opts.wide) wrapper.classList.add("is-wide");
+    if (opts.toned) wrapper.classList.add("is-toned");
+
+    if (!opts.compact) {
+      const tagName = String(control.tagName || "").toLowerCase();
+      if (tagName === "textarea") wrapper.classList.add("is-wide");
+      if (tagName === "input" && String(control.type || "").toLowerCase() === "checkbox") {
+        wrapper.classList.add("is-toggle");
+      }
+    }
 
     const text = document.createElement("span");
     text.className = "be-label";
@@ -884,6 +884,378 @@
       wrapper.appendChild(help);
     }
     return wrapper;
+  }
+
+  function editorBanner(meta, description) {
+    const banner = document.createElement("div");
+    banner.className = "be-editor-banner";
+    banner.innerHTML =
+      `<span class="be-editor-eyebrow">${meta.icon} ${meta.label}</span>` +
+      `<strong class="be-editor-name">${meta.label}</strong>` +
+      `<p class="be-editor-description">${description}</p>`;
+    return banner;
+  }
+
+  function blockEditorDescription(type) {
+    const legacy = toLegacyType(type || "bs_paragraph");
+    if (legacy === "paragraph") return "Write body copy directly in the document flow. Best for long-form article text.";
+    if (legacy === "heading") return "Use this for clear section hierarchy. Keep headings short and scannable.";
+    if (legacy === "list") return "One line becomes one list item. Use lists for steps, requirements, and summaries.";
+    if (legacy === "quote") return "Highlight a testimonial, note, or short emphasized statement.";
+    if (legacy === "button") return "Primary action block. Keep the label explicit and the target URL clean.";
+    if (legacy === "bs_alert") return "Short notice or warning. Keep title and body compact so the callout stays readable.";
+    if (legacy === "bs_badge") return "Small status marker. Use it for labels like New, Pro, Beta, or Active.";
+    if (legacy === "bs_card") return "Compact teaser card. Best for features, services, or short content summaries.";
+    if (legacy === "rows" || legacy === "raws" || legacy === "bs_container") {
+      return "Structural layout block. Arrange rows, columns, and nested bootstrap content here.";
+    }
+    return "Edit the selected block inline. Use compact controls for quick content changes and ordering.";
+  }
+
+  function quickEditOnlyTypes() {
+    return new Set(["paragraph", "heading", "quote", "list", "button", "bs_alert", "bs_badge", "bs_card"]);
+  }
+
+  function supportsQuickEdit(type) {
+    return quickEditOnlyTypes().has(toLegacyType(type || "bs_paragraph"));
+  }
+
+  function buildVariantOptions(values) {
+    return values.map((value) => ({
+      value,
+      label: value.charAt(0).toUpperCase() + value.slice(1),
+    }));
+  }
+
+  function quickEditShell(host, title, description) {
+    const shell = document.createElement("div");
+    shell.className = "be-quick-shell";
+    const head = document.createElement("div");
+    head.className = "be-quick-head";
+    const heading = document.createElement("strong");
+    heading.textContent = title;
+    const hint = document.createElement("span");
+    hint.textContent = description;
+    head.appendChild(heading);
+    head.appendChild(hint);
+    shell.appendChild(head);
+    host.appendChild(shell);
+    return shell;
+  }
+
+  function renderCanvasQuickEdit(block, host, onSync, onCommit) {
+    const type = toLegacyType(block.type || "bs_paragraph");
+    host.innerHTML = "";
+    host.className = "be-card-quick-edit";
+
+    const syncOnly = () => {
+      onSync();
+    };
+
+    const commit = () => {
+      onCommit();
+    };
+
+    if (type === "paragraph") {
+      const shell = quickEditShell(host, "Paragraph", "Edit the text directly in the document flow.");
+      const text = textArea(block.text || "", 5);
+      text.classList.add("be-quick-textarea");
+      text.placeholder = "Write paragraph text...";
+      text.addEventListener("input", () => {
+        block.text = text.value;
+        syncOnly();
+      });
+      text.addEventListener("blur", commit);
+      shell.appendChild(text);
+      return true;
+    }
+
+    if (type === "heading") {
+      const shell = quickEditShell(host, "Heading", "Keep headings concise and use the right level for hierarchy.");
+      const grid = document.createElement("div");
+      grid.className = "be-quick-grid";
+      const title = textInput(block.text || "");
+      title.placeholder = "Heading text";
+      title.classList.add("be-quick-input");
+      title.addEventListener("input", () => {
+        block.text = title.value;
+        syncOnly();
+      });
+      title.addEventListener("blur", commit);
+
+      const level = selectInput(
+        [
+          { value: 1, label: "H1" },
+          { value: 2, label: "H2" },
+          { value: 3, label: "H3" },
+          { value: 4, label: "H4" },
+        ],
+        block.level || 2
+      );
+      level.classList.add("be-quick-select");
+      level.addEventListener("change", () => {
+        block.level = Number(level.value);
+        syncOnly();
+        commit();
+      });
+
+      grid.appendChild(field("Heading", title, "", { wide: true }));
+      grid.appendChild(field("Level", level, "", { compact: true }));
+      shell.appendChild(grid);
+      return true;
+    }
+
+    if (type === "quote") {
+      const shell = quickEditShell(host, "Quote", "Use this for short highlighted statements, testimonials, or notes.");
+      const quote = textArea(block.text || "", 4);
+      quote.classList.add("be-quick-textarea");
+      quote.placeholder = "Quote text";
+      quote.addEventListener("input", () => {
+        block.text = quote.value;
+        syncOnly();
+      });
+      quote.addEventListener("blur", commit);
+
+      const author = textInput(block.cite || "");
+      author.placeholder = "Author / source";
+      author.classList.add("be-quick-input");
+      author.addEventListener("input", () => {
+        block.cite = author.value;
+        syncOnly();
+      });
+      author.addEventListener("blur", commit);
+
+      shell.appendChild(quote);
+      shell.appendChild(field("Author", author, "", { compact: true }));
+      return true;
+    }
+
+    if (type === "list") {
+      const shell = quickEditShell(host, "List", "Each line becomes a separate list item.");
+      const orderedWrap = document.createElement("div");
+      orderedWrap.className = "be-quick-inline";
+      const ordered = document.createElement("input");
+      ordered.type = "checkbox";
+      ordered.checked = !!block.ordered;
+      ordered.addEventListener("change", () => {
+        block.ordered = ordered.checked;
+        syncOnly();
+        commit();
+      });
+      const orderedLabel = document.createElement("span");
+      orderedLabel.textContent = "Ordered list";
+      orderedWrap.appendChild(ordered);
+      orderedWrap.appendChild(orderedLabel);
+
+      const items = textArea(Array.isArray(block.items) ? block.items.join("\n") : "", 5);
+      items.classList.add("be-quick-textarea");
+      items.placeholder = "One line = one list item";
+      items.addEventListener("input", () => {
+        block.items = items.value
+          .split("\n")
+          .map((line) => line.trim())
+          .filter(Boolean);
+        syncOnly();
+      });
+      items.addEventListener("blur", commit);
+
+      shell.appendChild(orderedWrap);
+      shell.appendChild(items);
+      return true;
+    }
+
+    if (type === "button") {
+      const shell = quickEditShell(host, "Button", "Set a clear label and target. Use one primary action per block.");
+      const grid = document.createElement("div");
+      grid.className = "be-quick-grid";
+      const label = textInput(block.label || "");
+      label.placeholder = "Button label";
+      label.classList.add("be-quick-input");
+      label.addEventListener("input", () => {
+        block.label = label.value;
+        syncOnly();
+      });
+      label.addEventListener("blur", commit);
+
+      const url = textInput(block.url || "");
+      url.placeholder = "/target-or-url";
+      url.classList.add("be-quick-input");
+      url.addEventListener("input", () => {
+        block.url = url.value;
+        syncOnly();
+      });
+      url.addEventListener("blur", commit);
+
+      const style = selectInput(
+        buildVariantOptions(["primary", "secondary", "outline-primary", "outline-dark", "link"]),
+        block.style || "primary"
+      );
+      style.classList.add("be-quick-select");
+      style.addEventListener("change", () => {
+        block.style = style.value;
+        syncOnly();
+        commit();
+      });
+
+      grid.appendChild(field("Label", label, "", { compact: true }));
+      grid.appendChild(field("Style", style, "", { compact: true }));
+      grid.appendChild(field("URL", url, "", { wide: true }));
+      shell.appendChild(grid);
+      return true;
+    }
+
+    if (type === "bs_alert") {
+      const shell = quickEditShell(host, "Alert", "Best for concise notices, warnings, and inline support messages.");
+      const grid = document.createElement("div");
+      grid.className = "be-quick-grid";
+
+      const variant = selectInput(
+        buildVariantOptions(["primary", "secondary", "success", "danger", "warning", "info", "light", "dark"]),
+        block.variant || "info"
+      );
+      variant.classList.add("be-quick-select");
+      variant.addEventListener("change", () => {
+        block.variant = variant.value;
+        syncOnly();
+        commit();
+      });
+
+      const title = textInput(block.title || "");
+      title.placeholder = "Alert title";
+      title.classList.add("be-quick-input");
+      title.addEventListener("input", () => {
+        block.title = title.value;
+        syncOnly();
+      });
+      title.addEventListener("blur", commit);
+
+      const body = textArea(block.text || "", 4);
+      body.classList.add("be-quick-textarea");
+      body.placeholder = "Alert text";
+      body.addEventListener("input", () => {
+        block.text = body.value;
+        syncOnly();
+      });
+      body.addEventListener("blur", commit);
+
+      grid.appendChild(field("Variant", variant, "", { compact: true }));
+      grid.appendChild(field("Title", title, "", { compact: true }));
+      shell.appendChild(grid);
+      shell.appendChild(body);
+      return true;
+    }
+
+    if (type === "bs_badge") {
+      const shell = quickEditShell(host, "Badge", "Small accent label for state, category, or feature tag.");
+      const grid = document.createElement("div");
+      grid.className = "be-quick-grid";
+
+      const text = textInput(block.text || "");
+      text.placeholder = "Badge text";
+      text.classList.add("be-quick-input");
+      text.addEventListener("input", () => {
+        block.text = text.value;
+        syncOnly();
+      });
+      text.addEventListener("blur", commit);
+
+      const variant = selectInput(
+        buildVariantOptions(["primary", "secondary", "success", "danger", "warning", "info", "light", "dark"]),
+        block.variant || "primary"
+      );
+      variant.classList.add("be-quick-select");
+      variant.addEventListener("change", () => {
+        block.variant = variant.value;
+        syncOnly();
+        commit();
+      });
+
+      const pillWrap = document.createElement("label");
+      pillWrap.className = "be-quick-toggle";
+      const pill = document.createElement("input");
+      pill.type = "checkbox";
+      pill.checked = !!block.pill;
+      pill.addEventListener("change", () => {
+        block.pill = pill.checked;
+        syncOnly();
+        commit();
+      });
+      const pillText = document.createElement("span");
+      pillText.textContent = "Rounded";
+      pillWrap.appendChild(pill);
+      pillWrap.appendChild(pillText);
+
+      grid.appendChild(field("Text", text, "", { compact: true }));
+      grid.appendChild(field("Variant", variant, "", { compact: true }));
+      shell.appendChild(grid);
+      shell.appendChild(pillWrap);
+      return true;
+    }
+
+    if (type === "bs_card") {
+      const shell = quickEditShell(host, "Card", "Use cards for feature blurbs, service tiles, and short content teasers.");
+      const grid = document.createElement("div");
+      grid.className = "be-quick-grid";
+
+      const title = textInput(block.title || "");
+      title.placeholder = "Card title";
+      title.classList.add("be-quick-input");
+      title.addEventListener("input", () => {
+        block.title = title.value;
+        syncOnly();
+      });
+      title.addEventListener("blur", commit);
+
+      const image = textInput(block.image || "");
+      image.placeholder = "Image URL (optional)";
+      image.classList.add("be-quick-input");
+      image.addEventListener("input", () => {
+        block.image = image.value;
+        syncOnly();
+      });
+      image.addEventListener("blur", commit);
+
+      const text = textArea(block.text || "", 4);
+      text.classList.add("be-quick-textarea");
+      text.placeholder = "Card text";
+      text.addEventListener("input", () => {
+        block.text = text.value;
+        syncOnly();
+      });
+      text.addEventListener("blur", commit);
+
+      const ctaLabel = textInput(block.button_label || "");
+      ctaLabel.placeholder = "CTA label";
+      ctaLabel.classList.add("be-quick-input");
+      ctaLabel.addEventListener("input", () => {
+        block.button_label = ctaLabel.value;
+        syncOnly();
+      });
+      ctaLabel.addEventListener("blur", commit);
+
+      const ctaUrl = textInput(block.button_url || "");
+      ctaUrl.placeholder = "/details";
+      ctaUrl.classList.add("be-quick-input");
+      ctaUrl.addEventListener("input", () => {
+        block.button_url = ctaUrl.value;
+        syncOnly();
+      });
+      ctaUrl.addEventListener("blur", commit);
+
+      grid.appendChild(field("Title", title, "", { compact: true }));
+      grid.appendChild(field("Image", image, "", { compact: true }));
+      shell.appendChild(grid);
+      shell.appendChild(text);
+
+      const ctaGrid = document.createElement("div");
+      ctaGrid.className = "be-quick-grid";
+      ctaGrid.appendChild(field("CTA label", ctaLabel, "", { compact: true }));
+      ctaGrid.appendChild(field("CTA URL", ctaUrl, "", { compact: true }));
+      shell.appendChild(ctaGrid);
+      return true;
+    }
+
+    return false;
   }
 
   function blockPreview(block) {
@@ -978,6 +1350,8 @@
       colCollapsed: {},
       nestedCollapsed: {},
       nestedSelected: {},
+      selectedRowByParent: {},
+      selectedColumnByRow: {},
       compactMode: safeStorageGet("be.compactMode") === "1",
       uidSeq: 1,
     };
@@ -1194,10 +1568,9 @@
 
       const active = document.activeElement;
       if (!active) return snapshot;
-      const inspectorForm = stage.querySelector(".be-canvas-block.is-selected .be-inline-editor .be-inspector-form");
-      if (!inspectorForm || !inspectorForm.contains(active)) return snapshot;
+      if (!stage.contains(active)) return snapshot;
 
-      const controls = getFocusableControls(inspectorForm);
+      const controls = getFocusableControls(stage);
       const controlIndex = controls.indexOf(active);
       if (controlIndex < 0) return snapshot;
 
@@ -1226,9 +1599,7 @@
       }
       if (!snapshot || !snapshot.focus || !stage) return;
 
-      const inspectorForm = stage.querySelector(".be-canvas-block.is-selected .be-inline-editor .be-inspector-form");
-      if (!inspectorForm) return;
-      const controls = getFocusableControls(inspectorForm);
+      const controls = getFocusableControls(stage);
       let target = controls[snapshot.focus.index] || null;
 
       if (
@@ -1746,8 +2117,24 @@
           topRight.appendChild(deleteBtn);
 
           card.querySelector(".be-canvas-preview").textContent = blockPreview(block);
+
+          const syncQuickEdit = () => {
+            sync();
+            scheduleAutosave();
+          };
+
+          const commitQuickEdit = () => {
+            queueHistorySnapshot();
+          };
+
           card.addEventListener("click", (event) => {
-            if (event.target && event.target.closest && event.target.closest(".be-inline-editor")) return;
+            if (
+              event.target &&
+              event.target.closest &&
+              event.target.closest(".be-inline-editor, .be-card-quick-edit")
+            ) {
+              return;
+            }
             state.collapsedBlocks[uid] = false;
             selectBlock(index);
           });
@@ -1791,10 +2178,17 @@
             clearDropMarkers();
           });
           if (state.selectedIndex === index && !isCollapsed) {
-            const inline = document.createElement("div");
-            inline.className = "be-inline-editor";
-            card.appendChild(inline);
-            renderInspector(inline);
+            const quickEdit = document.createElement("div");
+            const hasQuickEdit = renderCanvasQuickEdit(block, quickEdit, syncQuickEdit, commitQuickEdit);
+            if (hasQuickEdit) {
+              card.appendChild(quickEdit);
+            }
+            if (!hasQuickEdit || !supportsQuickEdit(block.type)) {
+              const inline = document.createElement("div");
+              inline.className = "be-inline-editor";
+              card.appendChild(inline);
+              renderInspector(inline);
+            }
           }
           stage.appendChild(card);
         });
@@ -1846,14 +2240,11 @@
       const selected = state.blocks[state.selectedIndex];
       const meta = blockMeta(toBootstrapType(selected.type || "bs_paragraph"));
 
-      const title = document.createElement("div");
-      title.className = "be-selected-title";
-      title.textContent = `${meta.icon} ${meta.label}`;
-      target.appendChild(title);
+      target.appendChild(editorBanner(meta, blockEditorDescription(selected.type)));
 
       const actions = document.createElement("div");
-      actions.className = "be-inspector-actions";
-      actions.innerHTML = "<span>Actions</span>";
+      actions.className = "be-inspector-actions is-inline";
+      actions.innerHTML = "<span>Block actions</span>";
       const up = document.createElement("button");
       up.type = "button";
       up.className = "button";
@@ -3211,6 +3602,10 @@
           state.nestedSelected[selectedKey] = safe;
         };
 
+        const rerenderNestedSelection = () => {
+          renderCanvasPreserveInlineFocus();
+        };
+
         const moveChild = (fromIndex, toIndex) => {
           if (fromIndex < 0 || fromIndex >= list.length) return;
           let target = Math.max(0, Math.min(toIndex, list.length));
@@ -3243,7 +3638,7 @@
           row.draggable = true;
           row.addEventListener("click", () => {
             setSelected(index);
-            changed();
+            rerenderNestedSelection();
           });
           row.addEventListener("dragstart", (event) => {
             dragChildIndex = index;
@@ -3343,48 +3738,61 @@
             })
           );
 
-          row.appendChild(rowInfo);
-          row.appendChild(actions);
+          const rowMain = document.createElement("div");
+          rowMain.className = "be-nested-row-main";
+          rowMain.appendChild(rowInfo);
+          rowMain.appendChild(actions);
+          row.appendChild(rowMain);
+
+          if (active) {
+            const inlineBody = document.createElement("div");
+            inlineBody.className = "be-nested-row-body";
+            inlineBody.addEventListener("click", (event) => {
+              event.stopPropagation();
+            });
+
+            const inlineHead = document.createElement("div");
+            inlineHead.className = "be-nested-inline-head";
+
+            const inlineMeta = document.createElement("div");
+            inlineMeta.className = "be-nested-inline-meta";
+            const inlineTitle = document.createElement("strong");
+            inlineTitle.textContent = itemMeta.label;
+            const inlineHint = document.createElement("small");
+            inlineHint.textContent = "Edit this block directly in the document.";
+            inlineMeta.appendChild(inlineTitle);
+            inlineMeta.appendChild(inlineHint);
+
+            const typeSelect = selectInput(
+              COLUMN_CHILD_TYPES.map((childType) => {
+                const meta = blockMeta(childType);
+                return { value: childType, label: meta.label };
+              }),
+              itemType
+            );
+            typeSelect.classList.add("be-mini-select");
+            typeSelect.addEventListener("change", () => {
+              list[index] = defaultsFor(typeSelect.value);
+              setSelected(index);
+              changed();
+            });
+
+            inlineHead.appendChild(inlineMeta);
+            inlineHead.appendChild(typeSelect);
+            inlineBody.appendChild(inlineHead);
+
+            const fields = document.createElement("div");
+            fields.className = "be-columns-item-body be-columns-item-body--inline";
+            renderColumnChildFields(block, fields);
+            inlineBody.appendChild(fields);
+
+            row.appendChild(inlineBody);
+          }
+
           listPane.appendChild(row);
         });
 
         section.appendChild(listPane);
-
-        const selectedIndex = Math.max(0, Math.min(Number(state.nestedSelected[selectedKey] || 0), list.length - 1));
-        const selectedBlock = normalizeLegacyBlock(list[selectedIndex]);
-        list[selectedIndex] = selectedBlock;
-        const selectedType = toBootstrapType(selectedBlock.type || "bs_paragraph");
-
-        const editor = document.createElement("div");
-        editor.className = "be-nested-editor";
-        const editorTop = document.createElement("div");
-        editorTop.className = "be-nested-editor-top";
-
-        const editorTitle = document.createElement("strong");
-        editorTitle.textContent = `Edit #${selectedIndex + 1}`;
-        const typeSelect = selectInput(
-          COLUMN_CHILD_TYPES.map((childType) => {
-            const meta = blockMeta(childType);
-            return { value: childType, label: meta.label };
-          }),
-          selectedType
-        );
-        typeSelect.classList.add("be-mini-select");
-        typeSelect.addEventListener("change", () => {
-          list[selectedIndex] = defaultsFor(typeSelect.value);
-          changed();
-        });
-
-        editorTop.appendChild(editorTitle);
-        editorTop.appendChild(typeSelect);
-        editor.appendChild(editorTop);
-
-        const fields = document.createElement("div");
-        fields.className = "be-columns-item-body";
-        renderColumnChildFields(selectedBlock, fields);
-        editor.appendChild(fields);
-
-        section.appendChild(editor);
         return section;
       }
 
@@ -3438,65 +3846,37 @@
         delete rowsBlock.items;
 
         const section = document.createElement("section");
-        section.className = "be-rows-editor be-rows-builder";
+        section.className = "be-rows-editor be-rows-workbench";
 
         const head = document.createElement("div");
-        head.className = "be-rows-editor-head";
+        head.className = "be-canvas-block-top";
         const titleWrap = document.createElement("div");
-        titleWrap.className = "be-rows-head-title";
+        titleWrap.className = "be-canvas-block-top-left";
         const title = document.createElement("strong");
-        title.textContent = "Container layout";
+        title.textContent = "Bootstrap container";
         const hint = document.createElement("small");
-        hint.textContent = "Build sections using rows and columns.";
+        hint.textContent = "Container -> row -> column";
         titleWrap.appendChild(title);
         titleWrap.appendChild(hint);
 
         const headActions = document.createElement("div");
-        headActions.className = "be-rows-head-actions";
-        const headPreset = selectInput(rowPresetOptions(false), "6-6");
-        headPreset.classList.add("be-row-preset-select");
+        headActions.className = "be-canvas-top-right";
+        const presetSelect = selectInput(rowPresetOptions(false), "6-6");
+        presetSelect.classList.add("be-mini-select");
+        const headPreset = presetSelect;
         const addRowBtn = document.createElement("button");
         addRowBtn.type = "button";
         addRowBtn.className = "button";
-        addRowBtn.textContent = "Add row";
+        addRowBtn.textContent = "+ Row";
         addRowBtn.addEventListener("click", () => {
-          rowsBlock.rows.push(rowFromPreset(headPreset.value, []));
+          rowsBlock.rows.push(rowFromPreset(presetSelect.value, []));
           changed();
         });
-
-        const toggleRows = document.createElement("button");
-        toggleRows.type = "button";
-        toggleRows.className = "button";
-        const allCollapsed =
-          rowsBlock.rows.length > 0 &&
-          rowsBlock.rows.every((_, idx) => {
-            const key = `${blockUid(rowsBlock)}:r:${idx}`;
-            const current = state.rowCollapsed[key];
-            return typeof current === "boolean" ? current : idx !== 0;
-          });
-        toggleRows.textContent = allCollapsed ? "Expand rows" : "Collapse rows";
-        toggleRows.addEventListener("click", () => {
-          rowsBlock.rows.forEach((_, idx) => {
-            const key = `${blockUid(rowsBlock)}:r:${idx}`;
-            state.rowCollapsed[key] = !allCollapsed;
-          });
-          changed();
-        });
-
-        head.appendChild(titleWrap);
-        headActions.appendChild(headPreset);
+        headActions.appendChild(presetSelect);
         headActions.appendChild(addRowBtn);
-        headActions.appendChild(toggleRows);
+        head.appendChild(titleWrap);
         head.appendChild(headActions);
         section.appendChild(head);
-
-        if (!rowsBlock.rows.length) {
-          const empty = document.createElement("p");
-          empty.className = "be-columns-empty";
-          empty.textContent = "No rows yet.";
-          section.appendChild(empty);
-          return section;
-        }
 
         const parentUid = blockUid(rowsBlock);
         const split = document.createElement("div");
