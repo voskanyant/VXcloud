@@ -138,9 +138,7 @@ docker compose --env-file .env up -d wordpress web
 start_proxy_with_port_takeover
 docker compose --env-file .env --profile bot up -d bot
 
-echo "[8/11] Apply Django migrations + static..."
-docker compose --env-file .env exec -T web python /app/web/manage.py migrate --noinput
-docker compose --env-file .env exec -T web python /app/web/manage.py collectstatic --noinput
+echo "[8/11] Django migrations + static are handled by web entrypoint..."
 
 echo "[9/11] Check migration drift (makemigrations --check)..."
 if ! docker compose --env-file .env exec -T web python /app/web/manage.py makemigrations --check --dry-run; then
