@@ -167,6 +167,21 @@ def _build_wordpress_shell_fragments() -> dict[str, object] | None:
     if not getattr(settings, "WORDPRESS_PUBLIC_SITE_ENABLED", False):
         return None
 
+    payload = _fetch_wordpress_shell()
+    if payload and isinstance(payload.get("fragments"), dict):
+        fragments = payload.get("fragments") or {}
+        shell_start_html = str(fragments.get("shell_start_html") or "")
+        shell_end_html = str(fragments.get("shell_end_html") or "")
+        if shell_start_html and shell_end_html:
+            return {
+                "body_class": str(fragments.get("body_class") or ""),
+                "shell_start_html": shell_start_html,
+                "shell_end_html": shell_end_html,
+                "stylesheets": list(fragments.get("stylesheets") or []),
+                "inline_styles": list(fragments.get("inline_styles") or []),
+                "scripts": list(fragments.get("scripts") or []),
+            }
+
     html = _fetch_wordpress_home_html()
     if not html:
         return None
@@ -193,6 +208,9 @@ def _build_wordpress_shell_fragments() -> dict[str, object] | None:
         "body_class": body_match.group(2) if body_match else "",
         "header_html": _clean_fragment_classes(header_match.group(1)),
         "footer_html": footer_match.group(1),
+        "shell_start_html": _clean_fragment_classes(header_match.group(1))
+        + '<main id="main" class=""><div id="content" class="content-area page-wrapper" role="main"><div class="row row-main"><div class="large-12 col"><div class="col-inner">',
+        "shell_end_html": "</div></div></div></div></main>" + footer_match.group(1),
         "stylesheets": stylesheets,
         "inline_styles": inline_styles,
         "scripts": scripts,

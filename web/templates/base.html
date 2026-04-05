@@ -27,12 +27,16 @@
 <body class="{% if wordpress_shell_fragments and wordpress_shell_fragments.body_class %}{{ wordpress_shell_fragments.body_class }} {% endif %}vx-body{% if request.path|slice:':9' == '/account/' %} vx-account-shell{% endif %}">
   {% if wordpress_shell_fragments %}
     <div id="wrapper">
-      {{ wordpress_shell_fragments.header_html|safe }}
-      <main id="main" class="vx-shell-main">
-        <div id="content" class="content-area page-wrapper vx-shell-page" role="main">
-          <div class="row row-main">
-            <div class="large-12 col">
-              <div class="col-inner vx-shell-inner">
+      {% if wordpress_shell_fragments.shell_start_html %}
+        {{ wordpress_shell_fragments.shell_start_html|safe }}
+      {% else %}
+        {{ wordpress_shell_fragments.header_html|safe }}
+        <main id="main" class="vx-shell-main">
+          <div id="content" class="content-area page-wrapper vx-shell-page" role="main">
+            <div class="row row-main">
+              <div class="large-12 col">
+                <div class="col-inner vx-shell-inner">
+      {% endif %}
   {% else %}
     {% include "partials/_header.html" %}
     <main id="main-content" class="site-main py-4 py-lg-5">
@@ -51,12 +55,16 @@
   {% block content %}{% endblock %}
 
   {% if wordpress_shell_fragments %}
+      {% if wordpress_shell_fragments.shell_end_html %}
+        {{ wordpress_shell_fragments.shell_end_html|safe }}
+      {% else %}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </main>
-      {{ wordpress_shell_fragments.footer_html|safe }}
+        </main>
+        {{ wordpress_shell_fragments.footer_html|safe }}
+      {% endif %}
     </div>
   {% else %}
       </div>

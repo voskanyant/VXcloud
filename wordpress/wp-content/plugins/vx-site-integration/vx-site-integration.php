@@ -13,6 +13,7 @@ if (!defined('ABSPATH')) {
 define('VX_SITE_INTEGRATION_VERSION', '0.1.0');
 define('VX_SITE_INTEGRATION_DIR', plugin_dir_path(__FILE__));
 define('VX_SITE_INTEGRATION_URL', plugin_dir_url(__FILE__));
+define('VX_SITE_SHELL_MARKER', '<!--VX_SITE_SHELL_CONTENT-->');
 
 require_once VX_SITE_INTEGRATION_DIR . 'includes/class-vx-site-importer.php';
 
@@ -107,7 +108,7 @@ function vx_site_build_shell_payload() {
     $header_menu_id = vx_site_pick_menu_location(array('primary', 'main-menu', 'main_menu', 'header', 'desktop'));
     $footer_menu_id = vx_site_pick_menu_location(array('footer', 'footer-1', 'footer_menu', 'footer-menu', 'secondary'));
 
-    return array(
+    $payload = array(
         'brand' => array(
             'label' => $site_name,
             'url' => home_url('/'),
@@ -126,6 +127,108 @@ function vx_site_build_shell_payload() {
             'tagline' => $site_description,
         ),
     );
+
+    $fragments = vx_site_build_shell_fragments_payload();
+    if (!empty($fragments)) {
+        $payload['fragments'] = $fragments;
+    }
+
+    return $payload;
+}
+
+function vx_site_shell_placeholder_shortcode() {
+    return VX_SITE_SHELL_MARKER;
+}
+add_shortcode('vx_shell_placeholder', 'vx_site_shell_placeholder_shortcode');
+
+function vx_site_get_shell_bridge_page() {
+    $page = get_page_by_path('vx-shell-bridge', OBJECT, 'page');
+    if ($page instanceof WP_Post) {
+        return $page;
+    }
+
+    $page_id = wp_insert_post(array(
+        'post_type' => 'page',
+        'post_status' => 'publish',
+        'post_title' => 'VX Shell Bridge',
+        'post_name' => 'vx-shell-bridge',
+        'post_content' => '[vx_shell_placeholder]',
+        'comment_status' => 'closed',
+        'ping_status' => 'closed',
+    ), true);
+
+    if (is_wp_error($page_id) || !$page_id) {
+        return null;
+    }
+
+    update_post_meta((int) $page_id, 'vx_page_path', '/vx-shell-bridge/');
+    $page = get_post((int) $page_id);
+    return $page instanceof WP_Post ? $page : null;
+}
+
+function vx_site_extract_shell_fragments_from_html($html) {
+    $html = (string) $html;
+    if ($html === '' || strpos($html, VX_SITE_SHELL_MARKER) === false) {
+        return array();
+    }
+
+    if (!preg_match('/<body\b[^>]*class=(["\'])(.*?)\1[^>]*>([\s\S]*?)<\/body>/i', $html, $body_match)) {
+        return array();
+    }
+
+    $head_html = '';
+    if (preg_match('/<head\b[^>]*>([\s\S]*?)<\/head>/i', $html, $head_match)) {
+        $head_html = $head_match[1];
+    }
+
+    $parts = explode(VX_SITE_SHELL_MARKER, $body_match[3], 2);
+    if (count($parts) !== 2) {
+        return array();
+    }
+
+    preg_match_all('/<link\b[^>]*rel=(["\'])[^"\']*stylesheet[^"\']*\1[^>]*href=(["\'])(.*?)\2/i', $head_html, $stylesheet_matches, PREG_SET_ORDER);
+    preg_match_all('/(<style\b[\s\S]*?<\/style>)/i', $head_html, $style_matches);
+    preg_match_all('/<script\b[^>]*src=(["\'])(.*?)\1/i', $head_html, $script_matches, PREG_SET_ORDER);
+
+    $stylesheets = array();
+    foreach ($stylesheet_matches as $match) {
+        $stylesheets[] = $match[3];
+    }
+
+    $scripts = array();
+    foreach ($script_matches as $match) {
+        if (strpos($match[2], '/wp-content/') !== false || strpos($match[2], '/wp-includes/') !== false) {
+            $scripts[] = $match[2];
+        }
+    }
+
+    return array(
+        'body_class' => isset($body_match[2]) ? $body_match[2] : '',
+        'shell_start_html' => $parts[0],
+        'shell_end_html' => $parts[1],
+        'stylesheets' => array_values(array_unique(array_filter($stylesheets))),
+        'inline_styles' => isset($style_matches[1]) ? array_values(array_filter($style_matches[1])) : array(),
+        'scripts' => array_values(array_unique(array_filter($scripts))),
+    );
+}
+
+function vx_site_build_shell_fragments_payload() {
+    $bridge_page = vx_site_get_shell_bridge_page();
+    if (!$bridge_page instanceof WP_Post) {
+        return array();
+    }
+
+    $bridge_url = get_permalink($bridge_page);
+    if (!$bridge_url) {
+        return array();
+    }
+
+    $response = wp_remote_get($bridge_url, array('timeout' => 5));
+    if (is_wp_error($response)) {
+        return array();
+    }
+
+    return vx_site_extract_shell_fragments_from_html(wp_remote_retrieve_body($response));
 }
 
 function vx_site_register_rest_routes() {
