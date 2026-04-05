@@ -44,9 +44,13 @@ services:
       WORDPRESS_DB_USER: ${WORDPRESS_DB_USER}
       WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD}
       WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME}
+      WORDPRESS_PUBLIC_SITE_URL: ${WORDPRESS_PUBLIC_SITE_URL}
       WORDPRESS_TABLE_PREFIX: ${WORDPRESS_TABLE_PREFIX:-wp_}
       WORDPRESS_DEBUG: ${WORDPRESS_DEBUG:-0}
       WORDPRESS_CONFIG_EXTRA: |
+        if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && strpos((string) $_SERVER['HTTP_X_FORWARDED_PROTO'], 'https') !== false) {
+          $_SERVER['HTTPS'] = 'on';
+        }
         define('WP_HOME', getenv('WORDPRESS_PUBLIC_SITE_URL') ?: 'http://127.0.0.1:8088');
         define('WP_SITEURL', getenv('WORDPRESS_PUBLIC_SITE_URL') ?: 'http://127.0.0.1:8088');
         define('FORCE_SSL_ADMIN', strpos((string) getenv('WORDPRESS_PUBLIC_SITE_URL'), 'https://') === 0);
