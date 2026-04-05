@@ -33,12 +33,12 @@
 
 {% block extra_head %}
   {% if form.content_blocks %}
-    <link rel="stylesheet" href="{% static 'admin/block_editor_v8.css' %}?v=20260404-document-ux-v9">
+    <link rel="stylesheet" href="{% static 'admin/block_editor_v8.css' %}?v={{ block_editor_asset_version }}">
   {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
   {% if form.content_blocks %}
-    <script src="{% static 'admin/block_editor_v8.js' %}?v=20260404-document-ux-v9"></script>
+    <script src="{% static 'admin/block_editor_v8.js' %}?v={{ block_editor_asset_version }}"></script>
   {% endif %}
 {% endblock %}

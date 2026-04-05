@@ -13,6 +13,7 @@ from django.urls import reverse, reverse_lazy
 from django.utils import timezone
 from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
 
+from blog.admin import BLOCK_EDITOR_ASSET_VERSION
 from blog.models import Category, Page, Post, PostType, SiteText
 from cabinet.models import BotOrder, BotSubscription, BotUser
 
@@ -298,6 +299,7 @@ class BaseEditView(StaffRequiredMixin):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
         ctx["title"] = self.title_update if getattr(self, "object", None) else self.title_create
+        ctx["block_editor_asset_version"] = BLOCK_EDITOR_ASSET_VERSION
         return ctx
 
     def form_valid(self, form):
