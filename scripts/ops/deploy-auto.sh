@@ -4,6 +4,11 @@ set -euo pipefail
 APP_DIR="/srv/apps/vxcloud/app"
 cd "$APP_DIR"
 
+if [[ ! -f .env && -f /srv/secrets/vxcloud.env ]]; then
+  cp /srv/secrets/vxcloud.env .env
+  chmod 600 .env
+fi
+
 wait_for_http() {
   local url="$1"
   local max_attempts="${2:-45}"
