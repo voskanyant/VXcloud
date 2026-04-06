@@ -700,20 +700,22 @@
     --vx-title-size: 1.6rem;
     --vx-subtitle-size: 0.95rem;
     --vx-section-title-size: 1.08rem;
+    padding-top: 2px;
   }
 
   .vx-account-app__shell {
-    gap: 12px;
+    gap: 10px;
   }
 
   .vx-account-hero {
-    padding: 14px;
-    gap: 12px;
-    border-radius: 24px;
+    padding: 12px;
+    gap: 10px;
+    border-radius: 22px;
   }
 
   .vx-account-title {
     letter-spacing: -0.04em;
+    line-height: 0.96;
   }
 
   .vx-account-subtitle {
@@ -746,37 +748,37 @@
   }
 
   .vx-stats-grid {
-    gap: 10px;
+    gap: 8px;
   }
 
   .vx-stat-card,
   .vx-info-card,
   .vx-field-card {
-    padding: 14px;
-    border-radius: 18px;
+    padding: 12px;
+    border-radius: 16px;
   }
 
   .vx-stat-value {
-    font-size: 15px;
+    font-size: 14px;
   }
 
   .vx-section-card {
-    border-radius: 24px;
+    border-radius: 22px;
   }
 
   .vx-section-card__head {
-    padding: 14px 14px 10px;
+    padding: 12px 12px 8px;
   }
 
   .vx-config-list {
-    gap: 10px;
-    padding: 10px;
+    gap: 8px;
+    padding: 8px;
   }
 
   .vx-config-card {
-    padding: 14px;
-    gap: 10px;
-    border-radius: 20px;
+    padding: 12px;
+    gap: 8px;
+    border-radius: 18px;
   }
 
   .vx-config-card__meta,
@@ -785,7 +787,12 @@
   }
 
   .vx-config-card__title {
-    font-size: 1.15rem;
+    font-size: 1.08rem;
+  }
+
+  .vx-config-card__sub {
+    font-size: 13px;
+    line-height: 1.35;
   }
 
   .vx-copy-row {
@@ -846,14 +853,14 @@
   }
 
   .vx-field-card {
-    padding: 12px;
-    gap: 8px;
+    padding: 11px;
+    gap: 7px;
   }
 
   .vx-field-card label,
   .vx-config-card__field label {
-    margin-bottom: 6px;
-    font-size: 12px;
+    margin-bottom: 4px;
+    font-size: 11px;
   }
 
   .vx-field-hint {
@@ -862,6 +869,13 @@
 
   .vx-config-view__actions {
     gap: 8px;
+  }
+
+  .vx-config-view__actions .vx-button,
+  .vx-config-card .vx-button {
+    min-height: 46px;
+    padding-top: 10px;
+    padding-bottom: 10px;
   }
 
   .vx-auth-card {
