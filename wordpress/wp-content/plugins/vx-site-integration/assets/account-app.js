@@ -434,14 +434,14 @@
       hasTelegram
         ? [
             '<section class="vx-auth-telegram">',
-            '<div class="vx-auth-telegram__eyebrow">Telegram Login</div>',
-            '<p class="vx-auth-telegram__copy">Sign in or create an account in one click with Telegram.</p>',
+            '<div class="vx-auth-telegram__eyebrow">\u0412\u0445\u043e\u0434 \u0447\u0435\u0440\u0435\u0437 Telegram</div>',
+            '<p class="vx-auth-telegram__copy">\u0412\u043e\u0439\u0434\u0438\u0442\u0435 \u0438\u043b\u0438 \u0441\u043e\u0437\u0434\u0430\u0439\u0442\u0435 \u0430\u043a\u043a\u0430\u0443\u043d\u0442 \u0432 \u043e\u0434\u0438\u043d \u043a\u043b\u0438\u043a \u0447\u0435\u0440\u0435\u0437 Telegram.</p>',
             '<div class="vx-auth-telegram__widget" data-telegram-login-widget data-bot-username="' +
               escapeHtml(telegram.bot_username || "") +
               '" data-auth-url="' +
               escapeHtml(telegram.auth_url || "") +
               '"></div>',
-            '<div class="vx-auth-divider"><span>or use email</span></div>',
+            '<div class="vx-auth-divider"><span>\u0438\u043b\u0438 \u0447\u0435\u0440\u0435\u0437 email</span></div>',
             "</section>",
           ].join("")
         : "",
@@ -490,6 +490,7 @@
       script.src = "https://telegram.org/js/telegram-widget.js?22";
       script.setAttribute("data-telegram-login", botUsername);
       script.setAttribute("data-size", "large");
+      script.setAttribute("data-lang", "ru");
       script.setAttribute("data-radius", "10");
       script.setAttribute("data-userpic", "false");
       script.setAttribute("data-request-access", "write");
