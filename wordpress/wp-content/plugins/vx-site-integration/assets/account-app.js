@@ -312,16 +312,12 @@
       '<span class="vx-status-pill is-muted">' + escapeHtml(accessLabel(model.access_count)) + "</span>",
       "</div>",
       '<div class="vx-account-actions">',
-      '<button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button>',
       '<button type="button" class="vx-button vx-button--primary" data-checkout="buy">Купить доступ · ' +
         escapeHtml(model.card_price_label || "") +
         "</button>",
       '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew">Продлить · ' +
         escapeHtml(model.card_price_label || "") +
         "</button>",
-      '<a class="vx-button vx-button--ghost" href="' +
-        escapeHtml((model.urls && model.urls.support) || cfg.supportUrl || "/instructions/") +
-        '">Поддержка</a>',
       "</div>",
       "</section>",
       '<section class="vx-account-summary"><div class="vx-account-summary__grid">' + summaryHtml + "</div></section>",
@@ -332,6 +328,9 @@
         '</span></div><div class="vx-config-list">' +
         cardsHtml +
         "</div></section>",
+      '<div class="vx-account-actions vx-account-actions--footer"><a class="vx-button vx-button--ghost" href="' +
+        escapeHtml((model.urls && model.urls.support) || cfg.supportUrl || "/instructions/") +
+        '">Поддержка</a><button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
       "</section>",
     ].join("");
   }

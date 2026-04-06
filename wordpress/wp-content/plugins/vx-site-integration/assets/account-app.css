@@ -169,6 +169,14 @@
   grid-column: 1 / -1;
 }
 
+.vx-account-actions--footer {
+  padding: 0 2px 2px;
+}
+
+.vx-account-actions--footer > :first-child {
+  grid-column: auto;
+}
+
 .vx-button,
 .vx-button:visited {
   display: inline-flex;
