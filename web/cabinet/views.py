@@ -38,6 +38,7 @@ from django.http import HttpRequest, HttpResponse
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import EmailAuthenticationForm, SignUpForm
 from .models import BotOrder, BotSubscription, BotUser, LinkedAccount, PaymentEvent, TelegramLinkToken, WebLoginToken
@@ -78,6 +79,17 @@ def _account_backend_url(request: HttpRequest, path: str = "") -> str:
 def _account_redirect(request: HttpRequest, path: str = "") -> HttpResponse:
     target = _account_backend_url(request, path) if _account_embed_mode(request) else _account_frontend_url(path)
     return redirect(target)
+
+
+def _redirect_after_account_post(request: HttpRequest, fallback_path: str = "") -> HttpResponse:
+    next_url = (request.POST.get("next") or request.GET.get("next") or "").strip()
+    if next_url and url_has_allowed_host_and_scheme(
+        next_url,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return redirect(next_url)
+    return _account_redirect(request, fallback_path)
 
 
 def _account_template_urls(request: HttpRequest) -> dict[str, object]:
@@ -933,23 +945,23 @@ def rename_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
     linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
     if not bot_user:
         messages.error(request, "Не удалось загрузить данные аккаунта.")
-        return _account_redirect(request)
+        return _redirect_after_account_post(request)
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
         messages.error(request, "Конфиг не найден.")
-        return _account_redirect(request)
+        return _redirect_after_account_post(request)
 
     new_name = (request.POST.get("display_name") or "").strip()
     if not new_name:
         messages.error(request, "Введите имя конфига.")
-        return _account_redirect(request)
+        return _redirect_after_account_post(request)
 
     subscription.display_name = new_name[:80]
     subscription.updated_at = timezone.now()
     subscription.save(update_fields=["display_name", "updated_at"])
     messages.success(request, "Имя конфига обновлено.")
-    return _account_redirect(request)
+    return _redirect_after_account_post(request)
 
 
 @login_required

@@ -77,11 +77,24 @@
         <label class="form-label fw-semibold" for="cfg">Ссылка конфигурации</label>
         <div class="vx-link-input-wrap">
           <input id="cfg" type="text" class="form-control form-control-sm config-link-field" value="{{ copy_text }}" readonly>
-          <button type="button" class="btn btn-sm btn-outline-secondary js-copy-icon" id="copy-config-icon" data-copy-text="{{ copy_text }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
-            <i class="bi bi-clipboard"></i>
+          <button type="button" class="btn btn-sm btn-outline-secondary js-copy-icon vx-icon-button" id="copy-config-icon" data-copy-text="{{ copy_text }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+            <i class="bi bi-copy"></i>
           </button>
         </div>
         <p class="small text-secondary mb-0">Скопируйте ссылку и импортируйте ее в клиент VPN.</p>
+      </div>
+
+      <div class="surface-panel config-rename-panel">
+        <label class="form-label fw-semibold" for="cfg-rename">Имя устройства</label>
+        <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="vx-inline-action-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+          <input id="cfg-rename" type="text" class="form-control form-control-sm vx-rename-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Имя устройства" />
+          <button type="submit" class="btn btn-sm btn-outline-secondary js-rename-icon vx-icon-button" title="Переименовать" aria-label="Переименовать">
+            <i class="bi bi-pencil"></i>
+          </button>
+        </form>
+        <p class="small text-secondary mb-0">Измените название, чтобы проще различать конфиги в кабинете.</p>
       </div>
     </div>
   </div>
