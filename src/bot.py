@@ -508,7 +508,7 @@ class VPNBot:
         return InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(text=self._with_card_price("💳 Перейти к оплате"), url=pay_url)],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|buy_back|_")],
+                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|buy_card_back|_")],
             ]
         )
 
@@ -516,7 +516,7 @@ class VPNBot:
         return InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(text=self._with_card_price("💳 Перейти к оплате"), url=pay_url)],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|renew_back|_")],
+                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|renew_card_back|_")],
             ]
         )
 
@@ -648,7 +648,7 @@ class VPNBot:
         await message.reply_text(
             "Продление доступа\n\n"
             "Здесь вы можете продлить текущий доступ, чтобы продолжить пользоваться без перерыва.\n\n"
-            "Рекомендуем оплату картой на сайте.\n\n"
+            f"Рекомендуем оплату картой на сайте · {self._card_price_label()}.\n\n"
             "Текущее устройство:\n"
             f"{self._subscription_name(target_sub)}\n\n"
             "Действует до:\n"
@@ -658,18 +658,13 @@ class VPNBot:
 
     async def _show_renew_card_info(self, message: Message) -> None:
         pay_url = f"{self._site_url().rstrip('/')}/account/renew/"
-        await message.reply_text(
-            f"Сейчас откроется страница оплаты картой на сайте.\n\n"
-            f"Сумма: {self._card_price_label()}.\n\n"
-            "После успешной оплаты доступ появится и на сайте, и в боте.",
-            reply_markup=self._renew_card_markup(pay_url),
-        )
+        await message.edit_reply_markup(reply_markup=self._renew_card_markup(pay_url))
 
     async def _show_buy_checkout_options(self, message: Message) -> None:
         await message.reply_text(
             "Оформление доступа\n\n"
             "Здесь вы можете купить новый доступ для подключения.\n\n"
-            "Рекомендуем оплату картой на сайте.\n\n"
+            f"Рекомендуем оплату картой на сайте · {self._card_price_label()}.\n\n"
             "Это подойдёт, если вы:\n"
             "• подключаете ещё одно устройство\n"
             "• хотите отдельный доступ\n"
@@ -691,13 +686,8 @@ class VPNBot:
         await self._show_buy_checkout_options(message)
 
     async def _show_buy_card_info(self, message: Message) -> None:
-        pay_url = f"{self._site_url().rstrip('/')}/account/renew/"
-        await message.reply_text(
-            f"Сейчас откроется страница оплаты картой на сайте.\n\n"
-            f"Сумма: {self._card_price_label()}.\n\n"
-            "После успешной оплаты доступ появится и на сайте, и в боте.",
-            reply_markup=self._buy_card_markup(pay_url),
-        )
+        pay_url = f"{self._site_url().rstrip('/')}/account/buy/"
+        await message.edit_reply_markup(reply_markup=self._buy_card_markup(pay_url))
 
     async def _show_trial_offer(self, message: Message, user_id: int) -> None:
         if await self.db.has_any_subscription(user_id):
@@ -1575,6 +1565,10 @@ class VPNBot:
                 if query.message is not None:
                     await self._show_buy_card_info(query.message)
                 return
+            if target == "buy_card_back":
+                await query.answer()
+                await query.edit_message_reply_markup(reply_markup=self._buy_offer_markup())
+                return
             if target == "buy_back":
                 await query.answer()
                 if query.message is not None:
@@ -1617,6 +1611,10 @@ class VPNBot:
                 await query.answer()
                 if query.message is not None:
                     await self._show_renew_card_info(query.message)
+                return
+            if target == "renew_card_back":
+                await query.answer()
+                await query.edit_message_reply_markup(reply_markup=self._renew_offer_markup())
                 return
             if target == "renew_back":
                 await query.answer()
