@@ -264,12 +264,12 @@
               '<div class="vx-config-card__header-main">',
               '<div class="vx-config-card__title-row"><h3 class="vx-config-card__title"><span>' +
                 escapeHtml(sub.display_name) +
-                '</span><button type="button" class="vx-title-edit" data-rename-toggle data-target="rename-card-' +
+                '</span></h3><button type="button" class="vx-title-edit" data-rename-toggle data-target="rename-card-' +
                 escapeHtml(String(sub.id)) +
                 '" aria-expanded="false" aria-label="Переименовать">' +
                 iconSvg("rename") +
-                "</button></h3></div>",
-              '<div class="vx-config-card__subrow"><div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + '</div><span class="' + pillClass(!!sub.is_active) + '">' + escapeHtml(sub.status_text) + "</span></div>",
+                '</button><span class="' + pillClass(!!sub.is_active) + '">' + escapeHtml(sub.status_text) + "</span></div>",
+              '<div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + "</div>",
               '<form id="rename-card-' +
                 escapeHtml(String(sub.id)) +
                 '" class="vx-rename-panel vx-rename-panel--card" data-rename-form data-subscription-id="' +
