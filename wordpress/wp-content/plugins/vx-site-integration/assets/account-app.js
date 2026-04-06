@@ -262,7 +262,7 @@
               '<article class="vx-config-card">',
               '<div class="vx-config-card__head">',
               '<div class="vx-config-card__title-wrap">',
-              '<div class="vx-config-card__title-bar"><h3 class="vx-config-card__title"><span class="vx-config-card__name-icon" aria-hidden="true">✎</span><span>' +
+              '<div class="vx-config-card__title-bar"><h3 class="vx-config-card__title"><span>' +
                 escapeHtml(sub.display_name) +
                 '</span></h3><button type="button" class="vx-icon-button vx-icon-button--action" data-rename-toggle data-target="rename-card-' +
                 escapeHtml(String(sub.id)) +
@@ -352,7 +352,7 @@
       '<section class="vx-config-view">',
       '<div class="vx-config-view__main">',
       '<div class="vx-config-view__head">',
-      '<div><h1 class="vx-account-title">Конфиг и QR</h1><p class="vx-account-subtitle vx-account-subtitle--config-name"><span class="vx-config-card__name-icon" aria-hidden="true">✎</span><span>' +
+      '<div><h1 class="vx-account-title">Конфиг и QR</h1><p class="vx-account-subtitle vx-account-subtitle--config-name"><span>' +
         escapeHtml(model.display_name || "") +
         "</span></p></div>",
       '<span class="' + pillClass(!!model.is_active) + '">' + escapeHtml(model.status_text || "") + "</span>",
