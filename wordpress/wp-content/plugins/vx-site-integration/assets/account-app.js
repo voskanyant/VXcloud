@@ -24,13 +24,13 @@
 
   function iconSvg(kind) {
     if (kind === "copy") {
-      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><rect x="5" y="5" width="10" height="10" rx="1.5"></rect><rect x="9" y="9" width="10" height="10" rx="1.5"></rect></svg>';
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="4.5" width="11" height="11" rx="2"></rect><rect x="8.5" y="8.5" width="11" height="11" rx="2"></rect></svg>';
     }
     if (kind === "rename") {
-      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25z"></path><path d="M14.05 6.2l3.75 3.75"></path></svg>';
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25z"></path><path d="M14.05 6.2l3.75 3.75"></path></svg>';
     }
     if (kind === "check") {
-      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
+      return '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
     }
     return "";
   }

@@ -611,6 +611,27 @@
   flex-wrap: wrap;
 }
 
+.vx-field-card .vx-field-value-row {
+  display: inline-grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 6px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #dbe5f1;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fafe 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+.vx-field-card .vx-field-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vx-copy-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 46px;
@@ -650,6 +671,8 @@
 }
 
 .vx-icon-button {
+  appearance: none;
+  -webkit-appearance: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -669,8 +692,18 @@
 }
 
 .vx-icon-button svg {
+  display: block;
   width: 18px;
   height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.vx-icon-button svg rect,
+.vx-icon-button svg path {
   fill: none;
   stroke: currentColor;
   stroke-width: 2.2;
@@ -1134,6 +1167,10 @@
 
   .vx-config-card__name-group {
     gap: 4px;
+    padding: 8px 11px;
+  }
+
+  .vx-field-card .vx-field-value-row {
     padding: 8px 11px;
   }
 
