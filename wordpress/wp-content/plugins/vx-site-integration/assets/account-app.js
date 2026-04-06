@@ -7,6 +7,7 @@
   const state = {
     authMode: "login",
     pending: false,
+    toastTimer: null,
   };
 
   function escapeHtml(value) {
@@ -118,6 +119,45 @@
       '<section class="vx-account-app__shell"><div class="vx-account-error">' +
       escapeHtml(message || "Не удалось загрузить аккаунт.") +
       "</div></section>";
+  }
+
+  function ensureToast() {
+    let toast = document.querySelector("[data-vx-account-toast]");
+    if (toast) return toast;
+    toast = document.createElement("div");
+    toast.className = "vx-account-toast";
+    toast.setAttribute("data-vx-account-toast", "");
+    toast.setAttribute("aria-live", "polite");
+    document.body.appendChild(toast);
+    return toast;
+  }
+
+  function showToast(message) {
+    const toast = ensureToast();
+    toast.textContent = "V " + String(message || "Done");
+    toast.classList.add("is-visible");
+    window.clearTimeout(state.toastTimer);
+    state.toastTimer = window.setTimeout(function () {
+      toast.classList.remove("is-visible");
+    }, 1400);
+  }
+
+  function markCopySuccess(button) {
+    if (!button) return;
+    button.classList.add("is-copied");
+    if (button.classList.contains("vx-icon-button")) {
+      const original = button.dataset.originalLabel || button.textContent;
+      button.dataset.originalLabel = original;
+      button.textContent = "V";
+      window.setTimeout(function () {
+        button.textContent = button.dataset.originalLabel || original;
+        button.classList.remove("is-copied");
+      }, 1200);
+      return;
+    }
+    window.setTimeout(function () {
+      button.classList.remove("is-copied");
+    }, 1200);
   }
 
   function pillClass(active) {
@@ -280,11 +320,8 @@
         if (!text) return;
         try {
           await navigator.clipboard.writeText(text);
-          const original = button.textContent;
-          button.textContent = "Скопировано";
-          window.setTimeout(function () {
-            button.textContent = original;
-          }, 1200);
+          markCopySuccess(button);
+          showToast("Link copied");
         } catch (error) {
           console.debug("copy failed", error);
         }

@@ -38,6 +38,7 @@
 .vx-account-app__shell {
   display: grid;
   gap: clamp(14px, 2vw, 24px);
+  overflow-x: clip;
 }
 
 .vx-account-app__shell > * {
@@ -187,6 +188,12 @@
     border-color 0.18s ease,
     color 0.18s ease,
     box-shadow 0.18s ease;
+}
+
+.vx-button[disabled],
+.vx-icon-button[disabled] {
+  opacity: 0.64;
+  pointer-events: none;
 }
 
 .vx-button:hover {
@@ -425,6 +432,11 @@
   gap: 10px;
   align-items: center;
   min-width: 0;
+  width: 100%;
+}
+
+.vx-copy-row > * {
+  min-width: 0;
 }
 
 .vx-copy-row input,
@@ -458,6 +470,22 @@
   background: #fff;
   color: var(--vx-ink);
   cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.vx-icon-button:hover {
+  transform: translateY(-1px);
+}
+
+.vx-icon-button.is-copied {
+  border-color: var(--vx-success-border);
+  background: var(--vx-success-bg);
+  color: var(--vx-success-ink);
+  font-weight: 800;
 }
 
 .vx-config-card__actions,
@@ -612,6 +640,40 @@
   font-size: 14px;
 }
 
+.vx-account-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 18px);
+  max-width: min(420px, calc(100vw - 28px));
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.2;
+  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.24);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  z-index: 9999;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    visibility 0.2s ease;
+}
+
+.vx-account-toast.is-visible {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
+}
+
 @keyframes vxNativeSkeleton {
   0% {
     background-position: 100% 0;
@@ -626,6 +688,24 @@
   .vx-config-card__meta,
   .vx-config-info-grid {
     grid-template-columns: 1fr;
+  }
+
+  .vx-copy-row {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .vx-icon-button {
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+  }
+
+  .vx-account-toast {
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    max-width: calc(100vw - 20px);
+    min-height: 42px;
+    padding: 10px 14px;
+    font-size: 13px;
   }
 }
 
