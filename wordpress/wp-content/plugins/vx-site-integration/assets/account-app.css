@@ -437,9 +437,33 @@
 
 .vx-config-card__title {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-size: 1.24rem;
   line-height: 1.05;
   font-weight: 800;
+}
+
+.vx-config-card__name-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #f4f7fc;
+  border: 1px solid #e1e8f4;
+  color: #53627c;
+  font-size: 12px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.vx-account-subtitle--config-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .vx-config-card__sub {
@@ -875,6 +899,12 @@
 
   .vx-config-card__title {
     font-size: 1.08rem;
+  }
+
+  .vx-config-card__name-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 11px;
   }
 
   .vx-config-card__sub {

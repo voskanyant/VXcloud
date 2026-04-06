@@ -219,7 +219,7 @@
             return [
               '<article class="vx-config-card">',
               '<div class="vx-config-card__head">',
-              '<div><h3 class="vx-config-card__title">' + escapeHtml(sub.display_name) + '</h3><div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + "</div></div>",
+              '<div><h3 class="vx-config-card__title"><span class="vx-config-card__name-icon" aria-hidden="true">✎</span><span>' + escapeHtml(sub.display_name) + '</span></h3><div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + "</div></div>",
               '<span class="' + pillClass(!!sub.is_active) + '">' + escapeHtml(sub.status_text) + "</span>",
               "</div>",
               '<div class="vx-config-card__meta">',
@@ -268,7 +268,7 @@
       '<section class="vx-config-view">',
       '<div class="vx-config-view__main">',
       '<div class="vx-config-view__head">',
-      '<div><h1 class="vx-account-title">Конфиг и QR</h1><p class="vx-account-subtitle">' + escapeHtml(model.display_name || "") + "</p></div>",
+      '<div><h1 class="vx-account-title">Конфиг и QR</h1><p class="vx-account-subtitle vx-account-subtitle--config-name"><span class="vx-config-card__name-icon" aria-hidden="true">✎</span><span>' + escapeHtml(model.display_name || "") + "</span></p></div>",
       '<span class="' + pillClass(!!model.is_active) + '">' + escapeHtml(model.status_text || "") + "</span>",
       "</div>",
       '<div class="vx-config-qr"><img src="' + escapeHtml(model.qr_image_data_url || "") + '" alt="QR конфиг"></div>',
