@@ -262,17 +262,21 @@
               '<article class="vx-config-card">',
               '<div class="vx-config-card__head">',
               '<div class="vx-config-card__title-wrap">',
-              '<h3 class="vx-config-card__title"><span class="vx-config-card__name-icon" aria-hidden="true">✎</span><span>' +
+              '<div class="vx-config-card__title-bar"><h3 class="vx-config-card__title"><span class="vx-config-card__name-icon" aria-hidden="true">✎</span><span>' +
                 escapeHtml(sub.display_name) +
-                "</span></h3>",
-              '<div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + "</div>",
-              '<form class="vx-rename-row vx-rename-row--card" data-rename-form data-subscription-id="' +
+                '</span></h3><button type="button" class="vx-icon-button vx-icon-button--action" data-rename-toggle data-target="rename-card-' +
                 escapeHtml(String(sub.id)) +
-                '"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="Имя устройства" value="' +
-                escapeHtml(sub.display_name || "") +
-                '"><button type="submit" class="vx-icon-button" aria-label="Переименовать">' +
+                '" aria-expanded="false" aria-label="Переименовать">' +
                 iconSvg("rename") +
-                "</button></form>",
+                "</button></div>",
+              '<div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + "</div>",
+              '<form id="rename-card-' +
+                escapeHtml(String(sub.id)) +
+                '" class="vx-rename-panel vx-rename-panel--card" data-rename-form data-subscription-id="' +
+                escapeHtml(String(sub.id)) +
+                '" hidden><div class="vx-rename-row"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="Имя устройства" value="' +
+                escapeHtml(sub.display_name || "") +
+                '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">Сохранить</button></div></form>',
               "</div>",
               '<span class="' + pillClass(!!sub.is_active) + '">' + escapeHtml(sub.status_text) + "</span>",
               "</div>",
@@ -389,13 +393,19 @@
         '" aria-label="Скопировать ссылку">' +
         iconSvg("copy") +
         '</button></div><p class="vx-field-hint">Скопируйте ссылку и импортируйте ее в клиент VPN.</p></div>',
-      '<div class="vx-field-card"><label>Имя устройства</label><form class="vx-rename-row" data-rename-form data-subscription-id="' +
+      '<div class="vx-field-card"><div class="vx-field-card__head"><label>Имя устройства</label><button type="button" class="vx-icon-button vx-icon-button--action" data-rename-toggle data-target="rename-config-' +
         escapeHtml(String(model.id || "")) +
-        '"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="Имя устройства" value="' +
-        escapeHtml(model.display_name || "") +
-        '"><button type="submit" class="vx-icon-button" aria-label="Переименовать">' +
+        '" aria-expanded="false" aria-label="Переименовать">' +
         iconSvg("rename") +
-        '</button></form><p class="vx-field-hint">Измените название, чтобы проще различать конфиги в кабинете.</p></div>',
+        '</button></div><div class="vx-field-value">' +
+        escapeHtml(model.display_name || "") +
+        '</div><form id="rename-config-' +
+        escapeHtml(String(model.id || "")) +
+        '" class="vx-rename-panel" data-rename-form data-subscription-id="' +
+        escapeHtml(String(model.id || "")) +
+        '" hidden><div class="vx-rename-row"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="Имя устройства" value="' +
+        escapeHtml(model.display_name || "") +
+        '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">Сохранить</button></div></form><p class="vx-field-hint">Измените название, чтобы проще различать конфиги в кабинете.</p></div>',
       "</aside>",
       "</section>",
       "</section>",
@@ -509,6 +519,24 @@
         loadCurrentView();
       });
     }
+
+    mount.querySelectorAll("[data-rename-toggle]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const targetId = button.getAttribute("data-target") || "";
+        const panel = targetId ? mount.querySelector("#" + targetId) : null;
+        if (!panel) return;
+        const willOpen = panel.hasAttribute("hidden");
+        panel.toggleAttribute("hidden", !willOpen);
+        button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+        if (willOpen) {
+          const input = panel.querySelector("input[name='display_name']");
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }
+      });
+    });
 
     mount.querySelectorAll("[data-rename-form]").forEach(function (form) {
       form.addEventListener("submit", async function (event) {

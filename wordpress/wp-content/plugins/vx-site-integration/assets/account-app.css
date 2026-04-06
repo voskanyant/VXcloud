@@ -440,6 +440,13 @@
   flex: 1 1 280px;
 }
 
+.vx-config-card__title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .vx-config-card__title {
   margin: 0;
   display: inline-flex;
@@ -477,17 +484,21 @@
   font-weight: 600;
 }
 
+.vx-rename-panel {
+  margin-top: 10px;
+}
+
+.vx-rename-panel[hidden] {
+  display: none !important;
+}
+
 .vx-rename-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 52px;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   min-width: 0;
   width: 100%;
-}
-
-.vx-rename-row--card {
-  margin-top: 10px;
 }
 
 .vx-config-card__meta {
@@ -525,6 +536,13 @@
   min-width: 0;
 }
 
+.vx-field-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .vx-config-card__field label,
 .vx-field-card label {
   display: block;
@@ -534,6 +552,17 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--vx-muted-2);
+}
+
+.vx-field-card__head label {
+  margin-bottom: 0;
+}
+
+.vx-field-value {
+  font-size: 1rem;
+  line-height: 1.4;
+  font-weight: 700;
+  color: var(--vx-ink);
 }
 
 .vx-copy-row {
@@ -607,6 +636,14 @@
   transform: translateY(-1px);
   background: linear-gradient(180deg, #ffffff 0%, #eef3fb 100%);
   border-color: #c8d4e7;
+}
+
+.vx-button--compact {
+  width: auto;
+  min-width: 112px;
+  min-height: 48px;
+  padding: 12px 16px;
+  white-space: nowrap;
 }
 
 .vx-icon-button.is-copied {
@@ -953,13 +990,23 @@
   }
 
   .vx-rename-row {
-    grid-template-columns: minmax(0, 1fr) 44px;
+    grid-template-columns: 1fr;
   }
 
   .vx-icon-button {
     width: 44px;
     height: 44px;
     border-radius: 18px;
+  }
+
+  .vx-config-card__title-bar,
+  .vx-field-card__head {
+    align-items: flex-start;
+  }
+
+  .vx-button--compact {
+    width: 100%;
+    min-width: 0;
   }
 
   .vx-account-toast {
