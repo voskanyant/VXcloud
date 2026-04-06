@@ -334,7 +334,6 @@ class VPNBot:
                     [InlineKeyboardButton(text="📱 Установить приложение", callback_data="nav|instructions_install|menu_instructions")],
                     [
                         InlineKeyboardButton(text="📊 Мой доступ", callback_data="act|start_mysub|_"),
-                        InlineKeyboardButton(text="📷 QR-код", callback_data="act|start_mysub|_"),
                     ],
                     [InlineKeyboardButton(text="🆘 Поддержка", callback_data="act|support_hub|_")],
                 ]
