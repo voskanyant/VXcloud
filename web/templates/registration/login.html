@@ -13,6 +13,7 @@
   {% cms_text "auth.login.forgot_password" "Забыли пароль?" as login_forgot_password %}
 
   <h1 class="display-6 fw-bold mb-4">{{ login_heading }}</h1>
+  {% include "partials/_telegram_auth_widget.html" %}
   <form method="post" class="vstack gap-3">
     {% csrf_token %}
     {{ form.as_p }}

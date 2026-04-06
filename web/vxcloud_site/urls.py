@@ -8,6 +8,7 @@ from cabinet.views import (
     create_magic_link,
     open_app_link,
     payment_webhook,
+    telegram_login,
     telegram_webapp_auth,
     tg_magic_login,
 )
@@ -18,6 +19,7 @@ urlpatterns = [
     path("django-admin/", admin.site.urls),
     path("accounts/login/", EmailLoginView.as_view(), name="login"),
     path("accounts/", include("django.contrib.auth.urls")),
+    path("auth/telegram/login/", telegram_login, name="telegram_login"),
     path("api/auth/magic-link", create_magic_link, name="api_magic_link"),
     path("api/auth/telegram/webapp", telegram_webapp_auth, name="api_telegram_webapp_auth"),
     path("api/webhooks/<str:provider>", payment_webhook, name="api_payment_webhook"),

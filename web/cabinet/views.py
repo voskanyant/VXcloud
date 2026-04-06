@@ -92,7 +92,44 @@ def _redirect_after_account_post(request: HttpRequest, fallback_path: str = "") 
     return _account_redirect(request, fallback_path)
 
 
+def _account_default_redirect_url(request: HttpRequest) -> str:
+    if _account_embed_mode(request):
+        return _account_backend_url(request)
+    return str(getattr(settings, "LOGIN_REDIRECT_URL", "") or _account_frontend_url())
+
+
+def _safe_local_redirect_url(request: HttpRequest, candidate: str | None, fallback: str) -> str:
+    value = (candidate or "").strip()
+    if value and url_has_allowed_host_and_scheme(
+        value,
+        allowed_hosts={request.get_host()},
+        require_https=request.is_secure(),
+    ):
+        return value
+    return fallback
+
+
+def _telegram_login_bot_username() -> str:
+    return os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
+
+
+def _telegram_login_auth_url(request: HttpRequest) -> str:
+    bot_username = _telegram_login_bot_username()
+    if not bot_username:
+        return ""
+
+    params: dict[str, str] = {"return_to": request.get_full_path()}
+    next_url = (request.GET.get("next") or "").strip()
+    if next_url:
+        params["next"] = next_url
+    if _account_embed_mode(request):
+        params["embed"] = "1"
+
+    return request.build_absolute_uri(f"/auth/telegram/login/?{urlencode(params)}")
+
+
 def _account_template_urls(request: HttpRequest) -> dict[str, object]:
+    telegram_login_bot_username = _telegram_login_bot_username()
     return {
         "embed_mode": _account_embed_mode(request),
         "frontend_dashboard_url": _account_frontend_url(),
@@ -103,6 +140,9 @@ def _account_template_urls(request: HttpRequest) -> dict[str, object]:
         "backend_config_prefix": _account_backend_base(request) + "config/",
         "backend_rename_prefix": _account_backend_base(request) + "subscriptions/",
         "support_url": "/instructions/",
+        "telegram_login_enabled": bool(telegram_login_bot_username),
+        "telegram_login_bot_username": telegram_login_bot_username,
+        "telegram_login_auth_url": _telegram_login_auth_url(request) if telegram_login_bot_username else "",
     }
 
 
@@ -279,6 +319,11 @@ def _log_payment_event(
 class EmailLoginView(LoginView):
     authentication_form = EmailAuthenticationForm
     template_name = "registration/login.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(_account_template_urls(self.request))
+        return context
 
     def get_success_url(self) -> str:
         redirect_to = self.get_redirect_url()
@@ -1042,21 +1087,21 @@ def tg_magic_login(request: HttpRequest, token: str) -> HttpResponse:
         if login_token.expires_at <= now:
             return HttpResponse("Token expired", status=410)
 
-        linked = LinkedAccount.objects.select_related("user").filter(telegram_id=login_token.telegram_id).first()
-        if linked:
-            user = linked.user
-        else:
-            user = _create_user_for_telegram(login_token.telegram_id)
-            LinkedAccount.objects.create(user=user, telegram_id=login_token.telegram_id)
+        user = _get_or_create_user_for_telegram(telegram_id=login_token.telegram_id)
 
         login_token.consumed_at = now
         login_token.save(update_fields=["consumed_at"])
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return redirect("/account/")
+    return redirect(_account_default_redirect_url(request))
 
 
-def _create_user_for_telegram(telegram_id: int) -> User:
+def _create_user_for_telegram(
+    telegram_id: int,
+    *,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> User:
     base_username = f"tg_{telegram_id}"
     username = base_username
     suffix = 1
@@ -1064,10 +1109,132 @@ def _create_user_for_telegram(telegram_id: int) -> User:
         username = f"{base_username}_{suffix}"
         suffix += 1
 
-    user = User(username=username)
+    user = User(
+        username=username,
+        first_name=(first_name or "").strip(),
+        last_name=(last_name or "").strip(),
+    )
     user.set_unusable_password()
     user.save()
     return user
+
+
+def _get_or_create_user_for_telegram(
+    *,
+    telegram_id: int,
+    telegram_username: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+) -> User:
+    linked = (
+        LinkedAccount.objects.select_for_update()
+        .select_related("user")
+        .filter(telegram_id=telegram_id)
+        .first()
+    )
+    if linked:
+        user = linked.user
+    else:
+        user = _create_user_for_telegram(
+            telegram_id,
+            first_name=first_name,
+            last_name=last_name,
+        )
+        LinkedAccount.objects.create(user=user, telegram_id=telegram_id)
+
+    update_fields: list[str] = []
+    desired_first_name = (first_name or "").strip()
+    desired_last_name = (last_name or "").strip()
+    if desired_first_name and user.first_name != desired_first_name:
+        user.first_name = desired_first_name
+        update_fields.append("first_name")
+    if desired_last_name and user.last_name != desired_last_name:
+        user.last_name = desired_last_name
+        update_fields.append("last_name")
+    if update_fields:
+        user.save(update_fields=update_fields)
+    return user
+
+
+def _verify_telegram_login_payload(payload: dict[str, str]) -> tuple[dict[str, object] | None, str | None]:
+    bot_token = settings.TELEGRAM_WEBAPP_BOT_TOKEN.strip()
+    if not bot_token:
+        return None, "server_not_configured"
+
+    ignored_keys = {"next", "return_to", "embed"}
+    normalized: dict[str, str] = {}
+    for key, value in payload.items():
+        if str(key) in ignored_keys:
+            continue
+        if value is None:
+            continue
+        text_value = str(value).strip()
+        if text_value:
+            normalized[str(key)] = text_value
+
+    received_hash = normalized.pop("hash", "").lower()
+    if not received_hash:
+        return None, "missing_hash"
+    if len(received_hash) != 64 or any(ch not in "0123456789abcdef" for ch in received_hash):
+        return None, "invalid_hash_format"
+
+    auth_date_raw = normalized.get("auth_date", "")
+    try:
+        auth_date = int(auth_date_raw)
+    except Exception:
+        return None, "invalid_auth_date"
+
+    telegram_id_raw = normalized.get("id", "")
+    try:
+        telegram_id = int(telegram_id_raw)
+    except Exception:
+        return None, "invalid_telegram_id"
+
+    now_ts = int(timezone.now().timestamp())
+    max_age = max(30, int(getattr(settings, "TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS", settings.TELEGRAM_WEBAPP_AUTH_MAX_AGE_SECONDS)))
+    if auth_date > now_ts + 30 or (now_ts - auth_date) > max_age:
+        return None, "auth_data_expired"
+
+    data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(normalized.items()))
+    secret_key = hashlib.sha256(bot_token.encode("utf-8")).digest()
+    expected_hash = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected_hash, received_hash):
+        return None, "invalid_signature"
+
+    return {
+        "telegram_id": telegram_id,
+        "telegram_username": normalized.get("username", ""),
+        "first_name": normalized.get("first_name", ""),
+        "last_name": normalized.get("last_name", ""),
+        "photo_url": normalized.get("photo_url", ""),
+    }, None
+
+
+def telegram_login(request: HttpRequest) -> HttpResponse:
+    if request.method != "GET":
+        return HttpResponse(status=405)
+
+    verified_data, _error_code = _verify_telegram_login_payload(dict(request.GET.items()))
+    if verified_data is None:
+        messages.error(request, "Не удалось выполнить вход через Telegram. Попробуйте снова.")
+        fallback = _safe_local_redirect_url(request, request.GET.get("return_to"), "/accounts/login/")
+        return redirect(fallback)
+
+    with transaction.atomic():
+        user = _get_or_create_user_for_telegram(
+            telegram_id=int(verified_data["telegram_id"]),
+            telegram_username=str(verified_data.get("telegram_username") or ""),
+            first_name=str(verified_data.get("first_name") or ""),
+            last_name=str(verified_data.get("last_name") or ""),
+        )
+
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    target_url = _safe_local_redirect_url(
+        request,
+        request.GET.get("next"),
+        _account_default_redirect_url(request),
+    )
+    return redirect(target_url)
 
 
 @csrf_exempt
@@ -1195,15 +1362,16 @@ def telegram_webapp_auth(request: HttpRequest) -> HttpResponse:
     except Exception:
         return JsonResponse({"error": "invalid_user_payload"}, status=400)
 
-    linked = LinkedAccount.objects.select_related("user").filter(telegram_id=telegram_id).first()
-    if linked:
-        user = linked.user
-    else:
-        user = _create_user_for_telegram(telegram_id)
-        LinkedAccount.objects.create(user=user, telegram_id=telegram_id)
+    with transaction.atomic():
+        user = _get_or_create_user_for_telegram(
+            telegram_id=telegram_id,
+            telegram_username=str(user_data.get("username") or ""),
+            first_name=str(user_data.get("first_name") or ""),
+            last_name=str(user_data.get("last_name") or ""),
+        )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return JsonResponse({"ok": True, "redirect": "/account/"})
+    return JsonResponse({"ok": True, "redirect": _account_default_redirect_url(request)})
 
 
 def _generate_magic_token() -> str:

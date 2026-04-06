@@ -1,0 +1,26 @@
+{% load cms %}
+{% if telegram_login_enabled and telegram_login_bot_username and telegram_login_auth_url %}
+  {% cms_text "auth.telegram.heading" "Быстрый вход и регистрация через Telegram" as auth_telegram_heading %}
+  {% cms_text "auth.telegram.description" "Telegram подтвердит ваш аккаунт и сразу откроет личный кабинет. Если аккаунта еще нет, он создастся автоматически." as auth_telegram_description %}
+  {% cms_text "auth.telegram.divider" "или используйте email" as auth_telegram_divider %}
+
+  <section class="surface-panel border rounded-4 p-3 p-lg-4 mb-4">
+    <div class="small text-uppercase fw-semibold text-secondary mb-2">{{ auth_telegram_heading }}</div>
+    <p class="text-secondary mb-3">{{ auth_telegram_description }}</p>
+    <div class="d-inline-flex flex-column align-items-start">
+      <script async src="https://telegram.org/js/telegram-widget.js?22"
+              data-telegram-login="{{ telegram_login_bot_username }}"
+              data-size="large"
+              data-radius="10"
+              data-userpic="false"
+              data-request-access="write"
+              data-auth-url="{{ telegram_login_auth_url }}"></script>
+    </div>
+  </section>
+
+  <div class="d-flex align-items-center gap-3 text-uppercase fw-semibold small text-secondary mb-4">
+    <span class="flex-grow-1 border-top"></span>
+    <span>{{ auth_telegram_divider }}</span>
+    <span class="flex-grow-1 border-top"></span>
+  </div>
+{% endif %}

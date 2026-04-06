@@ -12,6 +12,7 @@
   {% cms_text "auth.signup.login_action" "Войти" as signup_login_action %}
 
   <h1 class="display-6 fw-bold mb-4">{{ signup_heading }}</h1>
+  {% include "partials/_telegram_auth_widget.html" %}
   <form method="post" class="vstack gap-3">
     {% csrf_token %}
     {{ form.as_p }}
