@@ -443,23 +443,38 @@
   align-items: center;
   justify-content: flex-start;
   gap: 10px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  min-width: 0;
 }
 
 .vx-config-card__name-group {
-  display: inline-flex;
+  display: inline-grid;
+  grid-template-columns: minmax(0, auto) auto;
   align-items: center;
-  gap: 6px;
+  column-gap: 6px;
   min-width: 0;
   max-width: 100%;
+  flex: 0 1 auto;
 }
 
 .vx-config-card__title {
   margin: 0;
-  display: inline;
+  display: block;
+  width: auto !important;
+  min-width: 0;
   font-size: 1.24rem;
   line-height: 1.1;
   font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-config-card__title span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vx-account-subtitle--config-name {
@@ -477,6 +492,7 @@
   min-height: 34px;
   padding: 7px 14px;
   font-size: 13px;
+  flex: 0 0 auto;
 }
 
 .vx-rename-panel {
@@ -660,7 +676,7 @@
 .vx-title-edit {
   appearance: none;
   -webkit-appearance: none;
-  display: inline-flex;
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
   width: 18px;
@@ -668,7 +684,7 @@
   height: 18px;
   min-height: 18px;
   padding: 0;
-  margin: 0;
+  margin: 0 !important;
   border: 0 !important;
   outline: 0;
   background: transparent !important;
@@ -677,6 +693,7 @@
   cursor: pointer;
   vertical-align: middle;
   flex: 0 0 auto;
+  align-self: center;
   line-height: 1;
 }
 
