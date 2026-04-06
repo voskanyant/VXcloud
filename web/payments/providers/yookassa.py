@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import hashlib
-import hmac
+import base64
 import json
 import os
-import secrets
 from decimal import Decimal
 from typing import Any, Mapping
-from urllib.parse import urlencode
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -17,104 +16,163 @@ from .base import PaymentCreateResult, PaymentProvider, PaymentWebhookResult
 
 
 class YooKassaPaymentProvider(PaymentProvider):
-    """
-    Contract-only scaffold for YooKassa integration.
-    No real API calls are performed in this provider yet.
-    """
+    api_base_url = "https://api.yookassa.ru/v3"
 
     def __init__(self) -> None:
         try:
-            checkout_base_url = str(
-                getattr(settings, "PAYMENT_YOOKASSA_CHECKOUT_BASE_URL", "https://pay.vxcloud.ru/yookassa")
-            )
-            webhook_secret = str(getattr(settings, "PAYMENT_YOOKASSA_WEBHOOK_SECRET", ""))
             shop_id = str(getattr(settings, "PAYMENT_YOOKASSA_SHOP_ID", ""))
             api_key = str(getattr(settings, "PAYMENT_YOOKASSA_API_KEY", ""))
         except ImproperlyConfigured:
-            checkout_base_url = os.getenv("PAYMENT_YOOKASSA_CHECKOUT_BASE_URL", "https://pay.vxcloud.ru/yookassa")
-            webhook_secret = os.getenv("PAYMENT_YOOKASSA_WEBHOOK_SECRET", "")
             shop_id = os.getenv("PAYMENT_YOOKASSA_SHOP_ID", "")
             api_key = os.getenv("PAYMENT_YOOKASSA_API_KEY", "")
 
-        self.checkout_base_url = checkout_base_url.rstrip("/")
-        self.webhook_secret = webhook_secret.strip()
         self.shop_id = shop_id.strip()
         self.api_key = api_key.strip()
 
     def create_payment(self, order: Mapping[str, Any]) -> PaymentCreateResult:
+        self._ensure_configured()
         order_id = int(order["id"])
-        payment_id = f"yookassa_stub_{order_id}_{secrets.token_hex(6)}"
-        query = urlencode(
-            {
-                "payment_id": payment_id,
-                "order_id": order_id,
-                "amount_minor": order.get("amount_minor") or 0,
-                "currency": order.get("currency_iso") or "RUB",
-            }
+        amount_minor = int(order.get("amount_minor") or 0)
+        currency_iso = str(order.get("currency_iso") or "RUB").upper()
+        return_url = str(order.get("return_url") or "").strip()
+        if not return_url:
+            raise ValueError("YooKassa return_url is required")
+
+        payload = {
+            "amount": {
+                "value": self._format_amount_minor(amount_minor),
+                "currency": currency_iso,
+            },
+            "capture": True,
+            "confirmation": {
+                "type": "redirect",
+                "return_url": return_url,
+            },
+            "description": str(order.get("description") or f"VXcloud order #{order_id}")[:128],
+            "metadata": {
+                "order_id": str(order_id),
+                "user_id": str(order.get("user_id") or ""),
+            },
+        }
+        response = self._request_json(
+            method="POST",
+            path="/payments",
+            payload=payload,
+            idempotence_key=str(order.get("idempotency_key") or f"vxcloud-order-{order_id}"),
         )
-        pay_url = f"{self.checkout_base_url}/checkout?{query}"
+        payment_id = str(response.get("id") or "").strip()
+        confirmation = response.get("confirmation") if isinstance(response.get("confirmation"), dict) else {}
+        pay_url = str(confirmation.get("confirmation_url") or "").strip()
+        if not payment_id or not pay_url:
+            raise ValueError("YooKassa create payment response is missing id or confirmation_url")
         return PaymentCreateResult(
             payment_id=payment_id,
             pay_url=pay_url,
-            meta={"provider": "yookassa", "mode": "stub"},
+            meta={"provider": "yookassa"},
         )
 
     def verify_webhook(self, request: HttpRequest) -> PaymentWebhookResult:
-        raw = request.body or b""
-        self._validate_signature(raw, request.headers.get("X-Yookassa-Signature"))
-
         try:
-            payload = json.loads(raw.decode("utf-8"))
+            payload = json.loads((request.body or b"").decode("utf-8"))
         except Exception as exc:
             raise ValueError("Invalid webhook JSON payload") from exc
 
-        event_id = str(payload.get("event_id") or payload.get("id") or "")
-        payment_id = str(payload.get("payment_id") or payload.get("object", {}).get("id") or "")
-        status = str(payload.get("status") or payload.get("event") or "")
-        if not event_id or not payment_id or not status:
-            raise ValueError("Webhook payload must include event_id, payment_id, status")
+        event = str(payload.get("event") or "").strip().lower()
+        obj = payload.get("object")
+        if not isinstance(obj, dict):
+            raise ValueError("YooKassa webhook payload must include object")
+        payment_id = str(obj.get("id") or "").strip()
+        status = str(obj.get("status") or "").strip().lower()
+        if not payment_id or not status:
+            raise ValueError("YooKassa webhook payload must include object.id and object.status")
 
-        amount_minor: int | None = None
-        currency_iso: str | None = None
-        amount = None
-        amount_obj = payload.get("amount") or payload.get("object", {}).get("amount") or {}
-        if isinstance(amount_obj, dict):
-            value = amount_obj.get("value")
-            currency = amount_obj.get("currency")
-            if value is not None:
-                dec = Decimal(str(value))
-                amount = dec
-                amount_minor = int(dec * 100)
-            if currency:
-                currency_iso = str(currency).upper()
+        # Do not trust the incoming body alone for payment finalization.
+        remote_payment = self._fetch_payment(payment_id)
+        remote_status = str(remote_payment.get("status") or "").strip().lower()
+        if remote_status and remote_status != status:
+            raise ValueError("YooKassa webhook status does not match fetched payment status")
 
-        if amount_minor is None:
-            raw_minor = payload.get("amount_minor")
-            if raw_minor is not None:
-                amount_minor = int(raw_minor)
-                amount = Decimal(amount_minor) / Decimal(100)
-
-        if currency_iso is None:
-            raw_currency = payload.get("currency") or payload.get("currency_iso")
-            if raw_currency:
-                currency_iso = str(raw_currency).upper()
+        amount, amount_minor, currency_iso = self._extract_amount(remote_payment if remote_payment else obj)
+        event_id = f"{event or 'payment'}:{payment_id}:{remote_status or status}"
 
         return PaymentWebhookResult(
             event_id=event_id,
             payment_id=payment_id,
-            status=status,
+            status=remote_status or status,
             amount=amount,
             amount_minor=amount_minor,
             currency=currency_iso,
             provider_payload=payload,
         )
 
-    def _validate_signature(self, raw_body: bytes, signature: str | None) -> None:
-        if not self.webhook_secret:
-            return
-        provided = (signature or "").strip().lower()
-        if not provided:
-            raise ValueError("Missing webhook signature")
-        expected = hmac.new(self.webhook_secret.encode("utf-8"), raw_body, hashlib.sha256).hexdigest()
-        if not hmac.compare_digest(expected, provided):
-            raise ValueError("Invalid webhook signature")
+    def _ensure_configured(self) -> None:
+        if not self.shop_id or not self.api_key:
+            raise ImproperlyConfigured("YooKassa credentials are not configured")
+
+    @staticmethod
+    def _format_amount_minor(amount_minor: int) -> str:
+        dec = (Decimal(int(amount_minor)) / Decimal(100)).quantize(Decimal("0.01"))
+        return format(dec, "f")
+
+    @staticmethod
+    def _extract_amount(payload: Mapping[str, Any]) -> tuple[Decimal | None, int | None, str | None]:
+        amount_obj = payload.get("amount")
+        if not isinstance(amount_obj, dict):
+            return None, None, None
+        value = amount_obj.get("value")
+        currency = amount_obj.get("currency")
+        if value is None:
+            return None, None, str(currency).upper() if currency else None
+        amount = Decimal(str(value))
+        amount_minor = int((amount * Decimal(100)).quantize(Decimal("1")))
+        currency_iso = str(currency).upper() if currency else None
+        return amount, amount_minor, currency_iso
+
+    def _fetch_payment(self, payment_id: str) -> dict[str, Any]:
+        self._ensure_configured()
+        response = self._request_json(method="GET", path=f"/payments/{payment_id}")
+        if str(response.get("id") or "").strip() != payment_id:
+            raise ValueError("Fetched YooKassa payment id does not match webhook payment id")
+        return response
+
+    def _request_json(
+        self,
+        *,
+        method: str,
+        path: str,
+        payload: Mapping[str, Any] | None = None,
+        idempotence_key: str | None = None,
+    ) -> dict[str, Any]:
+        self._ensure_configured()
+        body: bytes | None = None
+        headers = {
+            "Authorization": f"Basic {self._basic_auth_token()}",
+            "Accept": "application/json",
+        }
+        if payload is not None:
+            body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+            headers["Content-Type"] = "application/json"
+        if idempotence_key:
+            headers["Idempotence-Key"] = str(idempotence_key)[:64]
+
+        request = Request(f"{self.api_base_url}{path}", data=body, method=method.upper(), headers=headers)
+        try:
+            with urlopen(request, timeout=20) as response:
+                raw = response.read().decode("utf-8")
+        except HTTPError as exc:
+            error_body = exc.read().decode("utf-8", errors="replace")
+            raise ValueError(f"YooKassa API HTTP {exc.code}: {error_body}") from exc
+        except URLError as exc:
+            raise ValueError(f"YooKassa API connection failed: {exc}") from exc
+
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValueError("YooKassa API returned invalid JSON") from exc
+        if not isinstance(parsed, dict):
+            raise ValueError("YooKassa API returned unexpected payload")
+        return parsed
+
+    def _basic_auth_token(self) -> str:
+        token = f"{self.shop_id}:{self.api_key}".encode("utf-8")
+        return base64.b64encode(token).decode("ascii")

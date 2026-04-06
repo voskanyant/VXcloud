@@ -721,6 +721,7 @@ def _start_checkout_flow(
     pending_cutoff = now - timedelta(hours=1)
 
     pending_method = "card"
+    return_url = request.build_absolute_uri(_account_frontend_url())
     pending_payload_prefix = (
         f"web-newcfg:{bot_user.id}:"
         if flow_mode == "buynew"
@@ -762,6 +763,8 @@ def _start_checkout_flow(
                         "amount_minor": int(existing_pending.amount_minor or settings.CARD_PAYMENT_AMOUNT_MINOR),
                         "currency_iso": str(existing_pending.currency_iso or settings.CARD_PAYMENT_CURRENCY).upper(),
                         "idempotency_key": idempotency_key,
+                        "return_url": return_url,
+                        "description": f"VXcloud order #{int(existing_pending.id)}",
                     }
                 )
                 existing_pending.card_payment_id = create_result.payment_id
@@ -844,6 +847,8 @@ def _start_checkout_flow(
                 "amount_minor": amount_minor,
                 "currency_iso": currency_iso,
                 "idempotency_key": idempotency_key,
+                "return_url": return_url,
+                "description": f"VXcloud order #{int(order.id)}",
             }
         )
     except Exception:
