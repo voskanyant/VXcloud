@@ -158,6 +158,36 @@ class DB:
         value = row["client_code"]
         return str(value) if value else None
 
+    async def get_user_identity(self, user_id: int) -> dict[str, str | None] | None:
+        assert self.pool is not None
+        try:
+            row = await self.pool.fetchrow(
+                """
+                SELECT client_code, username, first_name
+                FROM users
+                WHERE id = $1
+                LIMIT 1
+                """,
+                user_id,
+            )
+        except asyncpg.UndefinedColumnError:
+            row = await self.pool.fetchrow(
+                """
+                SELECT NULL::TEXT AS client_code, username, first_name
+                FROM users
+                WHERE id = $1
+                LIMIT 1
+                """,
+                user_id,
+            )
+        if not row:
+            return None
+        return {
+            "client_code": (str(row["client_code"]) if row["client_code"] else None),
+            "username": (str(row["username"]) if row["username"] else None),
+            "first_name": (str(row["first_name"]) if row["first_name"] else None),
+        }
+
     async def get_user_telegram_id(self, user_id: int) -> int | None:
         assert self.pool is not None
         row = await self.pool.fetchrow(

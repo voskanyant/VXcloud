@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from src.cluster.provisioner import ensure_client_on_all_active_nodes
+from src.client_naming import build_xui_client_name
 from src.config import Settings
 from src.db import DB
 from src.vless import build_vless_url
@@ -195,6 +196,7 @@ async def activate_subscription(
 
     try:
         now = datetime.now(timezone.utc)
+        user_identity = await db.get_user_identity(user_id)
         cluster_mode = bool(getattr(settings, "vpn_cluster_enabled", False))
         canonical_inbound_id = settings.xui_inbound_id
         if cluster_mode:
@@ -217,7 +219,13 @@ async def activate_subscription(
         if current_sub is None:
             created = True
             client_uuid = str(uuid.uuid4())
-            client_email = f"tg_{user_id}_{int(now.timestamp())}"
+            client_email = build_xui_client_name(
+                user_id=user_id,
+                client_uuid=client_uuid,
+                username=(user_identity or {}).get("username"),
+                first_name=(user_identity or {}).get("first_name"),
+                client_code=(user_identity or {}).get("client_code"),
+            )
             new_exp = now + timedelta(days=settings.plan_days)
             xui_sub_id = _deterministic_sub_id(client_uuid) if cluster_mode else None
 

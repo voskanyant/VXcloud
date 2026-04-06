@@ -29,6 +29,7 @@ from telegram.ext import (
 )
 
 from .config import Settings
+from .client_naming import build_xui_client_name
 from .cms import DirectusCMS
 from .db import DB
 from .domain.subscriptions import activate_subscription
@@ -838,10 +839,16 @@ class VPNBot:
             raise ValueError("bad-length")
         return normalized
 
-    @staticmethod
-    def _phone_for_email(normalized_phone: str, user_id: int) -> str:
-        digits = re.sub(r"\D", "", normalized_phone)
-        return f"tel{digits}_tg{user_id}"
+    async def _build_client_email(self, user_id: int, client_uuid: str, *, prefix: str = "") -> str:
+        user_identity = await self.db.get_user_identity(user_id)
+        return build_xui_client_name(
+            user_id=user_id,
+            client_uuid=client_uuid,
+            username=(user_identity or {}).get("username"),
+            first_name=(user_identity or {}).get("first_name"),
+            client_code=(user_identity or {}).get("client_code"),
+            prefix=prefix,
+        )
 
     @staticmethod
     def _subscription_name(sub: dict[str, object]) -> str:
@@ -2191,7 +2198,7 @@ class VPNBot:
         inbound_port = int(inbound["port"])
 
         client_uuid = str(uuid.uuid4())
-        client_email = f"trial_{user_id}_{int(now.timestamp())}"
+        client_email = await self._build_client_email(user_id, client_uuid, prefix="trial")
         new_exp = now + timedelta(days=days)
         await self.xui.add_client(
             self.settings.xui_inbound_id,
@@ -2256,7 +2263,7 @@ class VPNBot:
 
         if sub is None:
             client_uuid = str(uuid.uuid4())
-            client_email = self._phone_for_email(phone, user_id) if phone else f"tg_{user_id}_{int(now.timestamp())}"
+            client_email = await self._build_client_email(user_id, client_uuid)
             new_exp = now + timedelta(days=self.settings.plan_days)
             await self.xui.add_client(
                 self.settings.xui_inbound_id,
