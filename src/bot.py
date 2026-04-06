@@ -449,12 +449,8 @@ class VPNBot:
         )
 
     async def _send_start_screen(self, message: Message, user_id: int) -> None:
-        menu_keyboard = await self._menu_keyboard_for_user(user_id)
-        sent = await message.reply_text(self._start_message_text(), reply_markup=menu_keyboard)
-        try:
-            await sent.edit_reply_markup(reply_markup=self._start_inline_keyboard())
-        except Exception:
-            await message.reply_text("Выберите действие:", reply_markup=self._start_inline_keyboard())
+        await self._menu_keyboard_for_user(user_id)
+        await message.reply_text(self._start_message_text(), reply_markup=self._start_inline_keyboard())
 
     def _trial_offer_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
