@@ -619,7 +619,7 @@
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 6px;
-  width: fit-content;
+  width: 100%;
   max-width: 100%;
   padding: 9px 12px;
   border: 1px solid #dbe5f1;
