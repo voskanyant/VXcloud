@@ -47,6 +47,8 @@ from payments.providers import get_payment_provider
 
 ALLOWED_DEEPLINK_SCHEMES = ("vless://", "vmess://", "trojan://", "ss://", "hysteria2://", "tuic://")
 PAYMENT_SUCCESS_STATUSES = {"success", "succeeded", "paid", "approved"}
+PAYMENT_CANCELLED_STATUSES = {"canceled", "cancelled", "expired", "failed"}
+PENDING_CARD_CHECKOUT_TTL = timedelta(minutes=30)
 LOGGER = logging.getLogger(__name__)
 WEB_ORDER_SESSION_KEY = "web_order_checkout_state_v1"
 WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
@@ -718,7 +720,7 @@ def _start_checkout_flow(
 
     session_state = _load_web_order_session_state(request, user_id=bot_user.id)
     idempotency_key = str(session_state.get("idempotency_key") or "").strip() or _new_web_idempotency_key()
-    pending_cutoff = now - timedelta(hours=1)
+    pending_cutoff = now - PENDING_CARD_CHECKOUT_TTL
 
     pending_method = "card"
     return_url = request.build_absolute_uri(_account_frontend_url())
@@ -1568,6 +1570,39 @@ def payment_webhook(request: HttpRequest, provider: str) -> HttpResponse:
                     provider=provider_name,
                     event_id=webhook.event_id,
                     provision_state="order_not_found",
+                )
+        elif status in PAYMENT_CANCELLED_STATUSES:
+            order = (
+                BotOrder.objects.select_for_update()
+                .filter(card_payment_id=webhook.payment_id)
+                .first()
+            )
+            if order and str(order.status).lower() == "pending":
+                order.status = "cancelled"
+                order.provider_payment_charge_id = webhook.payment_id
+                order.save(update_fields=["status", "provider_payment_charge_id"])
+                _log_payment_event(
+                    order_id=int(order.id),
+                    client_code=getattr(order.user, "client_code", None),
+                    provider=provider_name,
+                    event_id=webhook.event_id,
+                    provision_state="payment_cancelled",
+                )
+            elif order:
+                _log_payment_event(
+                    order_id=int(order.id),
+                    client_code=getattr(order.user, "client_code", None),
+                    provider=provider_name,
+                    event_id=webhook.event_id,
+                    provision_state="cancel_webhook_already_processed",
+                )
+            else:
+                _log_payment_event(
+                    order_id=None,
+                    client_code=None,
+                    provider=provider_name,
+                    event_id=webhook.event_id,
+                    provision_state="cancel_webhook_order_not_found",
                 )
         else:
             _log_payment_event(
