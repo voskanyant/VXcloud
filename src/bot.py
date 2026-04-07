@@ -693,7 +693,7 @@ class VPNBot:
         )
 
     async def _show_renew_card_info(self, message: Message) -> None:
-        pay_url = f"{self._site_url().rstrip('/')}/account/renew/"
+        pay_url = await self._account_url(None, "/account/renew/")
         await message.edit_reply_markup(reply_markup=self._renew_card_markup(pay_url))
 
     async def _show_buy_checkout_options(self, message: Message, user_id: int | None = None) -> None:
@@ -724,7 +724,7 @@ class VPNBot:
         await self._show_buy_checkout_options(message, user_id)
 
     async def _show_buy_card_info(self, message: Message) -> None:
-        pay_url = f"{self._site_url().rstrip('/')}/account/buy/"
+        pay_url = await self._account_url(None, "/account/buy/")
         await message.edit_reply_markup(reply_markup=self._buy_card_markup(pay_url))
 
     async def _show_trial_offer(self, message: Message, user_id: int) -> None:
@@ -2416,6 +2416,7 @@ class VPNBot:
         qr_title = "QR доступа" if subscription_url else "QR подключения"
 
         account_url = await self._account_url(user_id)
+        renew_url = await self._account_url(user_id, "/account/renew/")
 
         buttons: list[list[InlineKeyboardButton]] = [
             [
@@ -2433,7 +2434,7 @@ class VPNBot:
             [
                 InlineKeyboardButton(
                     text=self._with_card_price(self._button_label("pay_card_button", "💳 Оплатить картой")),
-                    url=f"{self._site_url().rstrip('/')}/account/renew/",
+                    url=renew_url,
                 )
             ]
         )
