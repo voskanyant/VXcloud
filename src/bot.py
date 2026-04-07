@@ -440,21 +440,38 @@ class VPNBot:
             ]
         )
 
+    async def _replace_or_reply(
+        self,
+        message: Message,
+        text: str,
+        *,
+        reply_markup: InlineKeyboardMarkup | ReplyKeyboardMarkup | None = None,
+    ) -> None:
+        try:
+            await message.edit_text(text=text, reply_markup=reply_markup)
+        except Exception:
+            await message.reply_text(text, reply_markup=reply_markup)
+
     @staticmethod
     def _start_message_text() -> str:
         return (
             "Добро пожаловать в VXcloud\n\n"
-            "Здесь вы можете получить стабильный доступ к интернету для работы, общения и повседневных задач.\n\n"
-            "Начните с пробного периода или сразу оформите доступ.\n\n"
-            "Для подключения понадобится специальное приложение.\n"
-            "Если его нет в российском App Store, может потребоваться сменить регион в App Store.\n"
-            "Мы покажем всё по шагам."
+            "Здесь можно быстро получить доступ к VPN для работы, общения и повседневных задач.\n\n"
+            "Что дальше:\n"
+            "• попробуйте 7 дней бесплатно\n"
+            "• купите новый доступ\n"
+            "• откройте личный кабинет на сайте\n\n"
+            "Если для подключения нужно приложение, нажмите «Как подключить»."
         )
 
     async def _send_start_screen(self, message: Message, user_id: int) -> None:
         await self._menu_keyboard_for_user(user_id)
         account_url = await self._account_url(user_id)
-        await message.reply_text(self._start_message_text(), reply_markup=self._start_inline_keyboard(account_url))
+        await self._replace_or_reply(
+            message,
+            self._start_message_text(),
+            reply_markup=self._start_inline_keyboard(account_url),
+        )
 
     def _trial_offer_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
@@ -577,13 +594,14 @@ class VPNBot:
 
     async def _show_support_hub(self, message: Message, user_id: int) -> None:
         client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
-        await message.reply_text(
+        await self._replace_or_reply(
+            message,
             "Поддержка VXcloud\n\n"
-            "Если что-то не работает или возник вопрос, напишите нам.\n\n"
-            "Лучше всего коротко указать:\n"
+            "Если что-то не работает или возник вопрос, напишите нам одним сообщением.\n\n"
+            "Лучше сразу указать:\n"
             "• что именно не получается\n"
             "• на каком устройстве\n"
-            "• что уже пробовали сделать\n\n"
+            "• что уже пробовали\n\n"
             "Ваш ID:\n"
             f"{client_code}",
             reply_markup=self._support_hub_markup(),
@@ -649,14 +667,13 @@ class VPNBot:
 
         expires_at = target_sub.get("expires_at")
         expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "—"
-        await message.reply_text(
+        await self._replace_or_reply(
+            message,
             "Продление доступа\n\n"
-            "Здесь вы можете продлить текущий доступ, чтобы продолжить пользоваться без перерыва.\n\n"
-            f"Рекомендуем оплату картой на сайте · {self._card_price_label()}.\n\n"
-            "Текущее устройство:\n"
-            f"{self._subscription_name(target_sub)}\n\n"
-            "Действует до:\n"
-            f"{expires_text}",
+            f"Текущее устройство: {self._subscription_name(target_sub)}\n"
+            f"Действует до: {expires_text}\n\n"
+            f"Рекомендуем оплату картой на сайте · {self._card_price_label()}.\n"
+            "После оплаты срок доступа продлится автоматически.",
             reply_markup=self._renew_offer_markup(target_subscription_id),
         )
 
@@ -665,14 +682,14 @@ class VPNBot:
         await message.edit_reply_markup(reply_markup=self._renew_card_markup(pay_url))
 
     async def _show_buy_checkout_options(self, message: Message) -> None:
-        await message.reply_text(
+        await self._replace_or_reply(
+            message,
             "Оформление доступа\n\n"
-            "Здесь вы можете купить новый доступ для подключения.\n\n"
             f"Рекомендуем оплату картой на сайте · {self._card_price_label()}.\n\n"
-            "Это подойдёт, если вы:\n"
-            "• подключаете ещё одно устройство\n"
-            "• хотите отдельный доступ\n"
-            "• уже использовали пробный период\n\n"
+            "Подходит, если вы хотите:\n"
+            "• подключить ещё одно устройство\n"
+            "• получить отдельный доступ\n"
+            "• купить доступ после пробного периода\n\n"
             "После оплаты вы сразу получите ссылку для подключения и QR-код.",
             reply_markup=self._buy_offer_markup(),
         )
@@ -680,10 +697,12 @@ class VPNBot:
     async def _show_buy_offer(self, message: Message, user_id: int) -> None:
         active_sub = await self.db.get_active_subscription(user_id)
         if active_sub:
-            await message.reply_text(
-                "У вас уже есть 1 активный доступ.\n\n"
-                "Если хотите продлить текущий доступ, нажмите «Продлить текущий доступ».\n"
-                "Если нужен дополнительный доступ, нажмите «Купить дополнительный доступ».",
+            await self._replace_or_reply(
+                message,
+                "У вас уже есть активный доступ.\n\n"
+                "Что хотите сделать дальше?\n"
+                "• продлить текущий доступ\n"
+                "• купить дополнительный доступ",
                 reply_markup=self._buy_existing_access_markup(),
             )
             return
@@ -702,15 +721,16 @@ class VPNBot:
             )
             return
 
-        await message.reply_text(
+        await self._replace_or_reply(
+            message,
             "Пробный доступ на 7 дней\n\n"
-            "Подойдёт, если вы хотите сначала всё проверить.\n\n"
-            "Что вы получите:\n"
+            "Подходит, если хотите сначала всё проверить.\n\n"
+            "Что получите:\n"
             "• доступ на 7 дней\n"
             "• ссылку для подключения\n"
-            "• QR-код для быстрого входа\n"
-            "• инструкцию по шагам\n\n"
-            "Пробный доступ можно активировать один раз.",
+            "• QR-код\n"
+            "• пошаговую инструкцию\n\n"
+            "Пробный период можно активировать один раз.",
             reply_markup=self._trial_offer_markup(),
         )
 
@@ -759,8 +779,12 @@ class VPNBot:
                             LOGGER.exception("Failed to notify admin about recovery issue")
                     return
         client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
-        await message.reply_text(
-            text=self._configs_list_text(client_code=client_code, subscriptions=subscriptions),
+        text = self._configs_list_text(client_code=client_code, subscriptions=subscriptions)
+        if subscriptions:
+            text = f"{text}\n\nНажмите на устройство ниже, чтобы открыть его."
+        await self._replace_or_reply(
+            message,
+            text,
             reply_markup=self._configs_list_markup(subscriptions),
         )
 
