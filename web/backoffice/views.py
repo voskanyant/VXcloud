@@ -318,15 +318,32 @@ class BotOrderListView(BaseListView):
     columns = [
         ("id", "ID"),
         ("user_id", "User ID"),
+        ("username", "Username"),
         ("amount_stars", "Stars"),
         ("status", "Статус"),
         ("created_at", "Создан"),
         ("paid_at", "Оплачен"),
     ]
-    search_fields = ["payload", "status", "telegram_payment_charge_id", "provider_payment_charge_id"]
+    search_fields = ["payload", "status", "telegram_payment_charge_id", "provider_payment_charge_id", "user__username", "user__first_name"]
 
     def get_queryset(self):
-        return super().get_queryset().order_by("-id")
+        return super().get_queryset().select_related("user").order_by("-id")
+
+    def get_table_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self.object_list:
+            username = getattr(getattr(item, "user", None), "username", "") or ""
+            cells = [
+                format_cell(getattr(item, "id", "")),
+                format_cell(getattr(item, "user_id", "")),
+                format_cell(username),
+                format_cell(getattr(item, "amount_stars", "")),
+                format_cell(getattr(item, "status", "")),
+                format_cell(getattr(item, "created_at", "")),
+                format_cell(getattr(item, "paid_at", "")),
+            ]
+            rows.append({"obj": item, "cells": cells})
+        return rows
 
 
 class BaseEditView(LegacyContentMutationGuardMixin, StaffRequiredMixin):
