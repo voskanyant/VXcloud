@@ -1018,10 +1018,10 @@ class VPNBot:
         )
         return InlineKeyboardMarkup(rows)
 
-    def _config_card_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
+    def _config_card_markup(self, subscription_id: int, copy_text: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(text="📋 Скопировать ссылку", callback_data=f"act|cfg_copy:{subscription_id}|_")],
+                [InlineKeyboardButton(text="📋 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})],
                 [
                     InlineKeyboardButton(text="📷 QR-код", callback_data=f"act|cfg_qr:{subscription_id}|_"),
                     InlineKeyboardButton(text="🔄 Продлить", callback_data=f"act|cfg_renew:{subscription_id}|_"),
@@ -1044,7 +1044,7 @@ class VPNBot:
             f"ID: {client_code}\n\n"
             f"Статус: {status_text}\n"
             f"Действует до: {expires_text}\n"
-            "\nВы можете подключиться или управлять доступом ниже."
+            "\nНажмите «Скопировать ссылку», затем откройте VPN-клиент и импортируйте конфиг."
         )
         return text, vless_url, sub_url
 
@@ -1741,7 +1741,7 @@ class VPNBot:
                 await query.answer()
                 await query.edit_message_text(
                     text=text,
-                    reply_markup=self._config_card_markup(subscription_id),
+                    reply_markup=self._config_card_markup(subscription_id, sub_url or vless_url),
                 )
                 return
             if target.startswith("cfg_copy:"):
