@@ -1018,13 +1018,14 @@ class VPNBot:
         )
         return InlineKeyboardMarkup(rows)
 
-    def _config_card_markup(self, subscription_id: int, copy_text: str) -> InlineKeyboardMarkup:
+    async def _config_card_markup(self, user_id: int | None, subscription_id: int, copy_text: str) -> InlineKeyboardMarkup:
+        renew_url = await self._account_url(user_id, f"/account/renew/?subscription_id={subscription_id}")
         return InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(text="📋 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})],
                 [
                     InlineKeyboardButton(text="📷 QR-код", callback_data=f"act|cfg_qr:{subscription_id}|_"),
-                    InlineKeyboardButton(text="🔄 Продлить", callback_data=f"act|cfg_renew:{subscription_id}|_"),
+                    InlineKeyboardButton(text="🔄 Продлить", url=renew_url),
                 ],
                 [
                     InlineKeyboardButton(text="✏️ Переименовать", callback_data=f"act|cfg_rename:{subscription_id}|_"),
@@ -1741,7 +1742,7 @@ class VPNBot:
                 await query.answer()
                 await query.edit_message_text(
                     text=text,
-                    reply_markup=self._config_card_markup(subscription_id, vless_url),
+                    reply_markup=await self._config_card_markup(user_id, subscription_id, vless_url),
                 )
                 return
             if target.startswith("cfg_copy:"):
