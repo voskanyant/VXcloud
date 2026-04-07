@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import json
+import os
 from typing import Any
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 from django.conf import settings
 from django.contrib import messages
@@ -9,14 +13,23 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Q, QuerySet
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
 from django.utils import timezone
+from django.utils.html import format_html
 from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
 
 from blog.admin import BLOCK_EDITOR_ASSET_VERSION
 from blog.models import Category, Page, Post, PostType, SiteText
-from cabinet.models import BotOrder, BotSubscription, BotUser
+from cabinet.models import (
+    BotOrder,
+    BotSubscription,
+    BotUser,
+    SupportMessage,
+    SupportTicket,
+    VPNNode,
+    VPNNodeClient,
+)
 
 from .forms import (
     BackofficeCategoryForm,
@@ -25,11 +38,11 @@ from .forms import (
     BackofficePostTypeForm,
     BackofficeSiteTextForm,
     StaffAuthenticationForm,
+    TicketReplyForm,
 )
 
 LEGACY_CONTENT_NOTICE = (
-    "Публичный контент переносится в WordPress + Flatsome. "
-    "Этот раздел больше не является целевой CMS для сайта."
+    "Публичный контент уже живёт в WordPress. Django здесь нужен для бота, оплат, VPN-операций и поддержки."
 )
 
 
@@ -66,7 +79,10 @@ class LegacyContentMutationGuardMixin(LegacyContentContextMixin):
 
     def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         if self.is_content_readonly():
-            messages.warning(request, "Редактирование legacy CMS отключено. Вносите публичный контент в WordPress.")
+            messages.warning(
+                request,
+                "Legacy CMS закрыт для изменений. Публичный контент редактируется в WordPress.",
+            )
             return redirect(reverse(self.success_url_name))
         return super().dispatch(request, *args, **kwargs)
 
@@ -91,7 +107,14 @@ def safe_count(qs: QuerySet) -> int:
         return 0
 
 
-def format_cell(value: Any) -> str:
+def safe_get(queryset_callable, fallback):
+    try:
+        return queryset_callable()
+    except (OperationalError, ProgrammingError):
+        return fallback
+
+
+def format_cell(value: Any) -> Any:
     if value is None:
         return ""
     if isinstance(value, bool):
@@ -102,7 +125,95 @@ def format_cell(value: Any) -> str:
         except Exception:
             pass
         return value.strftime("%d.%m.%Y %H:%M")
-    return str(value)
+    return value
+
+
+def status_badge(text: str, tone: str = "secondary") -> str:
+    return format_html('<span class="badge text-bg-{} bo-badge">{}</span>', tone, text)
+
+
+def boolean_badge(flag: bool, true_label: str = "Да", false_label: str = "Нет") -> str:
+    return status_badge(true_label if flag else false_label, "success" if flag else "secondary")
+
+
+def user_source_label(telegram_id: int | None) -> str:
+    if telegram_id is None:
+        return "unknown"
+    return "telegram" if telegram_id > 0 else "site-only"
+
+
+def user_source_badge(telegram_id: int | None) -> str:
+    source = user_source_label(telegram_id)
+    tone = "primary" if source == "telegram" else "secondary"
+    label = "Telegram" if source == "telegram" else "Site-only"
+    return status_badge(label, tone)
+
+
+def order_status_badge(status: str | None) -> str:
+    normalized = (status or "").lower()
+    tone_map = {
+        "activated": "success",
+        "paid": "success",
+        "pending": "warning",
+        "cancelled": "secondary",
+        "failed": "danger",
+    }
+    return status_badge(status or "-", tone_map.get(normalized, "secondary"))
+
+
+def ticket_status_badge(status: str | None) -> str:
+    normalized = (status or "").lower()
+    tone = "success" if normalized == "closed" else "warning"
+    return status_badge(status or "-", tone)
+
+
+def sync_state_badge(state: str | None) -> str:
+    normalized = (state or "").lower()
+    if normalized == "ok":
+        tone = "success"
+    elif normalized in {"pending", "queued"}:
+        tone = "warning"
+    else:
+        tone = "danger"
+    return status_badge(state or "-", tone)
+
+
+def health_badge(node: VPNNode) -> str:
+    if not node.is_active:
+        return status_badge("offline", "secondary")
+    if node.last_health_ok is True:
+        return status_badge("healthy", "success")
+    if node.last_health_ok is False:
+        return status_badge("error", "danger")
+    return status_badge("unknown", "warning")
+
+
+def env_value(name: str, default: str = "") -> str:
+    value = os.getenv(name, default)
+    return value.strip() if isinstance(value, str) else str(value)
+
+
+def send_telegram_text(telegram_id: int, text: str) -> None:
+    token = (
+        env_value("TELEGRAM_WEBAPP_BOT_TOKEN")
+        or env_value("TELEGRAM_BOT_TOKEN")
+        or settings.TELEGRAM_WEBAPP_BOT_TOKEN
+    )
+    if not token:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN is not configured")
+    payload = json.dumps(
+        {"chat_id": telegram_id, "text": text, "disable_web_page_preview": True}
+    ).encode("utf-8")
+    req = urllib_request.Request(
+        f"https://api.telegram.org/bot{token}/sendMessage",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    with urllib_request.urlopen(req, timeout=10) as response:
+        body = json.loads(response.read().decode("utf-8"))
+    if not body.get("ok"):
+        raise RuntimeError(f"Telegram API error: {body}")
 
 
 class DashboardView(StaffRequiredMixin, TemplateView):
@@ -110,32 +221,71 @@ class DashboardView(StaffRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
-        ctx["title"] = "Ops Panel"
-        ctx["wordpress_notice"] = LEGACY_CONTENT_NOTICE
-        ctx["wordpress_public_site_enabled"] = settings.WORDPRESS_PUBLIC_SITE_ENABLED
-        ctx["wordpress_content_readonly"] = settings.WORDPRESS_CONTENT_READONLY
-        ctx["wordpress_public_site_url"] = settings.WORDPRESS_PUBLIC_SITE_URL or "/"
-        ctx["metrics"] = [
-            {"label": "Страницы", "value": safe_count(Page.objects.all())},
-            {"label": "Посты", "value": safe_count(Post.objects.all())},
-            {"label": "Категории", "value": safe_count(Category.objects.all())},
-            {"label": "Типы постов", "value": safe_count(PostType.objects.all())},
-            {"label": "Тексты сайта", "value": safe_count(SiteText.objects.all())},
-            {"label": "Пользователи бота", "value": safe_count(BotUser.objects.all())},
-            {
-                "label": "Активные подписки",
-                "value": safe_count(BotSubscription.objects.filter(is_active=True)),
-            },
-            {"label": "Заказы", "value": safe_count(BotOrder.objects.all())},
+        ctx["title"] = "Bot Control Center"
+
+        metrics = {
+            "users_total": safe_count(BotUser.objects.all()),
+            "users_telegram": safe_count(BotUser.objects.filter(telegram_id__gt=0)),
+            "subscriptions_active": safe_count(BotSubscription.objects.filter(is_active=True)),
+            "orders_pending": safe_count(BotOrder.objects.filter(status="pending")),
+            "orders_activated": safe_count(BotOrder.objects.filter(status="activated")),
+            "tickets_open": safe_count(SupportTicket.objects.exclude(status="closed")),
+            "nodes_total": safe_count(VPNNode.objects.all()),
+            "nodes_unhealthy": safe_count(
+                VPNNode.objects.filter(is_active=True).exclude(last_health_ok=True)
+            ),
+            "sync_errors": safe_count(VPNNodeClient.objects.exclude(sync_state="ok")),
+        }
+        ctx["headline_metrics"] = [
+            {"label": "Пользователи", "value": metrics["users_total"], "tone": "primary"},
+            {"label": "Активные подписки", "value": metrics["subscriptions_active"], "tone": "success"},
+            {"label": "Открытые тикеты", "value": metrics["tickets_open"], "tone": "warning"},
+            {"label": "Pending-заказы", "value": metrics["orders_pending"], "tone": "danger"},
         ]
-        try:
-            ctx["recent_pages"] = Page.objects.order_by("-updated_at")[:7]
-        except (OperationalError, ProgrammingError):
-            ctx["recent_pages"] = []
-        try:
-            ctx["recent_posts"] = Post.objects.order_by("-updated_at")[:7]
-        except (OperationalError, ProgrammingError):
-            ctx["recent_posts"] = []
+        ctx["secondary_metrics"] = [
+            {"label": "Telegram users", "value": metrics["users_telegram"]},
+            {"label": "Activated orders", "value": metrics["orders_activated"]},
+            {"label": "VPN nodes", "value": metrics["nodes_total"]},
+            {"label": "Node sync errors", "value": metrics["sync_errors"]},
+        ]
+        ctx["system_cards"] = [
+            {
+                "label": "Оплата",
+                "value": "Карты включены" if settings.ENABLE_CARD_PAYMENTS else "Только Stars / manual",
+                "meta": f"{settings.PAYMENT_PROVIDER} · {settings.CARD_PAYMENT_AMOUNT_MINOR / 100:.0f} {settings.CARD_PAYMENT_CURRENCY}",
+            },
+            {
+                "label": "Cluster mode",
+                "value": "Включён" if env_value("VPN_CLUSTER_ENABLED", "0") == "1" else "Выключен",
+                "meta": f"health {env_value('VPN_CLUSTER_HEALTHCHECK_INTERVAL_SECONDS', '30')}s · sync {env_value('VPN_CLUSTER_SYNC_INTERVAL_SECONDS', '60')}s",
+            },
+            {
+                "label": "HAProxy frontend",
+                "value": f"{env_value('HAPROXY_FRONTEND_BIND_ADDR', '0.0.0.0')}:{env_value('HAPROXY_FRONTEND_PORT', env_value('VPN_PUBLIC_PORT', '-'))}",
+                "meta": env_value("HAPROXY_RELOAD_CMD", "reload command not set"),
+            },
+            {
+                "label": "Public VPN",
+                "value": f"{env_value('VPN_PUBLIC_HOST', '-')}:{env_value('VPN_PUBLIC_PORT', '-')}",
+                "meta": f"inbound #{env_value('XUI_INBOUND_ID', '-')}",
+            },
+        ]
+        ctx["recent_orders"] = safe_get(
+            lambda: BotOrder.objects.select_related("user").order_by("-id")[:8],
+            [],
+        )
+        ctx["recent_tickets"] = safe_get(
+            lambda: SupportTicket.objects.select_related("user").order_by("-updated_at")[:8],
+            [],
+        )
+        ctx["recent_nodes"] = safe_get(lambda: VPNNode.objects.order_by("-updated_at")[:8], [])
+        ctx["action_links"] = [
+            {"label": "Тикеты", "url": reverse("backoffice:ticket_list")},
+            {"label": "Заказы", "url": reverse("backoffice:bot_order_list")},
+            {"label": "Пользователи", "url": reverse("backoffice:bot_user_list")},
+            {"label": "Ноды", "url": reverse("backoffice:vpn_node_list")},
+            {"label": "Cluster & HAProxy", "url": reverse("backoffice:system_overview")},
+        ]
         return ctx
 
 
@@ -145,6 +295,7 @@ class BaseListView(LegacyContentContextMixin, StaffRequiredMixin, ListView):
     context_object_name = "items"
 
     title = ""
+    subtitle = ""
     add_url_name = ""
     edit_url_name = ""
     delete_url_name = ""
@@ -175,6 +326,7 @@ class BaseListView(LegacyContentContextMixin, StaffRequiredMixin, ListView):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
         ctx["title"] = self.title
+        ctx["subtitle"] = self.subtitle
         ctx["query"] = (self.request.GET.get("q") or "").strip()
         ctx["headers"] = [label for _, label in self.columns]
         ctx["rows"] = self.get_table_rows()
@@ -187,7 +339,8 @@ class BaseListView(LegacyContentContextMixin, StaffRequiredMixin, ListView):
 
 class PostListView(BaseListView):
     model = Post
-    title = "Посты"
+    title = "Legacy posts"
+    subtitle = "Оставлено только для переноса старого контента."
     add_url_name = "backoffice:post_create"
     edit_url_name = "backoffice:post_update"
     delete_url_name = "backoffice:post_delete"
@@ -208,7 +361,8 @@ class PostListView(BaseListView):
 
 class PageListView(BaseListView):
     model = Page
-    title = "Страницы"
+    title = "Legacy pages"
+    subtitle = "Публичные страницы теперь редактируются в WordPress."
     add_url_name = "backoffice:page_create"
     edit_url_name = "backoffice:page_update"
     delete_url_name = "backoffice:page_delete"
@@ -229,7 +383,8 @@ class PageListView(BaseListView):
 
 class CategoryListView(BaseListView):
     model = Category
-    title = "Категории"
+    title = "Legacy categories"
+    subtitle = "Старые категории Django CMS."
     add_url_name = "backoffice:category_create"
     edit_url_name = "backoffice:category_update"
     delete_url_name = "backoffice:category_delete"
@@ -246,7 +401,8 @@ class CategoryListView(BaseListView):
 
 class PostTypeListView(BaseListView):
     model = PostType
-    title = "Типы постов"
+    title = "Legacy post types"
+    subtitle = "Старые типы постов Django CMS."
     add_url_name = "backoffice:post_type_create"
     edit_url_name = "backoffice:post_type_update"
     delete_url_name = "backoffice:post_type_delete"
@@ -263,26 +419,26 @@ class PostTypeListView(BaseListView):
 
 class SiteTextListView(BaseListView):
     model = SiteText
-    title = "Тексты сайта"
+    title = "Legacy site texts"
+    subtitle = "Наследие Django CMS, не основная панель сайта."
     add_url_name = "backoffice:site_text_create"
     edit_url_name = "backoffice:site_text_update"
     delete_url_name = "backoffice:site_text_delete"
-    columns = [
-        ("id", "ID"),
-        ("key", "Ключ"),
-        ("updated_at", "Обновлён"),
-    ]
+    columns = [("id", "ID"), ("key", "Ключ"), ("updated_at", "Обновлён")]
     search_fields = ["key", "value"]
     content_management = True
 
 
 class BotUserListView(BaseListView):
     model = BotUser
-    title = "Пользователи бота"
+    title = "Пользователи"
+    subtitle = "Единая база bot users и site-only placeholder accounts."
     readonly = True
     columns = [
         ("id", "ID"),
+        ("client_code", "Client code"),
         ("telegram_id", "Telegram ID"),
+        ("source", "Source"),
         ("username", "Username"),
         ("first_name", "Имя"),
         ("created_at", "Создан"),
@@ -292,39 +448,89 @@ class BotUserListView(BaseListView):
     def get_queryset(self):
         return super().get_queryset().order_by("-id")
 
+    def get_table_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self.object_list:
+            rows.append(
+                {
+                    "obj": item,
+                    "cells": [
+                        item.id,
+                        item.client_code,
+                        item.telegram_id,
+                        user_source_badge(item.telegram_id),
+                        item.username or "",
+                        item.first_name or "",
+                        format_cell(item.created_at),
+                    ],
+                }
+            )
+        return rows
+
 
 class BotSubscriptionListView(BaseListView):
     model = BotSubscription
-    title = "Подписки бота"
+    title = "Подписки"
+    subtitle = "Текущие устройства, сроки и импортные конфиги."
     readonly = True
     columns = [
         ("id", "ID"),
         ("user_id", "User ID"),
         ("display_name", "Имя"),
-        ("is_active", "Активна"),
+        ("client_email", "3x-ui name"),
+        ("is_active", "Статус"),
         ("expires_at", "Истекает"),
         ("updated_at", "Обновлена"),
     ]
-    search_fields = ["display_name", "client_email"]
+    search_fields = ["display_name", "client_email", "user__username", "user__client_code"]
 
     def get_queryset(self):
-        return super().get_queryset().order_by("-id")
+        return super().get_queryset().select_related("user").order_by("-id")
+
+    def get_table_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self.object_list:
+            rows.append(
+                {
+                    "obj": item,
+                    "cells": [
+                        item.id,
+                        item.user_id,
+                        item.display_name,
+                        item.client_email,
+                        boolean_badge(item.is_active, "active", "inactive"),
+                        format_cell(item.expires_at),
+                        format_cell(item.updated_at),
+                    ],
+                }
+            )
+        return rows
 
 
 class BotOrderListView(BaseListView):
     model = BotOrder
-    title = "Заказы бота"
+    title = "Заказы"
+    subtitle = "Оплаты картой и Stars в одном журнале."
     readonly = True
     columns = [
         ("id", "ID"),
         ("user_id", "User ID"),
         ("username", "Username"),
-        ("amount_stars", "Stars"),
+        ("payment", "Оплата"),
+        ("method", "Метод"),
         ("status", "Статус"),
         ("created_at", "Создан"),
         ("paid_at", "Оплачен"),
     ]
-    search_fields = ["payload", "status", "telegram_payment_charge_id", "provider_payment_charge_id", "user__username", "user__first_name"]
+    search_fields = [
+        "payload",
+        "status",
+        "telegram_payment_charge_id",
+        "provider_payment_charge_id",
+        "card_payment_id",
+        "user__username",
+        "user__first_name",
+    ]
 
     def get_queryset(self):
         return super().get_queryset().select_related("user").order_by("-id")
@@ -333,17 +539,288 @@ class BotOrderListView(BaseListView):
         rows = []
         for item in self.object_list:
             username = getattr(getattr(item, "user", None), "username", "") or ""
-            cells = [
-                format_cell(getattr(item, "id", "")),
-                format_cell(getattr(item, "user_id", "")),
-                format_cell(username),
-                format_cell(getattr(item, "amount_stars", "")),
-                format_cell(getattr(item, "status", "")),
-                format_cell(getattr(item, "created_at", "")),
-                format_cell(getattr(item, "paid_at", "")),
-            ]
-            rows.append({"obj": item, "cells": cells})
+            payment_value = (
+                f"{item.amount_minor / 100:.2f} {item.currency_iso}"
+                if item.amount_minor
+                else f"{item.amount_stars} stars"
+            )
+            method = item.payment_method or item.channel or "-"
+            rows.append(
+                {
+                    "obj": item,
+                    "cells": [
+                        item.id,
+                        item.user_id,
+                        username,
+                        payment_value,
+                        method,
+                        order_status_badge(item.status),
+                        format_cell(item.created_at),
+                        format_cell(item.paid_at),
+                    ],
+                }
+            )
         return rows
+
+
+class SupportTicketListView(BaseListView):
+    model = SupportTicket
+    title = "Тикеты"
+    subtitle = "Telegram support queue with web visibility and replies."
+    readonly = True
+    columns = [
+        ("id", "ID"),
+        ("client", "Клиент"),
+        ("subject", "Тема"),
+        ("status", "Статус"),
+        ("updated_at", "Обновлён"),
+        ("created_at", "Создан"),
+    ]
+    search_fields = ["subject", "status", "user__username", "user__first_name", "user__client_code"]
+
+    def get_queryset(self):
+        return super().get_queryset().select_related("user").order_by("-updated_at", "-id")
+
+    def get_table_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self.object_list:
+            user = item.user
+            client = f"{getattr(user, 'client_code', '-')}" if user else "-"
+            if user and user.username:
+                client = f"{client} · @{user.username}"
+            rows.append(
+                {
+                    "obj": item,
+                    "cells": [
+                        format_html(
+                            '<a href="{}">#{}</a>',
+                            reverse("backoffice:ticket_detail", args=[item.id]),
+                            item.id,
+                        ),
+                        client,
+                        item.subject or "Без темы",
+                        ticket_status_badge(item.status),
+                        format_cell(item.updated_at),
+                        format_cell(item.created_at),
+                    ],
+                }
+            )
+        return rows
+
+
+class SupportTicketDetailView(StaffRequiredMixin, TemplateView):
+    template_name = "backoffice/ticket_detail.html"
+
+    def _ticket(self) -> SupportTicket:
+        return get_object_or_404(SupportTicket.objects.select_related("user"), pk=self.kwargs["pk"])
+
+    def _messages(self, ticket: SupportTicket):
+        return safe_get(
+            lambda: SupportMessage.objects.select_related("sender_user")
+            .filter(ticket=ticket)
+            .order_by("created_at", "id"),
+            [],
+        )
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ticket = self._ticket()
+        ctx["title"] = f"Тикет #{ticket.id}"
+        ctx["ticket"] = ticket
+        ctx["ticket_messages"] = self._messages(ticket)
+        ctx["reply_form"] = kwargs.get("reply_form") or TicketReplyForm()
+        return ctx
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        ticket = self._ticket()
+        if "close_ticket" in request.POST:
+            if ticket.status != "closed":
+                ticket.status = "closed"
+                ticket.closed_at = timezone.now()
+                ticket.updated_at = timezone.now()
+                ticket.save(update_fields=["status", "closed_at", "updated_at"])
+                messages.success(request, f"Тикет #{ticket.id} закрыт.")
+            else:
+                messages.info(request, f"Тикет #{ticket.id} уже закрыт.")
+            return redirect("backoffice:ticket_detail", pk=ticket.id)
+
+        reply_form = TicketReplyForm(request.POST)
+        if not reply_form.is_valid():
+            return self.render_to_response(self.get_context_data(reply_form=reply_form))
+
+        reply_text = reply_form.cleaned_data["message"].strip()
+        now = timezone.now()
+        SupportMessage.objects.create(
+            ticket=ticket,
+            sender_role="admin",
+            sender_user=None,
+            message_text=reply_text,
+            created_at=now,
+        )
+        ticket.status = "closed" if reply_form.cleaned_data["close_after_send"] else "open"
+        ticket.updated_at = now
+        ticket.closed_at = now if reply_form.cleaned_data["close_after_send"] else None
+        ticket.save(update_fields=["status", "updated_at", "closed_at"])
+
+        delivery_warning = None
+        telegram_id = getattr(ticket.user, "telegram_id", None)
+        if telegram_id and telegram_id > 0:
+            try:
+                send_telegram_text(
+                    telegram_id,
+                    f"💬 Ответ поддержки по тикету #{ticket.id}\n\n{reply_text}",
+                )
+            except (RuntimeError, urllib_error.URLError, urllib_error.HTTPError, TimeoutError) as exc:
+                delivery_warning = str(exc)
+        else:
+            delivery_warning = "У пользователя нет реального Telegram ID"
+
+        if delivery_warning:
+            messages.warning(
+                request,
+                f"Ответ сохранён, но не доставлен в Telegram: {delivery_warning}",
+            )
+        else:
+            messages.success(request, f"Ответ по тикету #{ticket.id} отправлен.")
+        return redirect("backoffice:ticket_detail", pk=ticket.id)
+
+
+class VPNNodeListView(BaseListView):
+    model = VPNNode
+    title = "VPN ноды"
+    subtitle = "Состояние нод, load balancer eligibility и health snapshots."
+    readonly = True
+    columns = [
+        ("id", "ID"),
+        ("name", "Нода"),
+        ("region", "Регион"),
+        ("backend", "Backend"),
+        ("status", "Статус"),
+        ("lb", "LB"),
+        ("sync", "Backfill"),
+        ("updated_at", "Обновлена"),
+    ]
+    search_fields = ["name", "region", "backend_host", "xui_base_url"]
+
+    def get_queryset(self):
+        return super().get_queryset().order_by("name", "id")
+
+    def get_table_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self.object_list:
+            backfill_state = "needed" if item.needs_backfill else "ok"
+            if item.last_backfill_error:
+                backfill_state = "error"
+            rows.append(
+                {
+                    "obj": item,
+                    "cells": [
+                        item.id,
+                        item.name,
+                        item.region or "",
+                        f"{item.backend_host}:{item.backend_port}",
+                        health_badge(item),
+                        boolean_badge(item.lb_enabled, "enabled", "off"),
+                        sync_state_badge(backfill_state),
+                        format_cell(item.updated_at),
+                    ],
+                }
+            )
+        return rows
+
+
+class VPNNodeClientListView(BaseListView):
+    model = VPNNodeClient
+    title = "Node sync"
+    subtitle = "Репликация клиентов между нодами и текущее observed state."
+    readonly = True
+    columns = [
+        ("id", "ID"),
+        ("node", "Нода"),
+        ("subscription_id", "Subscription"),
+        ("client_email", "3x-ui name"),
+        ("sync_state", "Sync"),
+        ("desired", "Desired"),
+        ("observed", "Observed"),
+        ("last_synced_at", "Последний sync"),
+    ]
+    search_fields = ["client_email", "sync_state", "subscription__display_name", "node__name"]
+
+    def get_queryset(self):
+        return super().get_queryset().select_related("node", "subscription").order_by("-updated_at", "-id")
+
+    def get_table_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self.object_list:
+            desired = "enabled" if item.desired_enabled else "disabled"
+            observed = (
+                "—" if item.observed_enabled is None else ("enabled" if item.observed_enabled else "disabled")
+            )
+            rows.append(
+                {
+                    "obj": item,
+                    "cells": [
+                        item.id,
+                        item.node.name if item.node_id else "-",
+                        item.subscription_id,
+                        item.client_email,
+                        sync_state_badge(item.sync_state),
+                        f"{desired} · {format_cell(item.desired_expires_at)}",
+                        f"{observed} · {format_cell(item.observed_expires_at)}",
+                        format_cell(item.last_synced_at),
+                    ],
+                }
+            )
+        return rows
+
+
+class SystemOverviewView(StaffRequiredMixin, TemplateView):
+    template_name = "backoffice/system.html"
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = "Cluster & HAProxy"
+        ctx["system_groups"] = [
+            {
+                "title": "VPN runtime",
+                "items": [
+                    ("VPN public host", env_value("VPN_PUBLIC_HOST", "-")),
+                    ("VPN public port", env_value("VPN_PUBLIC_PORT", "-")),
+                    ("3x-ui inbound", env_value("XUI_INBOUND_ID", "-")),
+                    ("XUI sub port", env_value("XUI_SUB_PORT", "-")),
+                    ("VPN flow", env_value("VPN_FLOW", "xtls-rprx-vision")),
+                ],
+            },
+            {
+                "title": "Cluster mode",
+                "items": [
+                    ("VPN_CLUSTER_ENABLED", env_value("VPN_CLUSTER_ENABLED", "0")),
+                    ("Healthcheck interval", f"{env_value('VPN_CLUSTER_HEALTHCHECK_INTERVAL_SECONDS', '30')} sec"),
+                    ("Sync interval", f"{env_value('VPN_CLUSTER_SYNC_INTERVAL_SECONDS', '60')} sec"),
+                    ("Sync batch size", env_value("VPN_CLUSTER_SYNC_BATCH_SIZE", "200")),
+                ],
+            },
+            {
+                "title": "HAProxy",
+                "items": [
+                    ("Bind address", env_value("HAPROXY_FRONTEND_BIND_ADDR", "0.0.0.0")),
+                    ("Frontend port", env_value("HAPROXY_FRONTEND_PORT", env_value("VPN_PUBLIC_PORT", "-"))),
+                    ("Template path", env_value("HAPROXY_TEMPLATE_PATH", "ops/haproxy/haproxy.cfg.tpl")),
+                    ("Output path", env_value("HAPROXY_OUTPUT_PATH", "/etc/haproxy/haproxy.cfg")),
+                    ("Reload command", env_value("HAPROXY_RELOAD_CMD", "-")),
+                    ("Binary", env_value("HAPROXY_BIN", "haproxy")),
+                ],
+            },
+        ]
+        ctx["ops_commands"] = [
+            "python scripts/ops/render_haproxy_cfg.py --env-file .env --dry-run",
+            "python scripts/ops/render_haproxy_cfg.py --env-file .env",
+        ]
+        ctx["notes"] = [
+            "Из веб-интерфейса пока показывается operational state и конфиг. Релоад HAProxy и системные команды лучше оставлять на сервере, а не выполнять из Django-контейнера.",
+            "Если cluster mode выключен, таблицы нод и sync всё равно полезны как inventory и health audit.",
+        ]
+        return ctx
 
 
 class BaseEditView(LegacyContentMutationGuardMixin, StaffRequiredMixin):

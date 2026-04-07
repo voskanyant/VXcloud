@@ -1,0 +1,48 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  {% for group in system_groups %}
+    <div class="col-12 col-xl-4">
+      <section class="bo-panel h-100">
+        <div class="bo-panel-head">
+          <h3>{{ group.title }}</h3>
+        </div>
+        <div class="bo-info-grid">
+          {% for label, value in group.items %}
+            <div><span>{{ label }}</span><strong>{{ value }}</strong></div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-6">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Ops commands</h3>
+      </div>
+      <div class="bo-command-stack">
+        {% for cmd in ops_commands %}
+          <code>{{ cmd }}</code>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+
+  <div class="col-12 col-xl-6">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Заметки</h3>
+      </div>
+      <ul class="bo-note-list">
+        {% for note in notes %}
+          <li>{{ note }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -118,6 +118,45 @@ class BotOrder(models.Model):
         db_table = "orders"
 
 
+class SupportTicket(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(
+        BotUser,
+        db_column="user_id",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+    )
+    status = models.TextField()
+    subject = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+    closed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        managed = False
+        db_table = "support_tickets"
+
+
+class SupportMessage(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    ticket = models.ForeignKey(SupportTicket, db_column="ticket_id", on_delete=models.DO_NOTHING)
+    sender_role = models.TextField()
+    sender_user = models.ForeignKey(
+        BotUser,
+        db_column="sender_user_id",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+    )
+    message_text = models.TextField()
+    created_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = "support_messages"
+
+
 class VPNNode(models.Model):
     id = models.BigAutoField(primary_key=True)
     name = models.TextField(unique=True)

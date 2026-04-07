@@ -181,3 +181,19 @@ class BackofficeSiteTextForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["key"].label = "Ключ"
         self.fields["value"].label = "Значение"
         self._apply_bootstrap_classes()
+
+
+class TicketReplyForm(BootstrapFormMixin, forms.Form):
+    message = forms.CharField(
+        label="Ответ пользователю",
+        widget=forms.Textarea(attrs={"rows": 5, "placeholder": "Напишите ответ от имени поддержки"}),
+    )
+    close_after_send = forms.BooleanField(
+        required=False,
+        initial=False,
+        label="Закрыть тикет после отправки",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_bootstrap_classes()

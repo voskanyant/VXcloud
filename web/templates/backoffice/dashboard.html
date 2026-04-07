@@ -1,87 +1,129 @@
 {% extends "backoffice/base.html" %}
 
 {% block content %}
-<div class="alert alert-light border shadow-sm mb-4">
-  <div class="fw-semibold mb-1">Migration boundary</div>
-  <div class="small text-muted">WordPress + Flatsome owns public pages, blog, instructions, navigation, and footer. Django stays responsible for account flows, Telegram auth, payments, APIs, and operational data.</div>
+<section class="bo-hero mb-4">
+  <div class="bo-hero-copy">
+    <div class="bo-kicker">VXcloud operations</div>
+    <h2 class="bo-hero-title">Бот, оплаты, подписки, поддержка и VPN-инфраструктура в одном окне.</h2>
+    <p class="bo-hero-text">Этот dashboard больше не про сайт. Он показывает живое состояние бота и backend-операций, чтобы перед запуском вы контролировали реальные риски: платежи, тикеты, синхронизацию клиентов и здоровье нод.</p>
+  </div>
+  <div class="bo-hero-actions">
+    {% for action in action_links %}
+      <a class="btn btn-light bo-hero-action" href="{{ action.url }}">{{ action.label }}</a>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="row g-3 mb-4">
+  {% for metric in headline_metrics %}
+    <div class="col-12 col-sm-6 col-xl-3">
+      <article class="bo-metric-card tone-{{ metric.tone }}">
+        <div class="bo-metric-label">{{ metric.label }}</div>
+        <div class="bo-metric-value">{{ metric.value }}</div>
+      </article>
+    </div>
+  {% endfor %}
 </div>
 
 <div class="row g-3 mb-4">
-  {% for metric in metrics %}
-    <div class="col-12 col-sm-6 col-xl-3">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="text-muted small mb-1">{{ metric.label }}</div>
-          <div class="display-6 fw-semibold lh-1">{{ metric.value }}</div>
-        </div>
-      </div>
+  {% for metric in secondary_metrics %}
+    <div class="col-6 col-xl-3">
+      <article class="bo-stat-chip">
+        <div class="bo-stat-label">{{ metric.label }}</div>
+        <div class="bo-stat-value">{{ metric.value }}</div>
+      </article>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+  {% for card in system_cards %}
+    <div class="col-12 col-md-6 col-xl-3">
+      <article class="bo-system-card">
+        <div class="bo-system-label">{{ card.label }}</div>
+        <div class="bo-system-value">{{ card.value }}</div>
+        <div class="bo-system-meta">{{ card.meta }}</div>
+      </article>
     </div>
   {% endfor %}
 </div>
 
 <div class="row g-3">
-  <div class="col-12 col-xl-6">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white border-0 pt-3">
-        <h2 class="h6 m-0">Последние страницы</h2>
+  <div class="col-12 col-xxl-4">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Последние тикеты</h3>
+        <a href="{% url 'backoffice:ticket_list' %}">Все тикеты</a>
       </div>
-      <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Заголовок</th>
-              <th>Путь</th>
-              <th>Обновлена</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for page in recent_pages %}
-              <tr>
-                <td>{{ page.id }}</td>
-                <td><a href="{% url 'backoffice:page_update' page.id %}">{{ page.title }}</a></td>
-                <td><code>{{ page.path }}</code></td>
-                <td>{{ page.updated_at|date:"d.m.Y H:i" }}</td>
-              </tr>
-            {% empty %}
-              <tr><td colspan="4" class="text-muted">Нет данных</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="bo-list-stack">
+        {% for ticket in recent_tickets %}
+          <a class="bo-list-item" href="{% url 'backoffice:ticket_detail' ticket.id %}">
+            <div class="bo-list-title">#{{ ticket.id }} · {{ ticket.subject|default:"Без темы" }}</div>
+            <div class="bo-list-meta">
+              <span>{{ ticket.user.client_code|default:"-" }}</span>
+              <span>{{ ticket.updated_at|date:"d.m.Y H:i" }}</span>
+            </div>
+          </a>
+        {% empty %}
+          <div class="bo-empty">Нет тикетов</div>
+        {% endfor %}
       </div>
-    </div>
+    </section>
   </div>
 
-  <div class="col-12 col-xl-6">
-    <div class="card border-0 shadow-sm">
-      <div class="card-header bg-white border-0 pt-3">
-        <h2 class="h6 m-0">Последние посты</h2>
+  <div class="col-12 col-xxl-4">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Последние заказы</h3>
+        <a href="{% url 'backoffice:bot_order_list' %}">Все заказы</a>
       </div>
       <div class="table-responsive">
-        <table class="table table-sm align-middle mb-0">
+        <table class="table align-middle mb-0">
           <thead>
             <tr>
               <th>ID</th>
-              <th>Заголовок</th>
-              <th>Slug</th>
-              <th>Обновлён</th>
+              <th>User</th>
+              <th>Статус</th>
+              <th>Создан</th>
             </tr>
           </thead>
           <tbody>
-            {% for post in recent_posts %}
+            {% for order in recent_orders %}
               <tr>
-                <td>{{ post.id }}</td>
-                <td><a href="{% url 'backoffice:post_update' post.id %}">{{ post.title }}</a></td>
-                <td><code>{{ post.slug }}</code></td>
-                <td>{{ post.updated_at|date:"d.m.Y H:i" }}</td>
+                <td>{{ order.id }}</td>
+                <td>{{ order.user.username|default:order.user.client_code }}</td>
+                <td>{{ order.status }}</td>
+                <td>{{ order.created_at|date:"d.m.Y H:i" }}</td>
               </tr>
             {% empty %}
-              <tr><td colspan="4" class="text-muted">Нет данных</td></tr>
+              <tr><td colspan="4" class="text-muted">Нет заказов</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
+  </div>
+
+  <div class="col-12 col-xxl-4">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Ноды</h3>
+        <a href="{% url 'backoffice:vpn_node_list' %}">Все ноды</a>
+      </div>
+      <div class="bo-list-stack">
+        {% for node in recent_nodes %}
+          <div class="bo-list-item bo-list-item-static">
+            <div class="bo-list-title">{{ node.name }}</div>
+            <div class="bo-list-meta">
+              <span>{{ node.backend_host }}:{{ node.backend_port }}</span>
+              <span>{% if node.last_health_ok %}healthy{% elif node.last_health_ok == False %}error{% else %}unknown{% endif %}</span>
+            </div>
+          </div>
+        {% empty %}
+          <div class="bo-empty">Нет нод</div>
+        {% endfor %}
+      </div>
+    </section>
   </div>
 </div>
 {% endblock %}

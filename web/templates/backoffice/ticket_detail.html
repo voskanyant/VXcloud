@@ -1,0 +1,69 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+<div class="row g-3">
+  <div class="col-12 col-xl-4">
+    <section class="bo-panel h-100">
+      <div class="bo-panel-head">
+        <h3>Карточка тикета</h3>
+        <a href="{% url 'backoffice:ticket_list' %}">К списку</a>
+      </div>
+      <div class="bo-info-grid">
+        <div><span>ID</span><strong>#{{ ticket.id }}</strong></div>
+        <div><span>Статус</span><strong>{{ ticket.status }}</strong></div>
+        <div><span>Тема</span><strong>{{ ticket.subject|default:"Без темы" }}</strong></div>
+        <div><span>Client code</span><strong>{{ ticket.user.client_code|default:"-" }}</strong></div>
+        <div><span>Username</span><strong>{{ ticket.user.username|default:"-" }}</strong></div>
+        <div><span>Telegram ID</span><strong>{{ ticket.user.telegram_id|default:"-" }}</strong></div>
+        <div><span>Создан</span><strong>{{ ticket.created_at|date:"d.m.Y H:i" }}</strong></div>
+        <div><span>Обновлён</span><strong>{{ ticket.updated_at|date:"d.m.Y H:i" }}</strong></div>
+      </div>
+
+      <form method="post" class="mt-3">
+        {% csrf_token %}
+        <button type="submit" name="close_ticket" value="1" class="btn btn-outline-danger w-100">Закрыть тикет</button>
+      </form>
+    </section>
+  </div>
+
+  <div class="col-12 col-xl-8">
+    <section class="bo-panel mb-3">
+      <div class="bo-panel-head">
+        <h3>Переписка</h3>
+      </div>
+      <div class="bo-ticket-thread">
+        {% for message in ticket_messages %}
+          <article class="bo-ticket-message {% if message.sender_role == 'admin' %}is-admin{% else %}is-user{% endif %}">
+            <div class="bo-ticket-meta">
+              <span>{{ message.sender_role }}</span>
+              <span>{{ message.created_at|date:"d.m.Y H:i" }}</span>
+            </div>
+            <div class="bo-ticket-body">{{ message.message_text|linebreaksbr }}</div>
+          </article>
+        {% empty %}
+          <div class="bo-empty">Сообщений пока нет.</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Ответить пользователю</h3>
+      </div>
+      <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="mb-3">
+          <label class="form-label" for="{{ reply_form.message.id_for_label }}">{{ reply_form.message.label }}</label>
+          {{ reply_form.message }}
+          {% if reply_form.message.errors %}<div class="invalid-feedback d-block">{{ reply_form.message.errors|striptags }}</div>{% endif %}
+        </div>
+        <div class="form-check mb-3">
+          {{ reply_form.close_after_send }}
+          <label class="form-check-label" for="{{ reply_form.close_after_send.id_for_label }}">{{ reply_form.close_after_send.label }}</label>
+        </div>
+        <button type="submit" class="btn btn-dark">Отправить ответ</button>
+      </form>
+    </section>
+  </div>
+</div>
+{% endblock %}
