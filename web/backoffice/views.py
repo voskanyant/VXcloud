@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import timedelta
 from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
@@ -44,6 +45,8 @@ from .forms import (
 LEGACY_CONTENT_NOTICE = (
     "Публичный контент уже живёт в WordPress. Django здесь нужен для бота, оплат, VPN-операций и поддержки."
 )
+
+STALE_PENDING_ORDER_TTL = timedelta(minutes=30)
 
 
 class StaffRequiredMixin:
@@ -161,6 +164,37 @@ def order_status_badge(status: str | None) -> str:
     return status_badge(status or "-", tone_map.get(normalized, "secondary"))
 
 
+def _is_stale_pending_order(order: BotOrder, *, now=None) -> bool:
+    if str(getattr(order, "status", "") or "").lower() != "pending":
+        return False
+    created_at = getattr(order, "created_at", None)
+    if created_at is None:
+        return False
+    current_time = now or timezone.now()
+    try:
+        return created_at <= current_time - STALE_PENDING_ORDER_TTL
+    except Exception:
+        return False
+
+
+def order_status_display(order: BotOrder, *, now=None) -> str:
+    if _is_stale_pending_order(order, now=now):
+        method = str(getattr(order, "payment_method", "") or getattr(order, "channel", "") or "").lower()
+        if method == "card":
+            return status_badge("stale", "danger")
+        return status_badge("stale-stars", "warning")
+    return order_status_badge(getattr(order, "status", None))
+
+
+def cancel_stale_pending_card_orders() -> int:
+    cutoff = timezone.now() - STALE_PENDING_ORDER_TTL
+    return BotOrder.objects.filter(
+        status="pending",
+        payment_method="card",
+        created_at__lt=cutoff,
+    ).update(status="cancelled")
+
+
 def ticket_status_badge(status: str | None) -> str:
     normalized = (status or "").lower()
     tone = "success" if normalized == "closed" else "warning"
@@ -228,6 +262,9 @@ class DashboardView(StaffRequiredMixin, TemplateView):
             "users_telegram": safe_count(BotUser.objects.filter(telegram_id__gt=0)),
             "subscriptions_active": safe_count(BotSubscription.objects.filter(is_active=True)),
             "orders_pending": safe_count(BotOrder.objects.filter(status="pending")),
+            "orders_pending_stale": safe_count(
+                BotOrder.objects.filter(status="pending", created_at__lt=timezone.now() - STALE_PENDING_ORDER_TTL)
+            ),
             "orders_activated": safe_count(BotOrder.objects.filter(status="activated")),
             "tickets_open": safe_count(SupportTicket.objects.exclude(status="closed")),
             "nodes_total": safe_count(VPNNode.objects.all()),
@@ -240,10 +277,11 @@ class DashboardView(StaffRequiredMixin, TemplateView):
             {"label": "Пользователи", "value": metrics["users_total"], "tone": "primary"},
             {"label": "Активные подписки", "value": metrics["subscriptions_active"], "tone": "success"},
             {"label": "Открытые тикеты", "value": metrics["tickets_open"], "tone": "warning"},
-            {"label": "Pending-заказы", "value": metrics["orders_pending"], "tone": "danger"},
+            {"label": "Stale pending", "value": metrics["orders_pending_stale"], "tone": "danger"},
         ]
         ctx["secondary_metrics"] = [
             {"label": "Telegram users", "value": metrics["users_telegram"]},
+            {"label": "Fresh pending", "value": max(metrics["orders_pending"] - metrics["orders_pending_stale"], 0)},
             {"label": "Activated orders", "value": metrics["orders_activated"]},
             {"label": "VPN nodes", "value": metrics["nodes_total"]},
             {"label": "Node sync errors", "value": metrics["sync_errors"]},
@@ -334,6 +372,7 @@ class BaseListView(LegacyContentContextMixin, StaffRequiredMixin, ListView):
         ctx["edit_url_name"] = self.edit_url_name
         ctx["delete_url_name"] = self.delete_url_name
         ctx["readonly"] = self.readonly or self.is_content_readonly()
+        ctx["toolbar_actions"] = []
         return self.add_wordpress_context(ctx)
 
 
@@ -510,7 +549,7 @@ class BotSubscriptionListView(BaseListView):
 class BotOrderListView(BaseListView):
     model = BotOrder
     title = "Заказы"
-    subtitle = "Оплаты картой и Stars в одном журнале."
+    subtitle = "Оплаты картой и Stars в одном журнале. Card pending старше 30 минут считаются stale."
     readonly = True
     columns = [
         ("id", "ID"),
@@ -535,8 +574,42 @@ class BotOrderListView(BaseListView):
     def get_queryset(self):
         return super().get_queryset().select_related("user").order_by("-id")
 
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        action = (request.POST.get("action") or "").strip()
+        if action == "cancel_stale_card_pending":
+            updated = cancel_stale_pending_card_orders()
+            if updated:
+                messages.success(request, f"Отменено stale card pending заказов: {updated}.")
+            else:
+                messages.info(request, "Stale card pending заказов не найдено.")
+        query = (request.GET.get("q") or "").strip()
+        target_url = reverse("backoffice:bot_order_list")
+        if query:
+            target_url = f"{target_url}?q={query}"
+        return redirect(target_url)
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        stale_pending_count = safe_count(
+            BotOrder.objects.filter(
+                status="pending",
+                payment_method="card",
+                created_at__lt=timezone.now() - STALE_PENDING_ORDER_TTL,
+            )
+        )
+        ctx["toolbar_actions"] = [
+            {
+                "label": "Очистить stale card pending",
+                "action": "cancel_stale_card_pending",
+                "style": "outline-danger",
+                "count": stale_pending_count,
+            }
+        ]
+        return ctx
+
     def get_table_rows(self) -> list[dict[str, Any]]:
         rows = []
+        now = timezone.now()
         for item in self.object_list:
             username = getattr(getattr(item, "user", None), "username", "") or ""
             payment_value = (
@@ -554,7 +627,7 @@ class BotOrderListView(BaseListView):
                         username,
                         payment_value,
                         method,
-                        order_status_badge(item.status),
+                        order_status_display(item, now=now),
                         format_cell(item.created_at),
                         format_cell(item.paid_at),
                     ],

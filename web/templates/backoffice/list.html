@@ -10,7 +10,16 @@
           <button class="btn btn-outline-secondary" type="submit">Найти</button>
         </form>
 
-        <div class="d-flex gap-2">
+        <div class="d-flex flex-wrap gap-2">
+          {% for action in toolbar_actions %}
+            <form method="post" class="d-inline">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="{{ action.action }}">
+              <button type="submit" class="btn btn-{{ action.style|default:'outline-secondary' }}">
+                {{ action.label }}{% if action.count is not None %} · {{ action.count }}{% endif %}
+              </button>
+            </form>
+          {% endfor %}
           {% if add_url_name and not readonly %}
             <a href="{% url add_url_name %}" class="btn btn-dark">+ Создать</a>
           {% endif %}

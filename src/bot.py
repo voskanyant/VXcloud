@@ -2003,7 +2003,7 @@ class VPNBot:
             amount_stars=self.settings.plan_price_stars,
             payload_prefix=payload_scope,
             new_payload=payload,
-            max_age_seconds=3600,
+            max_age_seconds=1800,
         )
         payload = str(order["payload"])
         if phone:
