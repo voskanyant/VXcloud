@@ -26,7 +26,7 @@ from django.contrib.auth.views import LoginView
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.db import IntegrityError
+from django.db import DatabaseError, IntegrityError
 from django.db import transaction
 from django.conf import settings
 from django.middleware.csrf import get_token
@@ -129,6 +129,13 @@ def _telegram_login_bot_username() -> str:
     return os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
 
 
+def _build_public_absolute_url(request: HttpRequest, path: str) -> str:
+    suffix = path if str(path).startswith("/") else f"/{path}"
+    forwarded_proto = (request.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower()
+    scheme = "https" if request.is_secure() or forwarded_proto == "https" else request.scheme
+    return f"{scheme}://{request.get_host()}{suffix}"
+
+
 def _telegram_login_auth_url(request: HttpRequest) -> str:
     return _telegram_login_auth_url_for_return_to(request, request.get_full_path())
 
@@ -148,7 +155,7 @@ def _telegram_login_auth_url_for_return_to(request: HttpRequest, return_to: str 
     if _account_embed_mode(request):
         params["embed"] = "1"
 
-    return request.build_absolute_uri(f"/auth/telegram/login/?{urlencode(params)}")
+    return _build_public_absolute_url(request, f"/auth/telegram/login/?{urlencode(params)}")
 
 
 def _account_template_urls(request: HttpRequest) -> dict[str, object]:
@@ -259,30 +266,26 @@ def _serialize_subscription_row(row: dict[str, object]) -> dict[str, object]:
 
 
 def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
-    linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
-    rows, active_configs, inactive_configs = _build_subscription_rows(bot_user)
-    subscriptions_payload = [_serialize_subscription_row(row) for row in rows]
-    telegram_payload: dict[str, object] = {
-        "linked": bool(linked),
-        "status_text": "Привязан" if linked else "Не привязан",
-        "telegram_id": int(linked.telegram_id) if linked else None,
-        "link_url": _account_frontend_url("link/"),
-    }
-    return {
+    empty_payload = {
         "title": "Личный кабинет",
         "subtitle": "Управляйте доступами, конфигами и подключением в одном месте.",
         "card_price_label": _format_minor_amount_rub(settings.CARD_PAYMENT_AMOUNT_MINOR),
-        "access_count": len(subscriptions_payload),
+        "access_count": 0,
         "user": {
             "username": request.user.username,
-            "client_code": (getattr(bot_user, "client_code", "") or ""),
+            "client_code": "",
         },
         "stats": {
-            "active_configs": active_configs,
-            "inactive_configs": inactive_configs,
+            "active_configs": 0,
+            "inactive_configs": 0,
         },
-        "telegram": telegram_payload,
-        "subscriptions": subscriptions_payload,
+        "telegram": {
+            "linked": False,
+            "status_text": "Не привязан",
+            "telegram_id": None,
+            "link_url": _account_frontend_url("link/"),
+        },
+        "subscriptions": [],
         "urls": {
             "dashboard": _account_frontend_url(),
             "buy": _account_frontend_url("buy/"),
@@ -291,58 +294,93 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
             "password_reset": "/accounts/password_reset/",
         },
     }
+    try:
+        linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
+        rows, active_configs, inactive_configs = _build_subscription_rows(bot_user)
+        subscriptions_payload = [_serialize_subscription_row(row) for row in rows]
+        telegram_payload: dict[str, object] = {
+            "linked": bool(linked),
+            "status_text": "Привязан" if linked else "Не привязан",
+            "telegram_id": int(linked.telegram_id) if linked else None,
+            "link_url": _account_frontend_url("link/"),
+        }
+        empty_payload["access_count"] = len(subscriptions_payload)
+        empty_payload["user"]["client_code"] = getattr(bot_user, "client_code", "") or ""
+        empty_payload["stats"] = {
+            "active_configs": active_configs,
+            "inactive_configs": inactive_configs,
+        }
+        empty_payload["telegram"] = telegram_payload
+        empty_payload["subscriptions"] = subscriptions_payload
+        return empty_payload
+    except Exception:
+        LOGGER.exception(
+            "account_dashboard_payload_failed",
+            extra={"django_user_id": int(getattr(request.user, "id", 0) or 0)},
+        )
+        return empty_payload
 
 
 def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[dict[str, object] | None, str | None]:
-    linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
-    if not bot_user:
-        return None, "Не удалось загрузить данные аккаунта."
+    try:
+        linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
+        if not bot_user:
+            return None, "Не удалось загрузить данные аккаунта."
 
-    rows, _, _ = _build_subscription_rows(bot_user)
-    row_map = {int(row["id"]): row for row in rows}
-    current_row = row_map.get(int(subscription_id))
-    if current_row is None:
-        return None, "Конфиг не найден."
+        rows, _, _ = _build_subscription_rows(bot_user)
+        row_map = {int(row["id"]): row for row in rows}
+        current_row = row_map.get(int(subscription_id))
+        if current_row is None:
+            return None, "Конфиг не найден."
 
-    sub = current_row["obj"]
-    qr_data = _normalize_vless_public_endpoint(
-        getattr(sub, "vless_url", "") or "",
-        host=settings.VPN_PUBLIC_HOST,
-        port=settings.VPN_PUBLIC_PORT,
-        tag=getattr(settings, "VPN_TAG", "VXcloud"),
-    )
-    img = qrcode.make(qr_data)
-    buff = io.BytesIO()
-    img.save(buff, format="PNG")
-    qr_b64 = base64.b64encode(buff.getvalue()).decode("ascii")
+        sub = current_row["obj"]
+        qr_data = _normalize_vless_public_endpoint(
+            getattr(sub, "vless_url", "") or "",
+            host=settings.VPN_PUBLIC_HOST,
+            port=settings.VPN_PUBLIC_PORT,
+            tag=getattr(settings, "VPN_TAG", "VXcloud"),
+        )
+        img = qrcode.make(qr_data)
+        buff = io.BytesIO()
+        img.save(buff, format="PNG")
+        qr_b64 = base64.b64encode(buff.getvalue()).decode("ascii")
 
-    return (
-        {
-            "id": int(sub.id),
-            "display_name": _subscription_display_name(sub),
-            "status_text": str(current_row["status_text"]),
-            "is_active": bool(current_row["is_active"]),
-            "expires_at": _format_dt_label(getattr(sub, "expires_at", None)),
-            "client_code": (getattr(getattr(sub, "user", None), "client_code", "") or ""),
-            "copy_text": qr_data,
-            "qr_image_data_url": f"data:image/png;base64,{qr_b64}",
-            "dashboard_url": _account_frontend_url(),
-            "subscriptions": [
-                {
-                    "id": int(row["id"]),
-                    "label": f"#{int(row['id'])} — {_format_dt_label(row.get('expires_at'))}" + (" (active)" if bool(row["is_active"]) else ""),
-                    "url": _account_frontend_url(f"config/{int(row['id'])}/"),
-                    "selected": int(row["id"]) == int(sub.id),
-                }
-                for row in rows
-            ],
-            "telegram": {
-                "linked": bool(linked),
-                "telegram_id": int(linked.telegram_id) if linked else None,
+        return (
+            {
+                "id": int(sub.id),
+                "display_name": _subscription_display_name(sub),
+                "status_text": str(current_row["status_text"]),
+                "is_active": bool(current_row["is_active"]),
+                "expires_at": _format_dt_label(getattr(sub, "expires_at", None)),
+                "client_code": (getattr(getattr(sub, "user", None), "client_code", "") or ""),
+                "copy_text": qr_data,
+                "qr_image_data_url": f"data:image/png;base64,{qr_b64}",
+                "dashboard_url": _account_frontend_url(),
+                "subscriptions": [
+                    {
+                        "id": int(row["id"]),
+                        "label": f"#{int(row['id'])} — {_format_dt_label(row.get('expires_at'))}" + (" (active)" if bool(row["is_active"]) else ""),
+                        "url": _account_frontend_url(f"config/{int(row['id'])}/"),
+                        "selected": int(row["id"]) == int(sub.id),
+                    }
+                    for row in rows
+                ],
+                "telegram": {
+                    "linked": bool(linked),
+                    "telegram_id": int(linked.telegram_id) if linked else None,
+                },
             },
-        },
-        None,
-    )
+            None,
+        )
+    except DatabaseError:
+        LOGGER.exception(
+            "account_config_payload_failed",
+            extra={
+                "django_user_id": int(getattr(request.user, "id", 0) or 0),
+                "subscription_id": int(subscription_id),
+            },
+        )
+        return None, "Не удалось загрузить данные аккаунта."
 
 def _log_payment_event(
     *,
@@ -759,7 +797,7 @@ def _start_checkout_flow(
     pending_cutoff = now - PENDING_CARD_CHECKOUT_TTL
 
     pending_method = "card"
-    return_url = request.build_absolute_uri(_account_frontend_url())
+    return_url = _build_public_absolute_url(request, _account_frontend_url())
     pending_payload_prefix = (
         f"web-newcfg:{bot_user.id}:"
         if flow_mode == "buynew"
