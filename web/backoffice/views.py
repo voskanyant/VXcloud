@@ -9,6 +9,7 @@ from urllib import request as urllib_request
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
 from django.db.models import Q, QuerySet
@@ -26,6 +27,7 @@ from cabinet.models import (
     BotOrder,
     BotSubscription,
     BotUser,
+    LinkedAccount,
     SupportMessage,
     SupportTicket,
     VPNNode,
@@ -47,6 +49,7 @@ LEGACY_CONTENT_NOTICE = (
 )
 
 STALE_PENDING_ORDER_TTL = timedelta(minutes=30)
+WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
 
 
 class StaffRequiredMixin:
@@ -495,6 +498,7 @@ class BotUserListView(BaseListView):
         ("telegram_id", "Telegram ID"),
         ("source", "Source"),
         ("username", "Username"),
+        ("email", "Email"),
         ("first_name", "Имя"),
         ("created_at", "Создан"),
     ]
@@ -504,8 +508,31 @@ class BotUserListView(BaseListView):
         return super().get_queryset().order_by("-id")
 
     def get_table_rows(self) -> list[dict[str, Any]]:
+        telegram_ids = [int(item.telegram_id) for item in self.object_list if int(item.telegram_id) > 0]
+        site_user_ids = [
+            int(abs(int(item.telegram_id)) - WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET)
+            for item in self.object_list
+            if int(item.telegram_id) < 0 and abs(int(item.telegram_id)) > WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET
+        ]
+
+        linked_emails = {
+            int(link.telegram_id): (getattr(link.user, "email", "") or "")
+            for link in LinkedAccount.objects.select_related("user").filter(telegram_id__in=telegram_ids)
+        }
+        site_emails = {
+            int(user.id): (user.email or "")
+            for user in User.objects.filter(id__in=site_user_ids).only("id", "email")
+        }
+
         rows = []
         for item in self.object_list:
+            telegram_id = int(item.telegram_id)
+            email = ""
+            if telegram_id > 0:
+                email = linked_emails.get(telegram_id, "")
+            elif abs(telegram_id) > WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET:
+                site_user_id = abs(telegram_id) - WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET
+                email = site_emails.get(int(site_user_id), "")
             rows.append(
                 {
                     "obj": item,
@@ -515,6 +542,7 @@ class BotUserListView(BaseListView):
                         item.telegram_id,
                         user_source_badge(item.telegram_id),
                         item.username or "",
+                        email,
                         item.first_name or "",
                         format_cell(item.created_at),
                     ],
