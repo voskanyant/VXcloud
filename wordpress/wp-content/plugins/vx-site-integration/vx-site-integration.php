@@ -2,7 +2,7 @@
 /**
  * Plugin Name: VX Site Integration
  * Description: WordPress integration layer for the VXcloud public-site migration.
- * Version: 0.2.31
+ * Version: 0.2.32
  * Author: OpenAI Codex
  */
 
@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('VX_SITE_INTEGRATION_VERSION', '0.2.31');
+define('VX_SITE_INTEGRATION_VERSION', '0.2.32');
 define('VX_SITE_INTEGRATION_DIR', plugin_dir_path(__FILE__));
 define('VX_SITE_INTEGRATION_URL', plugin_dir_url(__FILE__));
 define('VX_SITE_SHELL_MARKER', '<!--VX_SITE_SHELL_CONTENT-->');

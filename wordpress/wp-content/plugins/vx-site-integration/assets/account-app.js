@@ -60,6 +60,13 @@
   function currentRoute() {
     const path = window.location.pathname;
     const search = new URLSearchParams(window.location.search || "");
+    if (/^\/account\/settings\/?$/i.test(path)) {
+      return {
+        view: "settings",
+        subscriptionId: null,
+        path: normalizePath("/account/settings/"),
+      };
+    }
     if (/^\/account\/link\/?$/i.test(path)) {
       return {
         view: "link",
@@ -235,23 +242,23 @@
       '<span class="' +
       pillClass(telegramLinked) +
       '">' +
-      escapeHtml(model.telegram && model.telegram.status_text ? model.telegram.status_text : "Не привязан") +
+      escapeHtml(model.telegram && model.telegram.status_text ? model.telegram.status_text : "\u041d\u0435 \u043f\u0440\u0438\u0432\u044f\u0437\u0430\u043d") +
       "</span>";
 
     const summaryHtml = [
       {
-        label: "Пользователь",
-        value: escapeHtml(model.user && model.user.username ? model.user.username : "—"),
+        label: "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c",
+        value: escapeHtml(model.user && model.user.username ? model.user.username : "\u2014"),
       },
       {
-        label: "ID клиента",
+        label: "ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430",
         value:
           model.user && model.user.client_code
             ? '<code class="vx-stat-code">' + escapeHtml(model.user.client_code) + "</code>"
-            : "—",
+            : "\u2014",
       },
       {
-        label: "Активные",
+        label: "\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0435",
         value: escapeHtml(String(model.stats && model.stats.active_configs != null ? model.stats.active_configs : 0)),
       },
       {
@@ -263,7 +270,7 @@
             ? '<code class="vx-stat-code">' + escapeHtml(String(model.telegram.telegram_id)) + "</code>"
             : "") +
           (!telegramLinked && model.telegram && model.telegram.link_url
-            ? '<button type="button" class="vx-inline-link vx-inline-link--button" data-nav="' + escapeHtml(model.telegram.link_url) + '">Привязать</button>'
+            ? '<button type="button" class="vx-inline-link vx-inline-link--button" data-nav="' + escapeHtml(model.telegram.link_url) + '">\u041f\u0440\u0438\u0432\u044f\u0437\u0430\u0442\u044c</button>'
             : "") +
           "</div>",
       },
@@ -290,7 +297,7 @@
                 escapeHtml(sub.display_name) +
                 '</span></h3><button type="button" class="vx-title-edit" data-rename-toggle data-target="rename-card-' +
                 escapeHtml(String(sub.id)) +
-                '" aria-expanded="false" aria-label="Переименовать">' +
+                '" aria-expanded="false" aria-label="\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c">' +
                 iconSvg("rename") +
                 '</button></div><span class="' + pillClass(!!sub.is_active) + '">' + escapeHtml(sub.status_text) + "</span></div>",
               '<div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + "</div>",
@@ -298,44 +305,29 @@
                 escapeHtml(String(sub.id)) +
                 '" class="vx-rename-panel vx-rename-panel--card" data-rename-form data-subscription-id="' +
                 escapeHtml(String(sub.id)) +
-                '" hidden><div class="vx-rename-row"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="Имя устройства" value="' +
+                '" hidden><div class="vx-rename-row"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="\u0418\u043c\u044f \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430" value="' +
                 escapeHtml(sub.display_name || "") +
-                '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">Сохранить</button></div></form>',
+                '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c</button></div></form>',
               "</div>",
               "</div>",
               '<div class="vx-config-card__meta vx-config-card__meta--single">',
-              '<div class="vx-config-meta"><span>До</span><strong>' + escapeHtml(sub.expires_at || "—") + "</strong></div>",
+              '<div class="vx-config-meta"><span>\u0414\u043e</span><strong>' + escapeHtml(sub.expires_at || "\u2014") + "</strong></div>",
               "</div>",
-              '<div class="vx-config-card__field"><label>Ссылка</label><div class="vx-copy-row"><input type="text" readonly value="' +
+              '<div class="vx-config-card__field"><label>\u0421\u0441\u044b\u043b\u043a\u0430</label><div class="vx-copy-row"><input type="text" readonly value="' +
                 escapeHtml(sub.vless_url || "") +
                 '"><button type="button" class="vx-icon-button" data-copy-text="' +
                 escapeHtml(sub.vless_url || "") +
-                '" aria-label="Скопировать ссылку">' +
+                '" aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443">' +
                 iconSvg("copy") +
                 "</button></div></div>",
               '<div class="vx-config-card__actions"><button type="button" class="vx-button vx-button--ghost" data-nav="' +
                 escapeHtml(sub.config_url) +
-                '">QR и конфиг</button></div>',
+                '">QR \u0438 \u043a\u043e\u043d\u0444\u0438\u0433</button></div>',
               "</article>",
             ].join("");
           })
           .join("")
-      : '<div class="vx-account-empty">Пока нет активных доступов. Оформите первый доступ, чтобы он появился здесь.</div>';
-
-    const profile = (model && model.user) || {};
-    const profileFormHtml = [
-      '<section class="vx-section-card"><div class="vx-section-card__head"><h2>Профиль</h2><span>Изменяйте данные аккаунта без выхода из кабинета.</span></div>',
-      '<form class="vx-profile-form" data-profile-form>',
-      '<div class="vx-profile-grid">',
-      '<label class="vx-profile-field"><span>Логин</span><input type="text" name="username" maxlength="150" required value="' + escapeHtml(profile.username || "") + '"></label>',
-      '<label class="vx-profile-field"><span>Email</span><input type="email" name="email" maxlength="254" required value="' + escapeHtml(profile.email || "") + '"></label>',
-      '<label class="vx-profile-field"><span>Имя</span><input type="text" name="first_name" maxlength="150" value="' + escapeHtml(profile.first_name || "") + '"></label>',
-      '<label class="vx-profile-field"><span>Фамилия</span><input type="text" name="last_name" maxlength="150" value="' + escapeHtml(profile.last_name || "") + '"></label>',
-      "</div>",
-      '<div class="vx-profile-actions"><button type="submit" class="vx-button vx-button--ghost">Сохранить данные</button></div>',
-      '<div class="vx-auth-errors vx-profile-errors" data-profile-errors style="display:none"></div>',
-      "</form></section>",
-    ].join("");
+      : '<div class="vx-account-empty">\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0434\u043e\u0441\u0442\u0443\u043f\u043e\u0432. \u041e\u0444\u043e\u0440\u043c\u0438\u0442\u0435 \u043f\u0435\u0440\u0432\u044b\u0439 \u0434\u043e\u0441\u0442\u0443\u043f, \u0447\u0442\u043e\u0431\u044b \u043e\u043d \u043f\u043e\u044f\u0432\u0438\u043b\u0441\u044f \u0437\u0434\u0435\u0441\u044c.</div>';
 
     mount.className = "vx-native-account";
     mount.innerHTML = [
@@ -343,33 +335,55 @@
       '<section class="vx-account-hero">',
       '<div class="vx-account-hero__head">',
       '<div><h1 class="vx-account-title">' +
-        escapeHtml(model.title || "Личный кабинет") +
+        escapeHtml(model.title || "\u041b\u0438\u0447\u043d\u044b\u0439 \u043a\u0430\u0431\u0438\u043d\u0435\u0442") +
         '</h1><p class="vx-account-subtitle">' +
         escapeHtml(model.subtitle || "") +
         "</p></div>",
       '<span class="vx-status-pill is-muted">' + escapeHtml(accessLabel(model.access_count)) + "</span>",
       "</div>",
       '<div class="vx-account-actions">',
-      '<button type="button" class="vx-button vx-button--primary" data-checkout="buy">Купить доступ · ' +
+      '<button type="button" class="vx-button vx-button--primary" data-checkout="buy">\u041a\u0443\u043f\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f \u00b7 ' +
         escapeHtml(model.card_price_label || "") +
         "</button>",
-      '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew">Продлить · ' +
+      '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew">\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c \u00b7 ' +
         escapeHtml(model.card_price_label || "") +
         "</button>",
       "</div>",
       "</section>",
       '<section class="vx-account-summary"><div class="vx-account-summary__grid">' + summaryHtml + "</div></section>",
-      profileFormHtml,
-      '<section class="vx-section-card"><div class="vx-section-card__head"><h2>Устройства</h2><span>Активных: ' +
+      '<section class="vx-section-card"><div class="vx-section-card__head"><h2>\u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430</h2><span>\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0445: ' +
         escapeHtml(String(model.stats && model.stats.active_configs != null ? model.stats.active_configs : 0)) +
-        " · Неактивных: " +
+        ' \u00b7 \u041d\u0435\u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445: ' +
         escapeHtml(String(model.stats && model.stats.inactive_configs != null ? model.stats.inactive_configs : 0)) +
         '</span></div><div class="vx-config-list">' +
         cardsHtml +
         "</div></section>",
       '<div class="vx-account-actions vx-account-actions--footer"><a class="vx-button vx-button--ghost" href="' +
         escapeHtml((model.urls && model.urls.support) || cfg.supportUrl || "/instructions/") +
-        '">Поддержка</a><button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
+        '">\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430</a><button type="button" class="vx-button vx-button--ghost" data-nav="/account/settings/">\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438</button><button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
+      "</section>",
+    ].join("");
+  }
+
+  function renderSettings(model) {
+    const profile = (model && model.user) || {};
+
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell">',
+      '<section class="vx-section-card"><div class="vx-section-card__head"><h2>\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438</h2><span>\u0418\u0437\u043c\u0435\u043d\u044f\u0439\u0442\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430 \u043d\u0430 \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435.</span></div>',
+      '<form class="vx-profile-form" data-profile-form>',
+      '<div class="vx-profile-grid">',
+      '<label class="vx-profile-field"><span>\u041b\u043e\u0433\u0438\u043d</span><input type="text" name="username" maxlength="150" required value="' + escapeHtml(profile.username || "") + '"></label>',
+      '<label class="vx-profile-field"><span>Email</span><input type="email" name="email" maxlength="254" required value="' + escapeHtml(profile.email || "") + '"></label>',
+      '<label class="vx-profile-field"><span>\u0418\u043c\u044f</span><input type="text" name="first_name" maxlength="150" value="' + escapeHtml(profile.first_name || "") + '"></label>',
+      '<label class="vx-profile-field"><span>\u0424\u0430\u043c\u0438\u043b\u0438\u044f</span><input type="text" name="last_name" maxlength="150" value="' + escapeHtml(profile.last_name || "") + '"></label>',
+      "</div>",
+      '<div class="vx-profile-actions"><button type="submit" class="vx-button vx-button--primary">\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435</button></div>',
+      '<div class="vx-auth-errors vx-profile-errors" data-profile-errors style="display:none"></div>',
+      "</form>",
+      '<div class="vx-account-actions vx-account-actions--footer"><button type="button" class="vx-button vx-button--ghost" data-nav="' + escapeHtml((model.urls && model.urls.dashboard) || (cfg.accountUrl || "/account/")) + '">\u041d\u0430\u0437\u0430\u0434 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442</button><button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
+      "</section>",
       "</section>",
     ].join("");
   }
@@ -877,6 +891,8 @@
 
       if (payload.view === "config" && payload.config) {
         renderConfig(payload.config);
+      } else if (route.view === "settings") {
+        renderSettings(payload.dashboard || {});
       } else if (payload.view === "link" && payload.link) {
         renderLink(payload.link);
       } else {
