@@ -491,7 +491,8 @@ class BotUserListView(BaseListView):
     model = BotUser
     title = "Пользователи"
     subtitle = "Единая база bot users и site-only placeholder accounts."
-    readonly = True
+    readonly = False
+    delete_url_name = "backoffice:bot_user_delete"
     columns = [
         ("id", "ID"),
         ("client_code", "Client code"),
@@ -549,6 +550,30 @@ class BotUserListView(BaseListView):
                 }
             )
         return rows
+
+
+class BotUserDeleteView(StaffRequiredMixin, DeleteView):
+    model = BotUser
+    template_name = "backoffice/confirm_delete.html"
+    success_url = reverse_lazy("backoffice:bot_user_list")
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = "Удаление пользователя"
+        ctx["delete_warning"] = (
+            "Будут удалены связанные подписки, заказы, reminder logs и node sync записи. "
+            "Тикеты и сообщения поддержки сохранятся, но отвяжутся от пользователя. "
+            "Если Telegram аккаунт был привязан к сайту, связка LinkedAccount тоже будет удалена."
+        )
+        return self.add_wordpress_context(ctx)
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        self.object = self.get_object()
+        telegram_id = int(getattr(self.object, "telegram_id", 0) or 0)
+        LinkedAccount.objects.filter(telegram_id=telegram_id).delete()
+        response = super().post(request, *args, **kwargs)
+        messages.success(request, "Пользователь удалён")
+        return response
 
 
 class BotSubscriptionListView(BaseListView):

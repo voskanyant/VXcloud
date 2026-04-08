@@ -34,6 +34,7 @@ urlpatterns = [
     path("site-texts/<int:pk>/edit/", views.SiteTextUpdateView.as_view(), name="site_text_update"),
     path("site-texts/<int:pk>/delete/", views.SiteTextDeleteView.as_view(), name="site_text_delete"),
     path("bot/users/", views.BotUserListView.as_view(), name="bot_user_list"),
+    path("bot/users/<int:pk>/delete/", views.BotUserDeleteView.as_view(), name="bot_user_delete"),
     path("bot/subscriptions/", views.BotSubscriptionListView.as_view(), name="bot_subscription_list"),
     path("bot/orders/", views.BotOrderListView.as_view(), name="bot_order_list"),
 ]

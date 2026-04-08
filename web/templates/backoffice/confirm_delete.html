@@ -5,6 +5,9 @@
   <div class="card-body">
     <h2 class="h5 mb-3">Подтвердите удаление</h2>
     <p class="text-muted">Объект: <strong>{{ object }}</strong></p>
+    {% if delete_warning %}
+      <div class="alert alert-warning">{{ delete_warning }}</div>
+    {% endif %}
     <form method="post">
       {% csrf_token %}
       <div class="d-flex gap-2">

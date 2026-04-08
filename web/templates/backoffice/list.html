@@ -33,7 +33,7 @@
               {% for header in headers %}
                 <th>{{ header }}</th>
               {% endfor %}
-              {% if not readonly and edit_url_name %}
+              {% if not readonly and edit_url_name or not readonly and delete_url_name %}
                 <th class="text-end" style="width: 170px;">Действия</th>
               {% endif %}
             </tr>
@@ -44,9 +44,11 @@
                 {% for cell in row.cells %}
                   <td>{{ cell }}</td>
                 {% endfor %}
-                {% if not readonly and edit_url_name %}
+                {% if not readonly and edit_url_name or not readonly and delete_url_name %}
                   <td class="text-end">
-                    <a href="{% url edit_url_name row.obj.pk %}" class="btn btn-sm btn-outline-primary">Изменить</a>
+                    {% if edit_url_name %}
+                      <a href="{% url edit_url_name row.obj.pk %}" class="btn btn-sm btn-outline-primary">Изменить</a>
+                    {% endif %}
                     {% if delete_url_name %}
                       <a href="{% url delete_url_name row.obj.pk %}" class="btn btn-sm btn-outline-danger">Удалить</a>
                     {% endif %}
