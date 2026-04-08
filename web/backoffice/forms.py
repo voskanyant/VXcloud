@@ -197,3 +197,16 @@ class TicketReplyForm(BootstrapFormMixin, forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._apply_bootstrap_classes()
+
+
+class BackofficeSubscriptionExpiryForm(BootstrapFormMixin, forms.Form):
+    expires_at = forms.DateTimeField(
+        label="Дата окончания",
+        input_formats=["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"],
+        widget=forms.DateTimeInput(format="%Y-%m-%dT%H:%M"),
+        help_text="Изменение применяется в базе и сразу отправляется в 3x-ui.",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_bootstrap_classes()

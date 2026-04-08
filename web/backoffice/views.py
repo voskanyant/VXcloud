@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
+import sys
 from datetime import timedelta
+from pathlib import Path
 from typing import Any
 from urllib import error as urllib_error
 from urllib import request as urllib_request
@@ -12,6 +15,7 @@ from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
+from django.db import transaction
 from django.db.models import Q, QuerySet
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpRequest, HttpResponse
@@ -33,10 +37,16 @@ from cabinet.models import (
     VPNNode,
     VPNNodeClient,
 )
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from src.xui_client import XUIClient
 
 from .forms import (
     BackofficeCategoryForm,
     BackofficePageForm,
+    BackofficeSubscriptionExpiryForm,
     BackofficePostForm,
     BackofficePostTypeForm,
     BackofficeSiteTextForm,
@@ -228,6 +238,68 @@ def health_badge(node: VPNNode) -> str:
 def env_value(name: str, default: str = "") -> str:
     value = os.getenv(name, default)
     return value.strip() if isinstance(value, str) else str(value)
+
+
+def bool_env(name: str, default: bool = False) -> bool:
+    value = env_value(name, "1" if default else "0").lower()
+    return value in {"1", "true", "yes", "on"}
+
+
+def int_env(name: str, default: int) -> int:
+    try:
+        return int(env_value(name, str(default)))
+    except (TypeError, ValueError):
+        return int(default)
+
+
+async def _push_subscription_expiry_to_xui(subscription: BotSubscription, expires_at) -> list[str]:
+    desired_enabled = bool(
+        getattr(subscription, "is_active", False)
+        and expires_at > timezone.now()
+        and getattr(subscription, "revoked_at", None) is None
+    )
+    limit_ip = int_env("MAX_DEVICES_PER_SUB", 1)
+    flow = env_value("VPN_FLOW", "xtls-rprx-vision")
+    errors: list[str] = []
+
+    async def apply_on_node(base_url: str, username: str, password: str, inbound_id: int, label: str) -> None:
+        xui = XUIClient(base_url.rstrip("/"), username, password)
+        try:
+            await xui.start()
+            await xui.set_client_enabled(
+                inbound_id,
+                str(subscription.client_uuid),
+                str(subscription.client_email),
+                expires_at,
+                enable=desired_enabled,
+                limit_ip=limit_ip,
+                flow=flow,
+            )
+        except Exception as exc:
+            errors.append(f"{label}: {exc}")
+        finally:
+            await xui.close()
+
+    if bool_env("VPN_CLUSTER_ENABLED", False):
+        nodes = list(VPNNode.objects.filter(is_active=True).order_by("id"))
+        for node in nodes:
+            await apply_on_node(
+                str(node.xui_base_url),
+                str(node.xui_username),
+                str(node.xui_password),
+                int(node.xui_inbound_id),
+                f"node#{int(node.id)}",
+            )
+        return errors
+
+    await apply_on_node(
+        env_value("XUI_BASE_URL"),
+        env_value("XUI_USERNAME"),
+        env_value("XUI_PASSWORD"),
+        int_env("XUI_INBOUND_ID", int(getattr(subscription, "inbound_id", 1) or 1)),
+        "primary",
+    )
+    return errors
 
 
 def send_telegram_text(telegram_id: int, text: str) -> None:
@@ -580,7 +652,8 @@ class BotSubscriptionListView(BaseListView):
     model = BotSubscription
     title = "Подписки"
     subtitle = "Текущие устройства, сроки и импортные конфиги."
-    readonly = True
+    readonly = False
+    edit_url_name = "backoffice:bot_subscription_expiry_update"
     columns = [
         ("id", "ID"),
         ("user_id", "User ID"),
@@ -613,6 +686,47 @@ class BotSubscriptionListView(BaseListView):
                 }
             )
         return rows
+
+
+class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
+    template_name = "backoffice/form.html"
+
+    def _subscription(self) -> BotSubscription:
+        return get_object_or_404(BotSubscription.objects.select_related("user"), pk=self.kwargs["pk"])
+
+    def _initial(self, subscription: BotSubscription) -> dict[str, Any]:
+        current = getattr(subscription, "expires_at", None) or timezone.now()
+        return {"expires_at": timezone.localtime(current).strftime("%Y-%m-%dT%H:%M")}
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        subscription = self._subscription()
+        form = kwargs.get("form") or BackofficeSubscriptionExpiryForm(initial=self._initial(subscription))
+        title_name = subscription.display_name or subscription.client_email or f"#{subscription.id}"
+        ctx["title"] = f"Изменить срок: {title_name}"
+        ctx["form"] = form
+        return ctx
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        subscription = self._subscription()
+        form = BackofficeSubscriptionExpiryForm(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+
+        expires_at = timezone.make_aware(form.cleaned_data["expires_at"], timezone.get_current_timezone())
+        expires_at = expires_at.astimezone(timezone.utc)
+
+        with transaction.atomic():
+            subscription.expires_at = expires_at
+            subscription.updated_at = timezone.now()
+            subscription.save(update_fields=["expires_at", "updated_at"])
+
+        errors = asyncio.run(_push_subscription_expiry_to_xui(subscription, expires_at))
+        if errors:
+            messages.warning(request, "Срок обновлён в базе, но не везде применился в 3x-ui: " + "; ".join(errors[:3]))
+        else:
+            messages.success(request, "Срок подписки обновлён в базе и 3x-ui.")
+        return redirect("backoffice:bot_subscription_list")
 
 
 class BotOrderListView(BaseListView):
