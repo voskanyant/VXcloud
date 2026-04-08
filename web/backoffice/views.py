@@ -430,7 +430,7 @@ def _iter_bot_content_items() -> list[dict[str, Any]]:
     return items
 
 
-class BotContentEditorView(StaffRequiredMixin, TemplateView):
+class BotContentEditorView(StaffRequiredMixin, LegacyContentContextMixin, TemplateView):
     template_name = "backoffice/bot_content.html"
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
@@ -458,7 +458,7 @@ class BotContentEditorView(StaffRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
-        ctx["title"] = "Bot Content"
+        ctx["title"] = "Bot Settings"
         ctx["subtitle"] = "Визуальное редактирование текстов, кнопок и inline-экранов Telegram-бота."
 
         overrides = {
@@ -498,7 +498,9 @@ class BotContentEditorView(StaffRequiredMixin, TemplateView):
             "overridden": overridden_items,
             "defaulted": max(total_items - overridden_items, 0),
         }
-        ctx["directus_enabled"] = bool(settings.CMS_BASE_URL and settings.CMS_TOKEN)
+        cms_base_url = str(getattr(settings, "CMS_BASE_URL", "") or "").strip()
+        cms_token = str(getattr(settings, "CMS_TOKEN", "") or "").strip()
+        ctx["directus_enabled"] = bool(cms_base_url and cms_token)
         ctx["notes"] = [
             "Пустое поле удаляет override и возвращает штатный текст или кнопку из кода.",
             "Изменения подхватываются ботом автоматически примерно в течение минуты.",

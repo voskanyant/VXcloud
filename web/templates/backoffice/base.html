@@ -29,7 +29,7 @@
       <div class="bo-nav-section">
         <div class="bo-nav-label">Бот и операции</div>
         <a class="bo-link {% if request.resolver_match.url_name == 'bot_content_editor' %}active{% endif %}" href="{% url 'backoffice:bot_content_editor' %}">
-          <i class="bi bi-chat-square-text"></i><span>Bot Content</span>
+          <i class="bi bi-chat-square-text"></i><span>Bot Settings</span>
         </a>
         <a class="bo-link {% if request.resolver_match.url_name == 'ticket_list' or request.resolver_match.url_name == 'ticket_detail' %}active{% endif %}" href="{% url 'backoffice:ticket_list' %}">
           <i class="bi bi-life-preserver"></i><span>Тикеты</span>
