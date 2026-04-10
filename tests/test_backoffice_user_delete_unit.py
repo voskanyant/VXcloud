@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -20,6 +21,7 @@ from django.contrib.auth.models import User
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory
+from django.utils import timezone
 
 from backoffice.views import BotUserDeleteView
 
@@ -64,6 +66,37 @@ class BackofficeUserDeleteUnitTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         bot_user.delete.assert_not_called()
+
+    def test_related_counts_treat_expired_subscriptions_as_inactive(self):
+        bot_user = SimpleNamespace(id=5, telegram_id=78050167)
+        now = timezone.now()
+        expired_sub_1 = SimpleNamespace(id=101, is_active=True, expires_at=now - timedelta(days=1), revoked_at=None)
+        expired_sub_2 = SimpleNamespace(id=102, is_active=True, expires_at=now - timedelta(minutes=5), revoked_at=None)
+
+        class _FakeListQuerySet(list):
+            pass
+
+        subscriptions_qs = _FakeListQuerySet([expired_sub_1, expired_sub_2])
+
+        with (
+            patch("backoffice.views.BotSubscription.objects.filter", return_value=subscriptions_qs),
+            patch("backoffice.views.BotOrder.objects.filter") as order_filter,
+            patch("backoffice.views.VPNNodeClient.objects.filter") as node_filter,
+            patch("backoffice.views.SupportTicket.objects.filter") as ticket_filter,
+            patch("backoffice.views.SupportMessage.objects.filter") as message_filter,
+            patch("backoffice.views.LinkedAccount.objects.filter") as linked_filter,
+        ):
+            order_filter.return_value.count.return_value = 0
+            node_filter.return_value.count.return_value = 0
+            ticket_filter.return_value.count.return_value = 0
+            message_filter.return_value.count.return_value = 0
+            linked_filter.return_value.count.return_value = 0
+
+            view = BotUserDeleteView()
+            counts = view._related_counts(bot_user)
+
+        self.assertEqual(counts["subscriptions"], 2)
+        self.assertEqual(counts["active_subscriptions"], 0)
 
 
 if __name__ == "__main__":

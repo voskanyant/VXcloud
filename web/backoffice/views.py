@@ -833,11 +833,12 @@ class BotUserDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteVie
 
     def _related_counts(self, user: BotUser) -> dict[str, int]:
         subscriptions_qs = BotSubscription.objects.filter(user_id=user.id)
-        subscription_ids = list(subscriptions_qs.values_list("id", flat=True))
+        subscriptions = list(subscriptions_qs)
+        subscription_ids = [int(getattr(item, "id", 0) or 0) for item in subscriptions]
         telegram_id = int(getattr(user, "telegram_id", 0) or 0)
         return {
-            "subscriptions": safe_count(subscriptions_qs),
-            "active_subscriptions": safe_count(subscriptions_qs.filter(is_active=True)),
+            "subscriptions": len(subscriptions),
+            "active_subscriptions": sum(1 for item in subscriptions if subscription_status_state(item)[0]),
             "orders": safe_count(BotOrder.objects.filter(user_id=user.id)),
             "node_clients": safe_count(VPNNodeClient.objects.filter(subscription_id__in=subscription_ids)),
             "support_tickets": safe_count(SupportTicket.objects.filter(user_id=user.id)),
