@@ -334,6 +334,23 @@ def env_value(name: str, default: str = "") -> str:
     return value.strip() if isinstance(value, str) else str(value)
 
 
+def subscription_status_state(subscription: BotSubscription, *, now: datetime | None = None) -> tuple[bool, str, str]:
+    current_time = now or timezone.now()
+    expires_at = getattr(subscription, "expires_at", None)
+    revoked_at = getattr(subscription, "revoked_at", None)
+    effectively_active = bool(
+        getattr(subscription, "is_active", False)
+        and expires_at
+        and expires_at > current_time
+        and revoked_at is None
+    )
+    if effectively_active:
+        return True, "active", "success"
+    if revoked_at is not None:
+        return False, "revoked", "secondary"
+    return False, "expired", "warning"
+
+
 def bool_env(name: str, default: bool = False) -> bool:
     value = env_value(name, "1" if default else "0").lower()
     return value in {"1", "true", "yes", "on"}
@@ -896,6 +913,7 @@ class BotSubscriptionListView(BaseListView):
     def get_table_rows(self) -> list[dict[str, Any]]:
         rows = []
         for item in self.object_list:
+            _, status_label, status_tone = subscription_status_state(item)
             rows.append(
                 {
                     "obj": item,
@@ -904,7 +922,7 @@ class BotSubscriptionListView(BaseListView):
                         item.user_id,
                         item.display_name,
                         item.client_email,
-                        boolean_badge(item.is_active, "active", "inactive"),
+                        status_badge(status_label, status_tone),
                         format_cell(item.expires_at),
                         format_cell(item.updated_at),
                     ],
@@ -942,11 +960,13 @@ class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
         if timezone.is_naive(expires_at):
             expires_at = timezone.make_aware(expires_at, timezone.get_current_timezone())
         expires_at = expires_at.astimezone(dt_timezone.utc)
+        should_be_active = bool(expires_at > timezone.now() and getattr(subscription, "revoked_at", None) is None)
 
         with transaction.atomic():
             subscription.expires_at = expires_at
+            subscription.is_active = should_be_active
             subscription.updated_at = timezone.now()
-            subscription.save(update_fields=["expires_at", "updated_at"])
+            subscription.save(update_fields=["expires_at", "is_active", "updated_at"])
 
         errors = asyncio.run(_push_subscription_expiry_to_xui(subscription, expires_at))
         if errors:

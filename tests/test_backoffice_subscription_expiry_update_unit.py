@@ -55,6 +55,8 @@ class BackofficeSubscriptionExpiryUpdateUnitTests(unittest.TestCase):
             display_name="Test config",
             client_email="test@example.com",
             expires_at=current,
+            is_active=True,
+            revoked_at=None,
             updated_at=current,
             save=MagicMock(),
         )
@@ -68,6 +70,32 @@ class BackofficeSubscriptionExpiryUpdateUnitTests(unittest.TestCase):
             response = view(self._build_request(target_local), pk=55)
 
         self.assertEqual(response.status_code, 302)
+        subscription.save.assert_called_once()
+        self.assertTrue(subscription.is_active)
+
+    def test_post_marks_subscription_inactive_when_expiry_is_in_past(self):
+        current = timezone.now()
+        subscription = SimpleNamespace(
+            id=56,
+            display_name="Expired config",
+            client_email="expired@example.com",
+            expires_at=current,
+            is_active=True,
+            revoked_at=None,
+            updated_at=current,
+            save=MagicMock(),
+        )
+        target_local = timezone.localtime(current - timedelta(hours=2)).strftime("%Y-%m-%dT%H:%M")
+        view = BotSubscriptionExpiryUpdateView.as_view()
+
+        with (
+            patch.object(BotSubscriptionExpiryUpdateView, "_subscription", return_value=subscription),
+            patch("backoffice.views._push_subscription_expiry_to_xui", new=AsyncMock(return_value=[])),
+        ):
+            response = view(self._build_request(target_local), pk=56)
+
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(subscription.is_active)
         subscription.save.assert_called_once()
 
 
