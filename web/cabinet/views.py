@@ -1342,9 +1342,9 @@ def _delete_subscription_everywhere(subscription: BotSubscription) -> tuple[bool
         if not bot_settings.vpn_cluster_enabled:
             if bot_settings.xui_base_url and bot_settings.xui_username and bot_settings.xui_password:
                 xui = XUIClient(bot_settings.xui_base_url, bot_settings.xui_username, bot_settings.xui_password)
-                asyncio.run(xui.login())
                 try:
-                    asyncio.run(
+                    asyncio.run(xui.start())
+                    delete_result = asyncio.run(
                         xui.delete_client(
                             inbound_id,
                             client_uuid,
@@ -1355,6 +1355,8 @@ def _delete_subscription_everywhere(subscription: BotSubscription) -> tuple[bool
                             sub_id=xui_sub_id,
                         )
                     )
+                    if delete_result != "deleted":
+                        return False, "Не удалось удалить конфиг в 3x-ui. Попробуйте ещё раз или проверьте клиента вручную."
                 finally:
                     asyncio.run(xui.close())
     except Exception:
@@ -1362,6 +1364,7 @@ def _delete_subscription_everywhere(subscription: BotSubscription) -> tuple[bool
             "account_subscription_delete_xui_failed",
             extra={"subscription_id": int(subscription.id)},
         )
+        return False, "Не удалось удалить конфиг в 3x-ui. Попробуйте ещё раз позже."
 
     subscription.delete()
     return True, None

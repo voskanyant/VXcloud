@@ -413,6 +413,55 @@ async def _push_subscription_expiry_to_xui(subscription: BotSubscription, expire
     return errors
 
 
+async def _delete_subscription_from_xui(subscription: BotSubscription) -> list[str]:
+    limit_ip = int_env("MAX_DEVICES_PER_SUB", 1)
+    flow = env_value("VPN_FLOW", "xtls-rprx-vision")
+    errors: list[str] = []
+
+    async def apply_on_node(base_url: str, username: str, password: str, inbound_id: int, label: str) -> None:
+        if not (base_url and username and password):
+            errors.append(f"{label}: x-ui credentials are not configured")
+            return
+
+        xui = XUIClient(base_url.rstrip("/"), username, password)
+        try:
+            await xui.start()
+            await xui.delete_client(
+                inbound_id,
+                str(subscription.client_uuid),
+                email=str(subscription.client_email or "") or None,
+                expiry=getattr(subscription, "expires_at", None),
+                limit_ip=limit_ip,
+                flow=flow,
+                sub_id=(str(getattr(subscription, "xui_sub_id", "") or "") or None),
+            )
+        except Exception as exc:
+            errors.append(f"{label}: {exc}")
+        finally:
+            await xui.close()
+
+    if bool_env("VPN_CLUSTER_ENABLED", False):
+        nodes = list(VPNNode.objects.filter(is_active=True).order_by("id"))
+        for node in nodes:
+            await apply_on_node(
+                str(node.xui_base_url),
+                str(node.xui_username),
+                str(node.xui_password),
+                int(node.xui_inbound_id),
+                f"node#{int(node.id)}",
+            )
+        return errors
+
+    await apply_on_node(
+        env_value("XUI_BASE_URL"),
+        env_value("XUI_USERNAME"),
+        env_value("XUI_PASSWORD"),
+        int_env("XUI_INBOUND_ID", int(getattr(subscription, "inbound_id", 1) or 1)),
+        "primary",
+    )
+    return errors
+
+
 def send_telegram_text(telegram_id: int, text: str) -> None:
     token = (
         env_value("TELEGRAM_WEBAPP_BOT_TOKEN")
@@ -875,7 +924,17 @@ class BotUserDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteVie
 
         telegram_id = int(getattr(self.object, "telegram_id", 0) or 0)
         subscriptions_qs = BotSubscription.objects.filter(user_id=self.object.id)
+        subscriptions = list(subscriptions_qs)
         subscription_ids = list(subscriptions_qs.values_list("id", flat=True))
+        xui_errors: list[str] = []
+        for subscription in subscriptions:
+            xui_errors.extend(asyncio.run(_delete_subscription_from_xui(subscription)))
+        if xui_errors:
+            messages.error(
+                request,
+                "Не удалось удалить клиента в 3x-ui. Пользователь не удалён: " + "; ".join(xui_errors[:3]),
+            )
+            return self.render_to_response(self.get_context_data())
 
         with transaction.atomic():
             LinkedAccount.objects.filter(telegram_id=telegram_id).delete()

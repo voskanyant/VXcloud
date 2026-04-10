@@ -1926,19 +1926,25 @@ class VPNBot:
                 if not self._subscription_can_delete(sub):
                     await query.answer("Активный конфиг удалить нельзя", show_alert=True)
                     return
+                deleted = False
+                try:
+                    delete_result = await self.xui.delete_client(
+                        int(sub["inbound_id"]),
+                        str(sub["client_uuid"]),
+                        email=str(sub["client_email"]),
+                        expiry=sub["expires_at"],
+                        limit_ip=self.settings.max_devices_per_sub,
+                        flow=self.settings.vpn_flow,
+                    )
+                    if delete_result != "deleted":
+                        await query.answer("Не удалось удалить конфиг в 3x-ui", show_alert=True)
+                        return
+                except Exception:
+                    LOGGER.exception("Failed to delete config in x-ui subscription_id=%s", subscription_id)
+                    await query.answer("Не удалось удалить конфиг в 3x-ui", show_alert=True)
+                    return
+
                 deleted = await self.db.delete_subscription(user_id, subscription_id)
-                if deleted:
-                    try:
-                        await self.xui.delete_client(
-                            int(sub["inbound_id"]),
-                            str(sub["client_uuid"]),
-                            email=str(sub["client_email"]),
-                            expiry=sub["expires_at"],
-                            limit_ip=self.settings.max_devices_per_sub,
-                            flow=self.settings.vpn_flow,
-                        )
-                    except Exception:
-                        LOGGER.exception("Failed to delete config in x-ui subscription_id=%s", subscription_id)
                 await query.answer("Конфиг удален" if deleted else "Не удалось удалить конфиг")
                 subscriptions = await self.db.list_subscriptions(user_id)
                 client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"

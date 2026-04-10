@@ -4,7 +4,7 @@ import unittest
 from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = PROJECT_ROOT / "web"
@@ -61,6 +61,35 @@ class BackofficeUserDeleteUnitTests(unittest.TestCase):
         with (
             patch.object(BotUserDeleteView, "get_object", return_value=bot_user),
             patch.object(BotUserDeleteView, "_related_counts", return_value=counts),
+        ):
+            response = BotUserDeleteView.as_view()(self._build_request(), pk=5)
+
+        self.assertEqual(response.status_code, 200)
+        bot_user.delete.assert_not_called()
+
+    def test_delete_is_blocked_when_xui_cleanup_fails(self):
+        bot_user = SimpleNamespace(id=5, telegram_id=78050167, delete=MagicMock())
+        counts = {
+            "subscriptions": 1,
+            "active_subscriptions": 0,
+            "orders": 0,
+            "node_clients": 0,
+            "support_tickets": 0,
+            "support_messages": 0,
+            "linked_accounts": 0,
+        }
+        fake_subscription = SimpleNamespace(id=101)
+        class _FakeListQuerySet(list):
+            def values_list(self, *args, **kwargs):
+                return [item.id for item in self]
+
+        subscriptions_qs = _FakeListQuerySet([fake_subscription])
+
+        with (
+            patch.object(BotUserDeleteView, "get_object", return_value=bot_user),
+            patch.object(BotUserDeleteView, "_related_counts", return_value=counts),
+            patch("backoffice.views.BotSubscription.objects.filter", return_value=subscriptions_qs),
+            patch("backoffice.views._delete_subscription_from_xui", new=AsyncMock(return_value=["primary: delete failed"])),
         ):
             response = BotUserDeleteView.as_view()(self._build_request(), pk=5)
 
