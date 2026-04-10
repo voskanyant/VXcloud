@@ -227,10 +227,14 @@ def _account_telegram_auth_context(request: HttpRequest, *, return_to: str | Non
 
 def _json_body(request: HttpRequest) -> dict[str, object]:
     if not request.body:
+        if request.POST:
+            return {key: value for key, value in request.POST.items()}
         return {}
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except (TypeError, ValueError, json.JSONDecodeError):
+        if request.POST:
+            return {key: value for key, value in request.POST.items()}
         return {}
     return payload if isinstance(payload, dict) else {}
 
@@ -331,7 +335,14 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
             "password_reset": "/accounts/password_reset/",
         },
     }
-    linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
+    try:
+        linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
+    except Exception:
+        LOGGER.exception(
+            "account_dashboard_resolve_bot_user_failed",
+            extra={"django_user_id": int(getattr(request.user, "id", 0) or 0)},
+        )
+        return empty_payload
     empty_payload["telegram"] = {
         "linked": bool(linked),
         "status_text": "Привязан" if linked else "Не привязан",

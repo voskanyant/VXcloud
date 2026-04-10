@@ -22,6 +22,21 @@ from django.test import Client
 
 class AccountProfileUpdateUnitTests(unittest.TestCase):
     def setUp(self) -> None:
+        User.objects.filter(
+            username__in=[
+                "profile_update_user",
+                "profile_update_user_new",
+                "profile_update_taken",
+            ]
+        ).delete()
+        User.objects.filter(
+            email__in=[
+                "profile_update_user@example.com",
+                "profile_update_user_new@example.com",
+                "profile_update_taken@example.com",
+            ]
+        ).delete()
+
         self.user, _ = User.objects.get_or_create(
             username="profile_update_user",
             defaults={
