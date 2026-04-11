@@ -7,7 +7,7 @@ from src.bot import VPNBot
 from src.config import Settings
 
 
-def _settings(*, cluster_enabled: bool) -> Settings:
+def _settings(*, cluster_enabled: bool, sub_path: str = "/sub") -> Settings:
     return Settings(
         telegram_bot_token="token",
         telegram_admin_id=1,
@@ -44,6 +44,7 @@ def _settings(*, cluster_enabled: bool) -> Settings:
         single_ip_window_seconds=90,
         single_ip_block_seconds=120,
         xray_access_log_path="/var/log/xray/access.log",
+        xui_sub_path=sub_path,
     )
 
 
@@ -106,6 +107,34 @@ class ResolveSubscriptionLinksClusterUnitTests(unittest.IsolatedAsyncioTestCase)
         self.assertEqual(sub_url, "https://vxcloud.ru:2096/sub/restored-sub")
         xui.get_client_sub_id.assert_awaited_once_with(7, "00000000-0000-0000-0000-000000000012")
         bot._restore_xui_profile_for_subscription.assert_awaited_once()
+
+    async def test_subscription_links_use_configured_sub_path(self):
+        xui = AsyncMock()
+        bot = VPNBot(
+            app=SimpleNamespace(),
+            settings=_settings(cluster_enabled=True, sub_path="/8fK2mQp9xL7vR3nA5sD4wB1z"),
+            db=AsyncMock(),
+            xui=xui,
+            cms=None,
+        )
+
+        sub = {
+            "id": 13,
+            "vless_url": "vless://original",
+            "client_uuid": "00000000-0000-0000-0000-000000000013",
+            "inbound_id": 1,
+            "xui_sub_id": "cluster-sub-003",
+            "is_active": True,
+            "revoked_at": None,
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=10),
+        }
+
+        _, sub_url = await bot._resolve_subscription_links(user_id=3, sub=sub)
+
+        self.assertEqual(
+            sub_url,
+            "https://vxcloud.ru:2096/8fK2mQp9xL7vR3nA5sD4wB1z/cluster-sub-003",
+        )
 
 
 if __name__ == "__main__":

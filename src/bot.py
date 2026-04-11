@@ -995,7 +995,7 @@ class VPNBot:
                 )
 
         sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
+            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
             if sub_id
             else None
         )
@@ -2293,7 +2293,7 @@ class VPNBot:
         )
         last_payment_method = await self.db.get_latest_payment_method(result.user_id)
         sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{result.xui_sub_id}"
+            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{result.xui_sub_id}"
             if result.xui_sub_id
             else None
         )
@@ -2319,7 +2319,7 @@ class VPNBot:
         client_uuid = str(sub["client_uuid"])
         sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
         sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
+            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
             if sub_id
             else None
         )
@@ -2376,7 +2376,7 @@ class VPNBot:
         )
         sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
         sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
+            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
             if sub_id
             else None
         )
@@ -2441,7 +2441,7 @@ class VPNBot:
             )
             sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
             sub_url = (
-                f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
+                f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
                 if sub_id
                 else None
             )
@@ -2484,7 +2484,7 @@ class VPNBot:
         await self.db.extend_subscription(sub["id"], new_exp, vless_url)
         sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
         sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}/sub/{sub_id}"
+            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
             if sub_id
             else None
         )

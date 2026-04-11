@@ -22,6 +22,14 @@ def _get_optional(name: str) -> str | None:
     return trimmed if trimmed else None
 
 
+def _normalize_sub_path(raw: str | None) -> str:
+    value = str(raw or "").strip() or "/sub"
+    if not value.startswith("/"):
+        value = f"/{value}"
+    value = value.rstrip("/")
+    return value or "/sub"
+
+
 @dataclass(frozen=True)
 class Settings:
     telegram_bot_token: str
@@ -59,6 +67,11 @@ class Settings:
     single_ip_window_seconds: int
     single_ip_block_seconds: int
     xray_access_log_path: str
+    xui_sub_path: str = "/sub"
+
+    @classmethod
+    def from_env(cls) -> "Settings":
+        return load_settings()
 
 
 def load_settings() -> Settings:
@@ -98,4 +111,5 @@ def load_settings() -> Settings:
         single_ip_window_seconds=int(_get("SINGLE_IP_WINDOW_SECONDS", "90")),
         single_ip_block_seconds=int(_get("SINGLE_IP_BLOCK_SECONDS", "120")),
         xray_access_log_path=_get("XRAY_ACCESS_LOG_PATH", "/var/log/xray/access.log"),
+        xui_sub_path=_normalize_sub_path(_get("XUI_SUB_PATH", "/sub")),
     )
