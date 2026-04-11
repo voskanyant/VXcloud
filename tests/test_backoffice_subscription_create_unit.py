@@ -49,6 +49,19 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         setattr(request, "_messages", FallbackStorage(request))
         return request
 
+    def _build_get_request(self):
+        request = self.factory.get("/ops/bot/subscriptions/new/")
+        request.user = self.staff_user
+        session_middleware = SessionMiddleware(lambda req: None)
+        session_middleware.process_request(request)
+        request.session.save()
+        setattr(request, "_messages", FallbackStorage(request))
+        return request
+
+    def test_create_view_get_renders_form(self):
+        response = BotSubscriptionCreateView.as_view()(self._build_get_request())
+        self.assertEqual(response.status_code, 200)
+
     def test_create_subscription_from_ops_single_node(self):
         now = timezone.now()
         expires_at = timezone.localtime(now + timedelta(days=16)).strftime("%Y-%m-%dT%H:%M")

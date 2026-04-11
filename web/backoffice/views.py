@@ -1323,7 +1323,7 @@ class BotSubscriptionListView(BaseListView):
         return rows
 
 
-class BotSubscriptionCreateView(StaffRequiredMixin, TemplateView):
+class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, TemplateView):
     template_name = "backoffice/form.html"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
