@@ -17,6 +17,18 @@ class InboundRealityInfo:
     fingerprint: str
 
 
+@dataclass(frozen=True)
+class InboundClientState:
+    client_uuid: str
+    email: str
+    enabled: bool
+    expiry: datetime
+    limit_ip: int
+    flow: str
+    sub_id: str | None = None
+    comment: str | None = None
+
+
 class XUIClient:
     def __init__(self, base_url: str, username: str, password: str) -> None:
         self.base_url = base_url.rstrip("/")
@@ -119,9 +131,7 @@ class XUIClient:
 
     async def get_client_sub_id(self, inbound_id: int, client_uuid: str) -> str | None:
         inbound = await self.get_inbound(inbound_id)
-        settings_raw = inbound.get("settings", "{}")
-        settings = json.loads(settings_raw) if isinstance(settings_raw, str) else settings_raw
-        clients = settings.get("clients", [])
+        clients = self._parse_inbound_clients(inbound)
         for c in clients:
             if str(c.get("id", "")).lower() == client_uuid.lower():
                 sub_id = c.get("subId")
@@ -130,9 +140,7 @@ class XUIClient:
 
     async def has_client(self, inbound_id: int, client_uuid: str, *, email: str | None = None) -> bool:
         inbound = await self.get_inbound(inbound_id)
-        settings_raw = inbound.get("settings", "{}")
-        settings = json.loads(settings_raw) if isinstance(settings_raw, str) else settings_raw
-        clients = settings.get("clients", [])
+        clients = self._parse_inbound_clients(inbound)
         normalized_uuid = str(client_uuid).lower()
         normalized_email = str(email or "").strip().lower()
         for client in clients:
@@ -141,6 +149,47 @@ class XUIClient:
             if normalized_email and str(client.get("email", "")).strip().lower() == normalized_email:
                 return True
         return False
+
+    @staticmethod
+    def _parse_inbound_clients(inbound: dict[str, Any]) -> list[dict[str, Any]]:
+        settings_raw = inbound.get("settings", "{}")
+        settings = json.loads(settings_raw) if isinstance(settings_raw, str) else settings_raw
+        clients = settings.get("clients", [])
+        return clients if isinstance(clients, list) else []
+
+    @staticmethod
+    def _coerce_expiry(value: Any) -> datetime:
+        try:
+            expiry_ms = int(value or 0)
+        except (TypeError, ValueError):
+            expiry_ms = 0
+        if expiry_ms <= 0:
+            return datetime.fromtimestamp(0, tz=timezone.utc)
+        return datetime.fromtimestamp(expiry_ms / 1000, tz=timezone.utc)
+
+    async def list_clients(self, inbound_id: int) -> list[InboundClientState]:
+        inbound = await self.get_inbound(inbound_id)
+        states: list[InboundClientState] = []
+        for client in self._parse_inbound_clients(inbound):
+            client_uuid = str(client.get("id", "")).strip()
+            email = str(client.get("email", "")).strip()
+            if not client_uuid or not email:
+                continue
+            sub_id_raw = client.get("subId")
+            comment_raw = client.get("comment")
+            states.append(
+                InboundClientState(
+                    client_uuid=client_uuid,
+                    email=email,
+                    enabled=bool(client.get("enable", True)),
+                    expiry=self._coerce_expiry(client.get("expiryTime")),
+                    limit_ip=int(client.get("limitIp", 0) or 0),
+                    flow=str(client.get("flow", "") or ""),
+                    sub_id=str(sub_id_raw) if sub_id_raw else None,
+                    comment=str(comment_raw) if comment_raw else None,
+                )
+            )
+        return states
 
     @staticmethod
     def _build_client_payload(
@@ -180,12 +229,13 @@ class XUIClient:
         flow: str = "",
         comment: str | None = None,
         sub_id: str | None = None,
+        enable: bool = True,
     ) -> None:
         client = self._build_client_payload(
             client_uuid=client_uuid,
             email=email,
             expiry=expiry,
-            enable=True,
+            enable=enable,
             limit_ip=limit_ip,
             flow=flow,
             sub_id=sub_id,
@@ -204,12 +254,13 @@ class XUIClient:
         flow: str = "",
         comment: str | None = None,
         sub_id: str | None = None,
+        enable: bool = True,
     ) -> None:
         client = self._build_client_payload(
             client_uuid=client_uuid,
             email=email,
             expiry=expiry,
-            enable=True,
+            enable=enable,
             limit_ip=limit_ip,
             flow=flow,
             sub_id=sub_id,

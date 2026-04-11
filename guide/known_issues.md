@@ -11,6 +11,13 @@
 - site and bot не обновятся автоматически
 - правильный admin path: менять expiry через `/ops/`
 
+### Manual 3x-ui clients in cluster mode
+
+- DB-managed subscriptions still sync one-way from app DB to nodes
+- manual clients added directly in 3x-ui do not become bot/site subscriptions automatically
+- manual clients are mirrored between nodes only from the canonical node
+- if a manual client exists only on a follower node and not on the canonical node, cluster sync may remove it from that follower
+
 ### Node can be "alive but bad for Telegram"
 
 Node может:

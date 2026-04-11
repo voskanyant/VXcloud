@@ -303,6 +303,17 @@ class DB:
         )
         return [dict(r) for r in rows]
 
+    async def list_subscription_client_identities(self) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        rows = await self.pool.fetch(
+            """
+            SELECT id, client_uuid, client_email
+            FROM subscriptions
+            ORDER BY id
+            """
+        )
+        return [dict(r) for r in rows]
+
     async def get_active_vpn_nodes(self, lb_only: bool = False) -> list[dict[str, Any]]:
         assert self.pool is not None
         where = "WHERE is_active = TRUE"

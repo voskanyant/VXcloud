@@ -50,6 +50,10 @@ Current intended node management model:
 Важно:
 - ручные изменения expiry только в 3x-ui не отражаются автоматически в site/bot
 - admin expiry нужно менять через `/ops/`, чтобы обновлялись и DB, и 3x-ui
+- cluster sync is still DB-first for managed subscriptions
+- manual clients created directly in 3x-ui are now mirrored between nodes too, but only from the canonical node
+- canonical node for manual mirroring is the first healthy LB-capable node, normally `node-1-main`
+- do not manually create clients on random follower nodes; they can be removed on the next sync if they do not exist on the canonical node
 
 ## 4. Production domains and public endpoints
 
@@ -119,6 +123,8 @@ Important operational rule:
 - changing node flags in `/ops/` does not magically reconfigure the host HAProxy process
 - after changing node flags, HAProxy config must be re-rendered and the relevant HAProxy instance must be restarted/reloaded
 - without that step, old routing behavior can continue
+- manual 3x-ui clients are now mirrored from the canonical node to follower nodes during cluster sync
+- this does not create DB subscriptions or attach those manual clients to bot/site users
 
 Safe node-add rule:
 

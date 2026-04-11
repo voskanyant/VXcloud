@@ -173,6 +173,7 @@ Expected behavior:
 
 - if `node-1-main` is enabled, VPN through client port `30940` works
 - if `node-1-main` is disabled and test HAProxy is re-rendered/restarted, VPN through `30940` stops
+- if manual clients are used in 3x-ui, create them only on the canonical node before checking cross-node sync
 
 ## 11. First node add rehearsal
 
