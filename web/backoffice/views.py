@@ -1299,6 +1299,7 @@ class VPNNodeListView(BaseListView):
 class VPNNodeCreateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, CreateView):
     model = VPNNode
     form_class = BackofficeVPNNodeForm
+    template_name = "backoffice/form.html"
     title_create = "Новая VPN нода"
 
     def get_success_url(self):
@@ -1319,6 +1320,7 @@ class VPNNodeCreateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, Cre
 class VPNNodeUpdateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, UpdateView):
     model = VPNNode
     form_class = BackofficeVPNNodeForm
+    template_name = "backoffice/form.html"
     title_update = "Редактирование VPN ноды"
 
     def get_success_url(self):
