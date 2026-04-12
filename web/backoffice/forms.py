@@ -201,6 +201,18 @@ class TicketReplyForm(BootstrapFormMixin, forms.Form):
 
 
 class BackofficeSubscriptionExpiryForm(BootstrapFormMixin, forms.Form):
+    user_id = forms.IntegerField(
+        label="User ID",
+        min_value=1,
+        required=False,
+        help_text="ID пользователя из /ops -> Пользователи. Если оставить пустым, останется текущий.",
+    )
+    display_name = forms.CharField(
+        label="Имя подписки",
+        max_length=255,
+        required=False,
+        help_text="Понятное имя для списка подписок и comment в 3x-ui.",
+    )
     expires_at = forms.DateTimeField(
         label="Дата окончания",
         required=False,
@@ -225,6 +237,15 @@ class BackofficeSubscriptionExpiryForm(BootstrapFormMixin, forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._apply_bootstrap_classes()
+
+    def clean_user_id(self) -> int | None:
+        user_id = self.cleaned_data.get("user_id")
+        if user_id in (None, ""):
+            return None
+        user_id = int(user_id)
+        if not BotUser.objects.filter(pk=user_id).exists():
+            raise ValidationError("Пользователь не найден.")
+        return user_id
 
 
 class BackofficeSubscriptionCreateForm(BootstrapFormMixin, forms.Form):

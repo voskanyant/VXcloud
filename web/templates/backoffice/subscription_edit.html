@@ -1,0 +1,102 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+
+      {% if form.non_field_errors %}
+        <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+      {% endif %}
+
+      <div class="bo-form-grid">
+        {% for field in form %}
+          <div class="bo-field {% if field.field.widget.input_type == 'checkbox' %}bo-field-checkbox{% endif %}">
+            <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
+            {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <div class="d-flex flex-wrap gap-2 mt-4">
+        <button type="submit" class="btn btn-dark">Сохранить</button>
+        <a href="{% url 'backoffice:bot_subscription_list' %}" class="btn btn-outline-secondary">Назад</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if subscription_result %}
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+        <div>
+          <h2 class="h4 mb-1">Текущий конфиг</h2>
+          <div class="text-muted">Эти данные можно открыть в любой момент с этой страницы.</div>
+        </div>
+        <div class="text-muted small">ID подписки: {{ subscription_result.subscription_id }}</div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-lg-7">
+          <dl class="row mb-3">
+            <dt class="col-sm-4">Имя подписки</dt>
+            <dd class="col-sm-8">{{ subscription_result.display_name }}</dd>
+            <dt class="col-sm-4">3x-ui name</dt>
+            <dd class="col-sm-8"><code>{{ subscription_result.client_email }}</code></dd>
+            <dt class="col-sm-4">Срок</dt>
+            <dd class="col-sm-8">{{ subscription_result.expires_at_label }}</dd>
+          </dl>
+
+          <label for="current-vless-url" class="form-label fw-semibold">VLESS ссылка</label>
+          <textarea id="current-vless-url" class="form-control font-monospace" rows="7" readonly>{{ subscription_result.vless_url }}</textarea>
+          <div class="d-flex flex-wrap gap-2 mt-3">
+            <button type="button" class="btn btn-dark" id="copy-vless-link" data-copy-target="current-vless-url">Скопировать ссылку</button>
+            <span class="align-self-center text-muted small" id="copy-vless-status"></span>
+          </div>
+        </div>
+
+        <div class="col-lg-5">
+          <div class="border rounded-4 p-3 text-center bg-light-subtle h-100 d-flex flex-column justify-content-center">
+            <div class="fw-semibold mb-3">QR код</div>
+            {% if subscription_result.qr_image_data_url %}
+              <img
+                src="{{ subscription_result.qr_image_data_url }}"
+                alt="QR code for current VLESS link"
+                class="img-fluid rounded bg-white p-2 border mx-auto"
+                style="max-width: 320px;"
+              >
+            {% else %}
+              <div class="text-muted">QR код недоступен</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (() => {
+    const copyButton = document.getElementById("copy-vless-link");
+    const statusNode = document.getElementById("copy-vless-status");
+    if (!copyButton) return;
+
+    copyButton.addEventListener("click", async () => {
+      const target = document.getElementById(copyButton.dataset.copyTarget);
+      if (!target) return;
+      try {
+        await navigator.clipboard.writeText(target.value || target.textContent || "");
+        if (statusNode) statusNode.textContent = "Ссылка скопирована";
+      } catch (error) {
+        if (statusNode) statusNode.textContent = "Не удалось скопировать автоматически";
+      }
+    });
+  })();
+</script>
+{% endblock %}

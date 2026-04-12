@@ -271,6 +271,18 @@ def build_qr_data_url(text: str) -> str:
     return f"data:image/png;base64,{base64.b64encode(buff.getvalue()).decode('ascii')}"
 
 
+def build_subscription_result(subscription: BotSubscription) -> dict[str, Any]:
+    vless_url = str(getattr(subscription, "vless_url", "") or "")
+    return {
+        "subscription_id": int(getattr(subscription, "id", 0) or 0),
+        "display_name": str(getattr(subscription, "display_name", "") or ""),
+        "client_email": str(getattr(subscription, "client_email", "") or ""),
+        "expires_at_label": format_subscription_expires_at(getattr(subscription, "expires_at", None)),
+        "vless_url": vless_url,
+        "qr_image_data_url": build_qr_data_url(vless_url) if vless_url else "",
+    }
+
+
 def status_badge(text: str, tone: str = "secondary") -> str:
     return format_html('<span class="badge text-bg-{} bo-badge">{}</span>', tone, text)
 
@@ -687,6 +699,7 @@ async def _push_subscription_expiry_to_xui(
                 enable=desired_enabled,
                 limit_ip=limit_ip,
                 flow=flow,
+                comment=str(getattr(subscription, "display_name", "") or getattr(subscription, "client_email", "") or ""),
             )
         except Exception as exc:
             errors.append(f"{label}: {exc}")
@@ -1356,15 +1369,7 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
         return BackofficeSubscriptionCreateForm(initial={"expires_at": ""})
 
     def _build_created_result(self, subscription: BotSubscription) -> dict[str, Any]:
-        vless_url = str(getattr(subscription, "vless_url", "") or "")
-        return {
-            "subscription_id": int(getattr(subscription, "id", 0) or 0),
-            "display_name": str(getattr(subscription, "display_name", "") or ""),
-            "client_email": str(getattr(subscription, "client_email", "") or ""),
-            "expires_at_label": format_subscription_expires_at(getattr(subscription, "expires_at", None)),
-            "vless_url": vless_url,
-            "qr_image_data_url": build_qr_data_url(vless_url) if vless_url else "",
-        }
+        return build_subscription_result(subscription)
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
@@ -1577,7 +1582,7 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
         return redirect("backoffice:bot_subscription_create")
 
 class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
-    template_name = "backoffice/form.html"
+    template_name = "backoffice/subscription_edit.html"
 
     def _subscription(self) -> BotSubscription:
         return get_object_or_404(BotSubscription.objects.select_related("user"), pk=self.kwargs["pk"])
@@ -1585,8 +1590,14 @@ class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
     def _initial(self, subscription: BotSubscription) -> dict[str, Any]:
         current = getattr(subscription, "expires_at", None) or timezone.now()
         if is_no_expiry(current):
-            return {"expires_at": ""}
-        return {"expires_at": timezone.localtime(current).strftime("%d/%m/%Y %H:%M")}
+            expires_at = ""
+        else:
+            expires_at = timezone.localtime(current).strftime("%d/%m/%Y %H:%M")
+        return {
+            "user_id": getattr(subscription, "user_id", None),
+            "display_name": getattr(subscription, "display_name", "") or "",
+            "expires_at": expires_at,
+        }
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
@@ -1595,6 +1606,7 @@ class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
         title_name = subscription.display_name or subscription.client_email or f"#{subscription.id}"
         ctx["title"] = f"Изменить срок: {title_name}"
         ctx["form"] = form
+        ctx["subscription_result"] = build_subscription_result(subscription)
         return ctx
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
@@ -1603,6 +1615,8 @@ class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
         if not form.is_valid():
             return self.render_to_response(self.get_context_data(form=form))
 
+        new_user_id = int(form.cleaned_data["user_id"] or getattr(subscription, "user_id", 0) or 0)
+        new_display_name = str(form.cleaned_data["display_name"] or getattr(subscription, "display_name", "") or "").strip()
         expires_at = form.cleaned_data["expires_at"]
         if expires_at is None:
             expires_at = NO_EXPIRY_SENTINEL
@@ -1613,10 +1627,12 @@ class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
         should_be_active = bool(expires_at > change_time and getattr(subscription, "revoked_at", None) is None)
 
         with transaction.atomic():
+            subscription.user_id = new_user_id
+            subscription.display_name = new_display_name or str(getattr(subscription, "client_email", "") or "")
             subscription.expires_at = expires_at
             subscription.is_active = should_be_active
             subscription.updated_at = change_time
-            subscription.save(update_fields=["expires_at", "is_active", "updated_at"])
+            subscription.save(update_fields=["user_id", "display_name", "expires_at", "is_active", "updated_at"])
             _update_node_client_sync_state(
                 subscription.id,
                 desired_enabled=should_be_active,
@@ -1646,7 +1662,7 @@ class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
                 request,
                 "Срок обновлён в базе, но отправка изменения в 3x-ui завершилась ошибкой. Проверьте ноды вручную.",
             )
-            return redirect("backoffice:bot_subscription_list")
+            return redirect("backoffice:bot_subscription_expiry_update", pk=subscription.id)
         if errors:
             _update_node_client_sync_state(
                 subscription.id,
@@ -1667,7 +1683,7 @@ class BotSubscriptionExpiryUpdateView(StaffRequiredMixin, TemplateView):
                 updated_at=synced_at,
             )
             messages.success(request, "Срок подписки обновлён в базе и 3x-ui.")
-        return redirect("backoffice:bot_subscription_list")
+        return redirect("backoffice:bot_subscription_expiry_update", pk=subscription.id)
 
 
 class BotSubscriptionDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteView):
