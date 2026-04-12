@@ -25,7 +25,35 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory
 from django.utils import timezone
 
+from cabinet.models import BotUser
 from backoffice.views import BotSubscriptionCreateView, _create_subscription_on_xui, _run_async_from_sync
+
+
+class _FakeBotUserQuerySet:
+    model = BotUser
+
+    def __init__(self, user):
+        self.user = user
+
+    def get(self, **kwargs):
+        lookup_value = kwargs.get("pk")
+        if lookup_value is None:
+            lookup_value = kwargs.get("id")
+        if int(lookup_value) != int(self.user.id):
+            raise LookupError("bot user not found")
+        return self.user
+
+    def all(self):
+        return self
+
+    def __iter__(self):
+        return iter([self.user])
+
+    def iterator(self):
+        return iter([self.user])
+
+    def count(self):
+        return 1
 
 
 class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
@@ -61,7 +89,9 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         return request
 
     def test_create_view_get_renders_form(self):
-        response = BotSubscriptionCreateView.as_view()(self._build_get_request())
+        fake_user = SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001")
+        with patch("backoffice.forms.BotUser.objects.order_by", return_value=_FakeBotUserQuerySet(fake_user)):
+            response = BotSubscriptionCreateView.as_view()(self._build_get_request())
         self.assertEqual(response.status_code, 200)
 
     def test_create_subscription_from_ops_single_node(self):
@@ -78,13 +108,10 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
             ),
         }
         provision_mock = AsyncMock(return_value=[{"node_id": 0, "ok": True, "xui_sub_id": "sub-ops-001"}])
+        fake_user = SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001")
 
         with (
-            patch("backoffice.forms.BotUser.objects.filter") as user_filter_mock,
-            patch(
-                "backoffice.views.get_object_or_404",
-                return_value=SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001"),
-            ),
+            patch("backoffice.forms.BotUser.objects.order_by", return_value=_FakeBotUserQuerySet(fake_user)),
             patch("backoffice.views._load_subscription_runtime", new=AsyncMock(return_value=runtime)),
             patch("backoffice.views._create_subscription_on_xui", new=provision_mock),
             patch("backoffice.views.env_value", side_effect=lambda name, default="": {
@@ -96,7 +123,6 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
             patch("backoffice.views.bool_env", return_value=False),
             patch("backoffice.views.BotSubscription.save", new=MagicMock()),
         ):
-            user_filter_mock.return_value.exists.return_value = True
             response = BotSubscriptionCreateView.as_view()(
                 self._build_request(user_id=1, display_name="my VPN", expires_at=expires_at)
             )
@@ -122,13 +148,10 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         provision_mock = AsyncMock(return_value=[{"node_id": 10, "ok": True, "xui_sub_id": "sub-ops-001"}])
         filter_mock = MagicMock()
         filter_mock.first.side_effect = RuntimeError("vpn_node_clients write failed")
+        fake_user = SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001")
 
         with (
-            patch("backoffice.forms.BotUser.objects.filter") as user_filter_mock,
-            patch(
-                "backoffice.views.get_object_or_404",
-                return_value=SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001"),
-            ),
+            patch("backoffice.forms.BotUser.objects.order_by", return_value=_FakeBotUserQuerySet(fake_user)),
             patch("backoffice.views._load_subscription_runtime", new=AsyncMock(return_value=runtime)),
             patch("backoffice.views._create_subscription_on_xui", new=provision_mock),
             patch("backoffice.views._active_vpn_nodes_snapshot", return_value=cluster_nodes),
@@ -145,7 +168,6 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
             patch("backoffice.views.bool_env", side_effect=lambda name, default=False: True if name == "VPN_CLUSTER_ENABLED" else default),
             patch("backoffice.views.BotSubscription.save", new=MagicMock()),
         ):
-            user_filter_mock.return_value.exists.return_value = True
             response = BotSubscriptionCreateView.as_view()(
                 self._build_request(user_id=1, display_name="my VPN", expires_at=expires_at)
             )
@@ -165,6 +187,7 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         }
         provision_mock = AsyncMock(return_value=[{"node_id": 0, "ok": True, "xui_sub_id": "sub-ops-001"}])
         saved_objects: list[SimpleNamespace] = []
+        fake_user = SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001")
 
         def fake_save(instance, *args, **kwargs):
             if getattr(instance, "id", None) in (None, 0):
@@ -177,11 +200,7 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
             )
 
         with (
-            patch("backoffice.forms.BotUser.objects.filter") as user_filter_mock,
-            patch(
-                "backoffice.views.get_object_or_404",
-                return_value=SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001"),
-            ),
+            patch("backoffice.forms.BotUser.objects.order_by", return_value=_FakeBotUserQuerySet(fake_user)),
             patch("backoffice.views._load_subscription_runtime", new=AsyncMock(return_value=runtime)),
             patch("backoffice.views._create_subscription_on_xui", new=provision_mock),
             patch("backoffice.views.env_value", side_effect=lambda name, default="": {
@@ -194,7 +213,6 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
             patch("backoffice.views.BotSubscription.save", new=fake_save),
             patch("backoffice.views.BotSubscription.objects.get") as subscription_get_mock,
         ):
-            user_filter_mock.return_value.exists.return_value = True
             subscription_get_mock.return_value = SimpleNamespace(
                 id=501,
                 display_name="my VPN",

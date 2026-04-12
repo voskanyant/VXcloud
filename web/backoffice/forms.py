@@ -43,6 +43,24 @@ class BootstrapFormMixin:
                 widget.input_type = "datetime-local"
 
 
+def _bot_user_display_name(user: BotUser) -> str:
+    first_name = str(getattr(user, "first_name", "") or "").strip()
+    username = str(getattr(user, "username", "") or "").strip()
+    client_code = str(getattr(user, "client_code", "") or "").strip()
+    primary = first_name or username or client_code or f"User #{int(user.id)}"
+    details: list[str] = [f"ID {int(user.id)}"]
+    if username and username != primary:
+        details.append(f"@{username}")
+    if client_code and client_code != primary:
+        details.append(client_code)
+    return f"{primary} ({', '.join(details)})"
+
+
+class BotUserChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj: BotUser) -> str:
+        return _bot_user_display_name(obj)
+
+
 class BackofficePostForm(BootstrapFormMixin, forms.ModelForm):
     published_at = forms.DateTimeField(
         required=False,
@@ -249,10 +267,11 @@ class BackofficeSubscriptionExpiryForm(BootstrapFormMixin, forms.Form):
 
 
 class BackofficeSubscriptionCreateForm(BootstrapFormMixin, forms.Form):
-    user_id = forms.IntegerField(
-        label="User ID",
-        min_value=1,
-        help_text="ID пользователя из /ops -> Пользователи.",
+    user_id = BotUserChoiceField(
+        label="Пользователь",
+        queryset=BotUser.objects.none(),
+        empty_label=None,
+        help_text="Выберите пользователя по имени. Поиск работает прямо в списке.",
     )
     display_name = forms.CharField(
         label="Имя подписки",
@@ -282,13 +301,15 @@ class BackofficeSubscriptionCreateForm(BootstrapFormMixin, forms.Form):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["user_id"].queryset = BotUser.objects.order_by("first_name", "username", "id")
+        self.fields["user_id"].widget.attrs["data-searchable-select"] = "bot-user"
         self._apply_bootstrap_classes()
 
-    def clean_user_id(self) -> int:
-        user_id = int(self.cleaned_data["user_id"])
-        if not BotUser.objects.filter(pk=user_id).exists():
+    def clean_user_id(self) -> BotUser:
+        user = self.cleaned_data["user_id"]
+        if user is None:
             raise ValidationError("Пользователь не найден.")
-        return user_id
+        return user
 
 
 class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):

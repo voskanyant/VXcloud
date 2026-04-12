@@ -14,6 +14,15 @@
         {% for field in form %}
           <div class="bo-field {% if field.field.widget.input_type == 'checkbox' %}bo-field-checkbox{% endif %}">
             <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+            {% if field.name == "user_id" %}
+              <input
+                type="text"
+                class="form-control mb-2"
+                id="bot-user-search"
+                placeholder="Поиск по имени, username, client code или ID"
+                autocomplete="off"
+              >
+            {% endif %}
             {{ field }}
             {% if field.help_text %}<div class="form-text">{{ field.help_text|safe }}</div>{% endif %}
             {% if field.errors %}<div class="invalid-feedback d-block">{{ field.errors|striptags }}</div>{% endif %}
@@ -99,6 +108,36 @@
         if (statusNode) statusNode.textContent = "Не удалось скопировать автоматически";
       }
     });
+  })();
+
+  (() => {
+    const searchInput = document.getElementById("bot-user-search");
+    const select = document.querySelector('select[data-searchable-select="bot-user"]');
+    if (!searchInput || !select) return;
+
+    const options = Array.from(select.options).map((option) => ({
+      option,
+      text: (option.textContent || "").toLowerCase(),
+    }));
+
+    const applyFilter = () => {
+      const query = (searchInput.value || "").trim().toLowerCase();
+      let visibleCount = 0;
+      for (const item of options) {
+        const visible = !query || item.text.includes(query);
+        item.option.hidden = !visible;
+        if (visible) visibleCount += 1;
+      }
+      if (visibleCount > 0) {
+        const selectedVisible = !select.selectedOptions.length || !select.selectedOptions[0].hidden;
+        if (!selectedVisible) {
+          const firstVisible = options.find((item) => !item.option.hidden);
+          if (firstVisible) select.value = firstVisible.option.value;
+        }
+      }
+    };
+
+    searchInput.addEventListener("input", applyFilter);
   })();
 </script>
 {% endblock %}

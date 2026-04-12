@@ -1436,13 +1436,14 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
         except Exception as exc:
             LOGGER.exception(
                 "backoffice_subscription_create_failed",
-                extra={"user_id": int(form.cleaned_data.get("user_id", 0) or 0)},
+                extra={"user_id": int(getattr(form.cleaned_data.get("user_id"), "id", 0) or 0)},
             )
             form.add_error(None, f"Не удалось создать подписку: {exc}")
             return self.render_to_response(self.get_context_data(form=form))
 
     def _post_impl(self, request: HttpRequest, form: BackofficeSubscriptionCreateForm) -> HttpResponse:
-        user_id = int(form.cleaned_data["user_id"])
+        user = form.cleaned_data["user_id"]
+        user_id = int(user.id)
         display_name = str(form.cleaned_data["display_name"]).strip()
         expires_at = form.cleaned_data["expires_at"]
         infinite_expiry = expires_at is None
@@ -1456,7 +1457,6 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
         should_be_active = True if infinite_expiry else expires_at > now
         cluster_nodes = _active_vpn_nodes_snapshot() if bool_env("VPN_CLUSTER_ENABLED", False) else None
 
-        user = get_object_or_404(BotUser, pk=user_id)
         client_uuid = str(uuid.uuid4())
         client_email = build_xui_client_name(
             user_id=user_id,
