@@ -408,6 +408,10 @@ def int_env(name: str, default: int) -> int:
         return int(default)
 
 
+def backoffice_limit_ip() -> int:
+    return int_env("BACKOFFICE_MAX_DEVICES_PER_SUB", 0)
+
+
 def _active_vpn_nodes_snapshot() -> list[dict[str, Any]]:
     try:
         rows = list(
@@ -490,7 +494,7 @@ async def _create_subscription_on_xui(
     cluster_nodes: list[dict[str, Any]] | None = None,
     xui_sub_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    limit_ip = int_env("MAX_DEVICES_PER_SUB", 1)
+    limit_ip = backoffice_limit_ip()
     flow = env_value("VPN_FLOW", "xtls-rprx-vision")
     results: list[dict[str, Any]] = []
 
@@ -680,7 +684,7 @@ async def _push_subscription_expiry_to_xui(
         and expires_at > timezone.now()
         and getattr(subscription, "revoked_at", None) is None
     )
-    limit_ip = int_env("MAX_DEVICES_PER_SUB", 1)
+    limit_ip = backoffice_limit_ip()
     flow = env_value("VPN_FLOW", "xtls-rprx-vision")
     errors: list[str] = []
 
@@ -760,7 +764,7 @@ async def _delete_subscription_from_xui(
     *,
     cluster_nodes: list[dict[str, Any]] | None = None,
 ) -> list[str]:
-    limit_ip = int_env("MAX_DEVICES_PER_SUB", 1)
+    limit_ip = backoffice_limit_ip()
     flow = env_value("VPN_FLOW", "xtls-rprx-vision")
     errors: list[str] = []
 

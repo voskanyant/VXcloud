@@ -23,7 +23,7 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory
 from django.utils import timezone
 
-from backoffice.views import BotSubscriptionExpiryUpdateView
+from backoffice.views import BotSubscriptionExpiryUpdateView, _push_subscription_expiry_to_xui, _run_async_from_sync
 
 
 class BackofficeSubscriptionExpiryUpdateUnitTests(unittest.TestCase):
@@ -236,6 +236,46 @@ class BackofficeSubscriptionExpiryUpdateUnitTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 302)
         subscription.save.assert_called_once()
+
+    def test_ops_expiry_push_uses_backoffice_ip_limit_default_zero(self):
+        current = timezone.now()
+        subscription = SimpleNamespace(
+            id=62,
+            display_name="Backoffice no-ip-limit",
+            client_uuid="11111111-1111-1111-1111-111111111111",
+            client_email="ops-no-limit@example.com",
+            inbound_id=1,
+            expires_at=current,
+            is_active=True,
+            revoked_at=None,
+        )
+        xui = MagicMock()
+        xui.start = AsyncMock()
+        xui.set_client_enabled = AsyncMock()
+        xui.close = AsyncMock()
+
+        def _fake_env_value(name: str, default: str = "") -> str:
+            values = {
+                "XUI_BASE_URL": "https://panel.local",
+                "XUI_USERNAME": "user",
+                "XUI_PASSWORD": "pass",
+                "VPN_FLOW": "xtls-rprx-vision",
+            }
+            return values.get(name, default)
+
+        with (
+            patch("backoffice.views.bool_env", return_value=False),
+            patch("backoffice.views.env_value", side_effect=_fake_env_value),
+            patch(
+                "backoffice.views.int_env",
+                side_effect=lambda name, default: 1 if name == "XUI_INBOUND_ID" else 0 if name == "BACKOFFICE_MAX_DEVICES_PER_SUB" else default,
+            ),
+            patch("backoffice.views.XUIClient", return_value=xui),
+        ):
+            errors = _run_async_from_sync(_push_subscription_expiry_to_xui(subscription, current))
+
+        self.assertEqual(errors, [])
+        self.assertEqual(xui.set_client_enabled.await_args.kwargs["limit_ip"], 0)
 
 
 if __name__ == "__main__":

@@ -25,7 +25,7 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory
 from django.utils import timezone
 
-from backoffice.views import BotSubscriptionCreateView
+from backoffice.views import BotSubscriptionCreateView, _create_subscription_on_xui, _run_async_from_sync
 
 
 class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
@@ -212,6 +212,44 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         self.assertTrue(saved_objects)
         self.assertEqual(saved_objects[0].expires_at, NO_EXPIRY_SENTINEL)
         self.assertTrue(saved_objects[0].is_active)
+
+    def test_ops_create_uses_backoffice_ip_limit_default_zero(self):
+        xui = MagicMock()
+        xui.start = AsyncMock()
+        xui.add_client = AsyncMock()
+        xui.get_client_sub_id = AsyncMock(return_value="sub-ops-001")
+        xui.close = AsyncMock()
+
+        def _fake_env_value(name: str, default: str = "") -> str:
+            values = {
+                "XUI_BASE_URL": "https://panel.local",
+                "XUI_USERNAME": "user",
+                "XUI_PASSWORD": "pass",
+                "VPN_FLOW": "xtls-rprx-vision",
+            }
+            return values.get(name, default)
+
+        with (
+            patch("backoffice.views.bool_env", return_value=False),
+            patch("backoffice.views.env_value", side_effect=_fake_env_value),
+            patch(
+                "backoffice.views.int_env",
+                side_effect=lambda name, default: 1 if name == "XUI_INBOUND_ID" else 0 if name == "BACKOFFICE_MAX_DEVICES_PER_SUB" else default,
+            ),
+            patch("backoffice.views.XUIClient", return_value=xui),
+        ):
+            results = _run_async_from_sync(
+                _create_subscription_on_xui(
+                    client_uuid="11111111-1111-1111-1111-111111111111",
+                    client_email="ops@example.com",
+                    display_name="ops-created",
+                    expires_at=timezone.now(),
+                    enabled=True,
+                )
+            )
+
+        self.assertEqual(results[0]["ok"], True)
+        self.assertEqual(xui.add_client.await_args.kwargs["limit_ip"], 0)
 
 
 if __name__ == "__main__":
