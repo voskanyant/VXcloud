@@ -65,7 +65,7 @@ class HAProxyRenderUnitTests(unittest.TestCase):
 
         backend_block = renderer._render_backend_servers(nodes, send_proxy=True)
 
-        self.assertIn("server node_1_de-1 10.10.0.11:29940 check weight 120 send-proxy", backend_block)
+        self.assertIn("server node_1_de-1 10.10.0.11:29940 check weight 120 send-proxy check-send-proxy", backend_block)
 
     def test_reality_filter_keeps_majority_signature_group(self):
         renderer = _load_renderer_module()

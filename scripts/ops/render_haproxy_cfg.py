@@ -88,7 +88,7 @@ def _filter_nodes_with_matching_reality(nodes: list[dict[str, Any]]) -> list[dic
 
 def _render_backend_servers(nodes: list[dict[str, Any]], *, send_proxy: bool = False) -> str:
     lines: list[str] = []
-    server_suffix = " send-proxy" if send_proxy else ""
+    server_suffix = " send-proxy check-send-proxy" if send_proxy else ""
     for node in nodes:
         node_id = int(node["id"])
         server_name = _clean_server_name(node_id, str(node.get("name") or "node"))
