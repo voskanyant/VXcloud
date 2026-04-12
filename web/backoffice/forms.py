@@ -2,6 +2,7 @@
 
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
 from blog.models import Category, Page, Post, PostType, SiteText
@@ -211,6 +212,63 @@ class TicketReplyForm(BootstrapFormMixin, forms.Form):
         required=False,
         initial=False,
         label="Закрыть тикет после отправки",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_bootstrap_classes()
+
+
+class BackofficeUserCreateForm(BootstrapFormMixin, forms.Form):
+    username = forms.CharField(
+        label="Логин",
+        max_length=150,
+        help_text="Используется для входа на сайт. Проверяется без учёта регистра.",
+    )
+    first_name = forms.CharField(
+        label="Имя",
+        max_length=150,
+        required=False,
+        help_text="Человеческое имя для /ops и списка подписок.",
+    )
+    email = forms.EmailField(
+        label="Email",
+        required=False,
+        help_text="Необязательно. Нужен только если хотите хранить email в аккаунте сайта.",
+    )
+    password = forms.CharField(
+        label="Пароль",
+        required=False,
+        widget=forms.PasswordInput(render_value=True),
+        help_text="Оставьте пустым, чтобы сгенерировать пароль автоматически.",
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._apply_bootstrap_classes()
+
+    def clean_username(self):
+        username = (self.cleaned_data.get("username") or "").strip()
+        if User.objects.filter(username__iexact=username).exists():
+            raise ValidationError("Пользователь с таким логином уже существует")
+        return username
+
+    def clean_email(self):
+        email = (self.cleaned_data.get("email") or "").strip().lower()
+        if email and User.objects.filter(email__iexact=email).exists():
+            raise ValidationError("Пользователь с таким email уже существует")
+        return email
+
+    def clean_first_name(self):
+        return (self.cleaned_data.get("first_name") or "").strip()
+
+
+class BackofficeUserPasswordResetForm(BootstrapFormMixin, forms.Form):
+    password = forms.CharField(
+        label="Новый пароль",
+        required=False,
+        widget=forms.PasswordInput(render_value=True),
+        help_text="Оставьте пустым, чтобы сгенерировать пароль автоматически.",
     )
 
     def __init__(self, *args, **kwargs):

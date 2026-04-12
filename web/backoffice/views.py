@@ -28,6 +28,7 @@ from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse, reverse_lazy
+from django.utils.crypto import get_random_string
 from django.utils import timezone
 from django.utils.html import format_html
 from django.views.generic import CreateView, DeleteView, ListView, TemplateView, UpdateView
@@ -64,6 +65,8 @@ from .forms import (
     BackofficePageForm,
     BackofficeSubscriptionCreateForm,
     BackofficeSubscriptionExpiryForm,
+    BackofficeUserCreateForm,
+    BackofficeUserPasswordResetForm,
     BackofficeVPNNodeForm,
     BackofficePostForm,
     BackofficePostTypeForm,
@@ -240,6 +243,10 @@ def safe_get(queryset_callable, fallback):
         return queryset_callable()
     except (OperationalError, ProgrammingError):
         return fallback
+
+
+def generate_admin_password(length: int = 16) -> str:
+    return get_random_string(length, allowed_chars="abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789")
 
 
 def format_cell(value: Any) -> Any:
@@ -1200,10 +1207,12 @@ class SiteTextListView(BaseListView):
 
 
 class BotUserListView(BaseListView):
+    template_name = "backoffice/bot_user_list.html"
     model = BotUser
     title = "Пользователи"
     subtitle = "Единая база bot users и site-only placeholder accounts."
     readonly = False
+    add_url_name = "backoffice:bot_user_create"
     delete_url_name = "backoffice:bot_user_delete"
     columns = [
         ("id", "ID"),
@@ -1232,6 +1241,10 @@ class BotUserListView(BaseListView):
             int(link.telegram_id): (getattr(link.user, "email", "") or "")
             for link in LinkedAccount.objects.select_related("user").filter(telegram_id__in=telegram_ids)
         }
+        linked_auth_user_ids = {
+            int(link.telegram_id): int(link.user_id)
+            for link in LinkedAccount.objects.filter(telegram_id__in=telegram_ids).only("telegram_id", "user_id")
+        }
         site_emails = {
             int(user.id): (user.email or "")
             for user in User.objects.filter(id__in=site_user_ids).only("id", "email")
@@ -1243,9 +1256,13 @@ class BotUserListView(BaseListView):
             email = ""
             if telegram_id > 0:
                 email = linked_emails.get(telegram_id, "")
+                auth_user_id = linked_auth_user_ids.get(telegram_id)
             elif abs(telegram_id) > WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET:
                 site_user_id = abs(telegram_id) - WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET
                 email = site_emails.get(int(site_user_id), "")
+                auth_user_id = int(site_user_id)
+            else:
+                auth_user_id = None
             rows.append(
                 {
                     "obj": item,
@@ -1259,9 +1276,95 @@ class BotUserListView(BaseListView):
                         item.first_name or "",
                         format_cell(item.created_at),
                     ],
+                    "password_url": reverse("backoffice:bot_user_password_reset", args=[item.pk]) if auth_user_id else None,
                 }
             )
         return rows
+
+
+def _site_auth_user_for_bot_user(bot_user: BotUser) -> User | None:
+    telegram_id = int(getattr(bot_user, "telegram_id", 0) or 0)
+    if telegram_id < 0 and abs(telegram_id) > WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET:
+        site_user_id = int(abs(telegram_id) - WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET)
+        return User.objects.filter(id=site_user_id).first()
+    if telegram_id > 0:
+        linked = LinkedAccount.objects.select_related("user").filter(telegram_id=telegram_id).first()
+        if linked is not None:
+            return linked.user
+    return None
+
+
+class BotUserCreateView(LegacyContentContextMixin, StaffRequiredMixin, TemplateView):
+    template_name = "backoffice/form.html"
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = "Новый пользователь"
+        ctx["subtitle"] = "Создание site-only аккаунта сайта и placeholder пользователя в /ops."
+        ctx["form"] = kwargs.get("form") or BackofficeUserCreateForm()
+        return self.add_wordpress_context(ctx)
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        form = BackofficeUserCreateForm(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+
+        username = form.cleaned_data["username"]
+        first_name = form.cleaned_data["first_name"]
+        email = form.cleaned_data["email"]
+        password = form.cleaned_data["password"] or generate_admin_password()
+
+        with transaction.atomic():
+            auth_user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=password,
+                first_name=first_name,
+            )
+            bot_user = BotUser.objects.create(
+                telegram_id=-(WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET + int(auth_user.id)),
+                client_code="",
+                username=username,
+                first_name=first_name or username,
+                created_at=timezone.now(),
+            )
+            if not getattr(bot_user, "client_code", ""):
+                bot_user.client_code = f"VX-{int(bot_user.id):06d}"
+                bot_user.save(update_fields=["client_code"])
+
+        messages.success(request, f"Пользователь создан. Логин: {username}. Пароль: {password}")
+        return redirect("backoffice:bot_user_list")
+
+
+class BotUserPasswordResetView(LegacyContentContextMixin, StaffRequiredMixin, TemplateView):
+    template_name = "backoffice/form.html"
+
+    def dispatch(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        self.object = get_object_or_404(BotUser, pk=kwargs["pk"])
+        self.auth_user = _site_auth_user_for_bot_user(self.object)
+        if self.auth_user is None:
+            messages.error(request, "У пользователя нет связанного аккаунта сайта, пароль менять некуда.")
+            return redirect("backoffice:bot_user_list")
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        display_name = str(getattr(self.object, "first_name", "") or getattr(self.object, "username", "") or self.auth_user.username)
+        ctx["title"] = f"Смена пароля: {display_name}"
+        ctx["subtitle"] = f"Логин: {self.auth_user.username}"
+        ctx["form"] = kwargs.get("form") or BackofficeUserPasswordResetForm()
+        return self.add_wordpress_context(ctx)
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        form = BackofficeUserPasswordResetForm(request.POST)
+        if not form.is_valid():
+            return self.render_to_response(self.get_context_data(form=form))
+
+        password = form.cleaned_data["password"] or generate_admin_password()
+        self.auth_user.set_password(password)
+        self.auth_user.save(update_fields=["password"])
+        messages.success(request, f"Пароль обновлён для {self.auth_user.username}. Новый пароль: {password}")
+        return redirect("backoffice:bot_user_list")
 
 
 class BotUserDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteView):
