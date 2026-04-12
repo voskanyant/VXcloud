@@ -57,6 +57,16 @@ class HAProxyRenderUnitTests(unittest.TestCase):
         backend_block = renderer._render_backend_servers([])
         self.assertIn("server cluster_empty 127.0.0.1:65535 disabled", backend_block)
 
+    def test_backend_servers_render_with_send_proxy_when_enabled(self):
+        renderer = _load_renderer_module()
+        nodes = [
+            {"id": 1, "name": "DE-1", "backend_host": "10.10.0.11", "backend_port": 29940, "backend_weight": 120},
+        ]
+
+        backend_block = renderer._render_backend_servers(nodes, send_proxy=True)
+
+        self.assertIn("server node_1_de-1 10.10.0.11:29940 check weight 120 send-proxy", backend_block)
+
     def test_reality_filter_keeps_majority_signature_group(self):
         renderer = _load_renderer_module()
         nodes = [

@@ -27,6 +27,11 @@ def _env_int(name: str, fallback: int) -> int:
     return int(raw)
 
 
+def _env_bool(name: str, fallback: bool = False) -> bool:
+    raw = (os.getenv(name, "1" if fallback else "0") or "").strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
 def _clean_server_name(node_id: int, raw_name: str) -> str:
     slug = re.sub(r"[^a-zA-Z0-9_-]+", "-", (raw_name or "").strip().lower()).strip("-_")
     if not slug:
@@ -81,8 +86,9 @@ def _filter_nodes_with_matching_reality(nodes: list[dict[str, Any]]) -> list[dic
     return [node for node in nodes if _reality_signature(node) == baseline]
 
 
-def _render_backend_servers(nodes: list[dict[str, Any]]) -> str:
+def _render_backend_servers(nodes: list[dict[str, Any]], *, send_proxy: bool = False) -> str:
     lines: list[str] = []
+    server_suffix = " send-proxy" if send_proxy else ""
     for node in nodes:
         node_id = int(node["id"])
         server_name = _clean_server_name(node_id, str(node.get("name") or "node"))
@@ -90,7 +96,7 @@ def _render_backend_servers(nodes: list[dict[str, Any]]) -> str:
         backend_port = int(node["backend_port"])
         backend_weight = max(1, int(node.get("backend_weight") or 100))
         lines.append(
-            f"  server {server_name} {backend_host}:{backend_port} check weight {backend_weight}"
+            f"  server {server_name} {backend_host}:{backend_port} check weight {backend_weight}{server_suffix}"
         )
 
     if not lines:
@@ -181,7 +187,10 @@ def main() -> int:
 
     nodes = _load_healthy_lb_nodes(database_url)
     nodes = _filter_nodes_with_matching_reality(nodes)
-    backend_servers = _render_backend_servers(nodes)
+    backend_servers = _render_backend_servers(
+        nodes,
+        send_proxy=_env_bool("HAPROXY_BACKEND_SEND_PROXY", False),
+    )
     rendered = _render_config(
         template_path=template_path,
         frontend_bind_addr=frontend_bind_addr,
