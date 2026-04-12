@@ -45,7 +45,7 @@ curl -I http://127.0.0.1:8088/account/
 Проверка Xray/3x-ui ноды:
 
 ```bash
-ss -ltnp | grep 29940
+ss -ltnp | grep 29941
 sudo tail -n 100 /usr/local/x-ui/access.log
 ```
 
@@ -64,6 +64,22 @@ docker compose --env-file .env exec -T web python /app/scripts/ops/render_haprox
 sudo pkill -f "/tmp/haproxy-vpn-test.cfg" || true
 sudo haproxy -f /tmp/haproxy-vpn-test.cfg -p /tmp/haproxy-vpn-test.pid -D
 ```
+
+Current production HAProxy checks:
+
+```bash
+cd /srv/apps/vxcloud/app
+docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --frontend-port 29940 --dry-run > /tmp/haproxy-prod-cutover.cfg
+grep -n "server " /tmp/haproxy-prod-cutover.cfg
+sudo grep -n "server " /etc/haproxy/haproxy.cfg
+sudo journalctl -u haproxy --since "5 minutes ago" --no-pager | tail -n 40
+```
+
+Expected production backend line:
+
+- `server node_10_node-1-main 82.21.117.154:29941 check weight 100`
+- no `send-proxy`
+- no `check-send-proxy`
 
 Быстрые operational reminders:
 
@@ -110,6 +126,7 @@ chmod +x scripts/ops/deploy-auto.sh
 - уже существующие активные TCP-сессии на этом узле могут оборваться
 - HAProxy не переносит уже установленную VPN-сессию на другой node
 - изменение флагов ноды в `/ops/` само по себе не меняет уже запущенный HAProxy; нужен отдельный render/restart or reload step
+- после production cutover не искать Xray на `29940`; теперь его backend должен слушать `29941`
 
 ## 3. Сценарий: node жив, но Telegram не работает
 
@@ -317,7 +334,8 @@ git rev-parse HEAD
 - быстрый способ выключить `lb_enabled` у плохого node
 - проверенный HAProxy reload path
 - понимание, что main server можно временно оставить только control plane, отключив его VPN-роль через `/ops/`
-- понимание, что текущий production `29940` всё ещё direct Xray path, а уже доказанный HAProxy-controlled test path сейчас `30940`
+- понимание, что production `29940` уже HAProxy path, а Xray backend живёт на `29941`
+- понимание, что Xray access log сейчас не показывает реальный client IP после HAProxy cutover
 
 ## 10. Минимальный emergency checklist
 

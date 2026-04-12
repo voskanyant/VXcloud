@@ -65,6 +65,7 @@ Current intended node management model:
 VPN/public ports:
 
 - main VPN public port: `29940`
+- current public production flow: `client -> HAProxy:29940 -> Xray:29941`
 - temporary HAProxy test frontend used to prove LB routing: `30940`
 - subscription port: `2096`
 - legacy 3x-ui/admin-like port observed on server: `24886` and must be reviewed carefully before launch exposure
@@ -116,7 +117,20 @@ Current proven state on production:
   - when `node-1-main` is enabled and HAProxy test config is rendered/restarted, VPN works through `30940`
   - when `node-1-main` is disabled in `/ops/` and HAProxy test config is rendered/restarted, VPN through `30940` stops working
 - this proves `/ops/ -> VPN ноды` really controls HAProxy-routed traffic
-- direct production traffic on `29940` still goes straight to Xray and does not yet depend on HAProxy
+- production cutover is now complete:
+  - public `29940` is owned by HAProxy
+  - backend `node-1-main` points to `82.21.117.154:29941`
+  - local Xray inbound listens on `29941`
+  - client configs still use public port `29940`
+  - disabling `node-1-main` in `/ops/` requires HAProxy render/reload before new production connections stop
+- current production cutover was made with:
+  - inbound `Proxy Protocol = off` in 3x-ui
+  - `HAPROXY_BACKEND_SEND_PROXY=0`
+  - no `send-proxy` and no `check-send-proxy` in active HAProxy backend lines
+- important limitation after cutover:
+  - HAProxy sees the real client IP
+  - Xray access log currently sees source as `82.21.117.154`, not the real client IP
+  - log-based anti-sharing that depends on Xray access log IPs is therefore not trustworthy in the current production topology
 
 Important operational rule:
 
@@ -166,6 +180,25 @@ Current tested safe procedure for the temporary HAProxy test path:
    - `sudo haproxy -f /tmp/haproxy-vpn-test.cfg -p /tmp/haproxy-vpn-test.pid -D`
 4. wait about 10 seconds for checks/warm-up
 5. reconnect the client using the same config but with port `30940`
+
+Current tested safe procedure for the real production path:
+
+1. keep client configs unchanged on public port `29940`
+2. keep Xray inbound on backend port `29941`
+3. keep 3x-ui inbound `Proxy Protocol = off`
+4. keep `.env` with `HAPROXY_BACKEND_SEND_PROXY=0`
+5. render production HAProxy config:
+   - `docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --frontend-port 29940 --dry-run > /tmp/haproxy-prod-cutover.cfg`
+6. verify generated backend line:
+   - `grep -n "server " /tmp/haproxy-prod-cutover.cfg`
+   - expected: `server ... 82.21.117.154:29941 check weight 100`
+   - not expected: `send-proxy` or `check-send-proxy`
+7. install and reload:
+   - `sudo cp /tmp/haproxy-prod-cutover.cfg /etc/haproxy/haproxy.cfg`
+   - `sudo systemctl reload haproxy`
+8. verify active config:
+   - `sudo grep -n "server " /etc/haproxy/haproxy.cfg`
+9. reconnect client on the same old `29940` config
 
 Recommended initial values:
 

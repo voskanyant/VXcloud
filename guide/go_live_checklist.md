@@ -15,6 +15,7 @@
 - `VPN_PUBLIC_HOST=vxcloud.ru`
 - `VPN_PUBLIC_PORT=29940`
 - `HAPROXY_FRONTEND_PORT=29940`
+- `HAPROXY_BACKEND_SEND_PROXY=0`
 - `CMS_BASE_URL=` пусто
 - `CMS_TOKEN=` пусто
 
@@ -128,7 +129,11 @@ docker compose --env-file .env ps
 - `Legacy Directus` должен быть `Off`
 - current main server должен быть заведён в `VPN ноды` как `node-1`
 - у `node-1` должно быть понятно, что его можно отдельно выключить из LB через `lb_enabled`, не ломая site/bot/backend
-- помнить, что это уже доказано только на тестовом HAProxy frontend `30940`; production `29940` пока остаётся прямым Xray path
+- production path должен быть уже переведён под HAProxy:
+  - public `29940` слушает HAProxy
+  - `node-1-main backend_port = 29941`
+  - local Xray inbound слушает `29941`
+  - 3x-ui inbound `Proxy Protocol = off`
 
 ## 9. Support path
 
@@ -174,6 +179,24 @@ Expected behavior:
 - if `node-1-main` is enabled, VPN through client port `30940` works
 - if `node-1-main` is disabled and test HAProxy is re-rendered/restarted, VPN through `30940` stops
 - if manual clients are used in 3x-ui, create them only on the canonical node before checking cross-node sync
+
+Current production HAProxy path:
+
+```bash
+docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --frontend-port 29940 --dry-run > /tmp/haproxy-prod-cutover.cfg
+grep -n "server " /tmp/haproxy-prod-cutover.cfg
+sudo cp /tmp/haproxy-prod-cutover.cfg /etc/haproxy/haproxy.cfg
+sudo systemctl reload haproxy
+sudo grep -n "server " /etc/haproxy/haproxy.cfg
+```
+
+Expected behavior:
+
+- backend line points to `82.21.117.154:29941`
+- backend line contains `check weight 100`
+- backend line does not contain `send-proxy`
+- backend line does not contain `check-send-proxy`
+- client keeps using the same old public port `29940`
 
 ## 11. First node add rehearsal
 
