@@ -21,15 +21,23 @@ fi
 mkdir -p "$BACKUP_DIR"
 chmod 700 "$BACKUP_DIR"
 
-set -a
-source .env
-set +a
+env_get() {
+  local key="$1"
+  local fallback="${2:-}"
+  local value
+  value="$(grep -E "^${key}=" .env 2>/dev/null | tail -n1 | cut -d= -f2- || true)"
+  if [[ -z "${value}" ]]; then
+    printf '%s' "$fallback"
+  else
+    printf '%s' "$value"
+  fi
+}
 
-POSTGRES_DB_NAME="${POSTGRES_DB_NAME:-vxcloud}"
-POSTGRES_DB_USER="${POSTGRES_DB_USER:-vxcloud}"
-WORDPRESS_DB_NAME="${WORDPRESS_DB_NAME:-}"
-WORDPRESS_DB_USER="${WORDPRESS_DB_USER:-}"
-WORDPRESS_DB_PASSWORD="${WORDPRESS_DB_PASSWORD:-}"
+POSTGRES_DB_NAME="$(env_get "POSTGRES_DB_NAME" "vxcloud")"
+POSTGRES_DB_USER="$(env_get "POSTGRES_DB_USER" "vxcloud")"
+WORDPRESS_DB_NAME="$(env_get "WORDPRESS_DB_NAME" "")"
+WORDPRESS_DB_USER="$(env_get "WORDPRESS_DB_USER" "")"
+WORDPRESS_DB_PASSWORD="$(env_get "WORDPRESS_DB_PASSWORD" "")"
 
 find_named_volume() {
   local exact_name="$1"
