@@ -95,20 +95,17 @@ services:
     image: haproxy:lts-alpine
     container_name: vxcloud-haproxy
     restart: unless-stopped
+    network_mode: host
     depends_on:
       - web
     env_file:
       - .env
     environment:
       HAPROXY_PID_FILE: /tmp/haproxy.pid
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
     command: ["/bin/sh", "/usr/local/bin/haproxy-watch.sh"]
     volumes:
       - ./ops/haproxy/runtime:/usr/local/etc/haproxy/runtime
       - ./ops/haproxy/watch-and-run.sh:/usr/local/bin/haproxy-watch.sh:ro
-    ports:
-      - "${HAPROXY_FRONTEND_BIND_ADDR:-0.0.0.0}:${HAPROXY_FRONTEND_PORT:-29940}:${HAPROXY_FRONTEND_PORT:-29940}/tcp"
 
   bot:
     build:
