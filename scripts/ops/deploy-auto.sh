@@ -58,8 +58,25 @@ set_env_value() {
   fi
 }
 
+haproxy_frontend_port() {
+  local port
+  port="$(grep -E '^HAPROXY_FRONTEND_PORT=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  if [[ -z "$port" ]]; then
+    port="$(grep -E '^VPN_PUBLIC_PORT=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
+  fi
+  if [[ -z "$port" ]]; then
+    port="29940"
+  fi
+  printf '%s' "$port"
+}
+
 port_in_use() {
   ss -lntH "( sport = :8088 )" | grep -q .
+}
+
+port_in_use_exact() {
+  local port="$1"
+  ss -lntH "( sport = :${port} )" | grep -q .
 }
 
 show_port_occupant() {
@@ -67,6 +84,14 @@ show_port_occupant() {
   ss -lntp "( sport = :8088 )" || true
   echo "---- docker publish 8088 ----"
   docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep '127.0.0.1:8088->' || true
+}
+
+show_port_occupant_exact() {
+  local port="$1"
+  echo "---- ss (${port}) ----"
+  ss -lntp "( sport = :${port} )" || true
+  echo "---- docker publish ${port} ----"
+  docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep ":${port}->" || true
 }
 
 stop_legacy_systemd_unit() {
@@ -134,6 +159,27 @@ ensure_frontdoor_port_available() {
   fi
 }
 
+ensure_haproxy_frontend_port_available() {
+  local port
+  port="$(haproxy_frontend_port)"
+
+  if ! port_in_use_exact "$port"; then
+    return 0
+  fi
+
+  echo "HAProxy frontend port ${port} is busy before starting containerized HAProxy."
+  stop_legacy_haproxy_service
+
+  if port_in_use_exact "$port"; then
+    echo "ERROR: port ${port} is still occupied after attempting to stop host haproxy.service."
+    show_port_occupant_exact "$port"
+    echo "Run this once manually on the server, then re-run deploy:"
+    echo "  sudo systemctl stop haproxy"
+    echo "  sudo ss -ltnp | grep ${port}"
+    exit 1
+  fi
+}
+
 start_proxy_with_port_takeover() {
   local max_attempts=6
   local attempt=1
@@ -190,6 +236,7 @@ docker compose --env-file .env up -d wordpress web
 echo "Rendering HAProxy runtime config for container..."
 run_in_web_with_retry 15 2 python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --output-path /app/ops/haproxy/runtime/haproxy.cfg --skip-validate --skip-reload
 stop_legacy_haproxy_service
+ensure_haproxy_frontend_port_available
 docker compose --env-file .env up -d haproxy
 start_proxy_with_port_takeover
 docker compose --env-file .env --profile bot up -d bot
