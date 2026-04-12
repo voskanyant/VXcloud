@@ -18,6 +18,7 @@ from psycopg.rows import dict_row
 
 DEFAULT_TEMPLATE_PATH = "ops/haproxy/haproxy.cfg.tpl"
 DEFAULT_OUTPUT_PATH = "/etc/haproxy/haproxy.cfg"
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _env_int(name: str, fallback: int) -> int:
@@ -30,6 +31,13 @@ def _env_int(name: str, fallback: int) -> int:
 def _env_bool(name: str, fallback: bool = False) -> bool:
     raw = (os.getenv(name, "1" if fallback else "0") or "").strip().lower()
     return raw in {"1", "true", "yes", "on"}
+
+
+def _resolve_repo_path(raw_path: str) -> Path:
+    path = Path(raw_path).expanduser()
+    if path.is_absolute():
+        return path
+    return (REPO_ROOT / path).resolve()
 
 
 def _clean_server_name(node_id: int, raw_name: str) -> str:
@@ -168,12 +176,12 @@ def main() -> int:
     if not database_url:
         raise RuntimeError("DATABASE_URL is required (env or .env)")
 
-    template_path = Path(
+    template_path = _resolve_repo_path(
         args.template_path or os.getenv("HAPROXY_TEMPLATE_PATH", DEFAULT_TEMPLATE_PATH)
-    ).expanduser()
-    output_path = Path(
+    )
+    output_path = _resolve_repo_path(
         args.output_path or os.getenv("HAPROXY_OUTPUT_PATH", DEFAULT_OUTPUT_PATH)
-    ).expanduser()
+    )
     frontend_bind_addr = (args.frontend_bind_addr or os.getenv("HAPROXY_FRONTEND_BIND_ADDR", "0.0.0.0")).strip()
     frontend_port = args.frontend_port or _env_int(
         "HAPROXY_FRONTEND_PORT",

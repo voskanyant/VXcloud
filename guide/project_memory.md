@@ -122,21 +122,25 @@ Current proven state on production:
   - backend `node-1-main` points to `82.21.117.154:29941`
   - local Xray inbound listens on `29941`
   - client configs still use public port `29940`
-  - disabling `node-1-main` in `/ops/` requires HAProxy render/reload before new production connections stop
-- current production cutover was made with:
-  - inbound `Proxy Protocol = off` in 3x-ui
-  - `HAPROXY_BACKEND_SEND_PROXY=0`
-  - no `send-proxy` and no `check-send-proxy` in active HAProxy backend lines
-- important limitation after cutover:
-  - HAProxy sees the real client IP
-  - Xray access log currently sees source as `82.21.117.154`, not the real client IP
-  - log-based anti-sharing that depends on Xray access log IPs is therefore not trustworthy in the current production topology
+  - current working chain is `client -> HAProxy:29940 -> Xray:29941`
+- current working production HAProxy/Xray state:
+  - 3x-ui inbound `Proxy Protocol = on`
+  - `.env` `HAPROXY_BACKEND_SEND_PROXY=1`
+  - active backend lines must contain `send-proxy check-send-proxy`
+  - Xray access log now sees the real client IP again
+- current codebase target after HAProxy container migration:
+  - runtime config lives in `ops/haproxy/runtime/haproxy.cfg`
+  - Docker service name is `haproxy` / container name `vxcloud-haproxy`
+  - legacy host `haproxy.service` should be stopped by deploy
+  - `/ops/ -> VPN ноды` create/update/delete now re-renders the shared runtime config automatically
+  - the HAProxy container watches that file and self-reloads
 
 Important operational rule:
 
-- changing node flags in `/ops/` does not magically reconfigure the host HAProxy process
-- after changing node flags, HAProxy config must be re-rendered and the relevant HAProxy instance must be restarted/reloaded
-- without that step, old routing behavior can continue
+- changing node flags in `/ops/` must still end in a runtime config refresh
+- with the new containerized HAProxy path, `/ops/ -> VPN ноды` now re-renders `ops/haproxy/runtime/haproxy.cfg` automatically
+- the HAProxy container is responsible for detecting the file change and reloading itself
+- if runtime auto-render fails, Django should show a warning and the old routing behavior can continue
 - manual 3x-ui clients are now mirrored from the canonical node to follower nodes during cluster sync
 - this does not create DB subscriptions or attach those manual clients to bot/site users
 
@@ -185,19 +189,17 @@ Current tested safe procedure for the real production path:
 
 1. keep client configs unchanged on public port `29940`
 2. keep Xray inbound on backend port `29941`
-3. keep 3x-ui inbound `Proxy Protocol = off`
-4. keep `.env` with `HAPROXY_BACKEND_SEND_PROXY=0`
+3. keep 3x-ui inbound `Proxy Protocol = on`
+4. keep `.env` with `HAPROXY_BACKEND_SEND_PROXY=1`
 5. render production HAProxy config:
    - `docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --frontend-port 29940 --dry-run > /tmp/haproxy-prod-cutover.cfg`
 6. verify generated backend line:
    - `grep -n "server " /tmp/haproxy-prod-cutover.cfg`
-   - expected: `server ... 82.21.117.154:29941 check weight 100`
-   - not expected: `send-proxy` or `check-send-proxy`
-7. install and reload:
-   - `sudo cp /tmp/haproxy-prod-cutover.cfg /etc/haproxy/haproxy.cfg`
-   - `sudo systemctl reload haproxy`
-8. verify active config:
-   - `sudo grep -n "server " /etc/haproxy/haproxy.cfg`
+   - expected: `server ... 82.21.117.154:29941 check weight 100 send-proxy check-send-proxy`
+7. for containerized HAProxy, write the runtime file that the container watches:
+   - `docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --output-path /app/ops/haproxy/runtime/haproxy.cfg --skip-validate --skip-reload`
+8. verify HAProxy container state:
+   - `docker compose --env-file .env logs --tail=100 haproxy`
 9. reconnect client on the same old `29940` config
 
 Recommended initial values:

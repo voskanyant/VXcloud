@@ -66,13 +66,20 @@ The script:
 - validates with `haproxy -c -f <output>`
 - executes `HAPROXY_RELOAD_CMD` (if set)
 
+Current production recommendation:
+
+- run HAProxy in Docker
+- keep runtime config in `ops/haproxy/runtime/haproxy.cfg`
+- let the HAProxy container watch that file and self-reload on change
+- use `/ops/ -> VPN ноды` as source of LB state, with Django re-rendering the runtime config after node create/update/delete
+
 Relevant env vars:
 
 - `HAPROXY_TEMPLATE_PATH` (default: `ops/haproxy/haproxy.cfg.tpl`)
-- `HAPROXY_OUTPUT_PATH` (default: `/etc/haproxy/haproxy.cfg`)
+- `HAPROXY_OUTPUT_PATH` (recommended: `ops/haproxy/runtime/haproxy.cfg`)
 - `HAPROXY_FRONTEND_BIND_ADDR` (default: `0.0.0.0`)
 - `HAPROXY_FRONTEND_PORT` (default: `VPN_PUBLIC_PORT`)
-- `HAPROXY_RELOAD_CMD` (example: `sudo systemctl reload haproxy`)
+- `HAPROXY_RELOAD_CMD` (leave empty when HAProxy is containerized and self-reloads from file changes)
 - `HAPROXY_BIN` (default: `haproxy`)
 
 Dry-run example:

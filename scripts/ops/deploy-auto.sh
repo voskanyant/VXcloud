@@ -30,6 +30,34 @@ wait_for_http() {
   return 1
 }
 
+run_in_web_with_retry() {
+  local max_attempts="${1:-15}"
+  local sleep_seconds="${2:-2}"
+  shift 2
+  local attempt=1
+
+  while [[ "$attempt" -le "$max_attempts" ]]; do
+    if docker compose --env-file .env exec -T web "$@"; then
+      return 0
+    fi
+    sleep "$sleep_seconds"
+    attempt=$((attempt + 1))
+  done
+
+  echo "ERROR: failed to run command in web container after $max_attempts attempts: $*"
+  return 1
+}
+
+set_env_value() {
+  local key="$1"
+  local value="$2"
+  if grep -q "^${key}=" .env 2>/dev/null; then
+    sed -i "s|^${key}=.*|${key}=${value}|" .env
+  else
+    printf '%s=%s\n' "$key" "$value" >> .env
+  fi
+}
+
 port_in_use() {
   ss -lntH "( sport = :8088 )" | grep -q .
 }
@@ -54,6 +82,21 @@ stop_legacy_systemd_unit() {
     return 0
   fi
   echo "Could not stop vxcloud-web.service via systemctl (no non-interactive privileges)."
+}
+
+stop_legacy_haproxy_service() {
+  if ! systemctl list-unit-files | grep -q '^haproxy\.service'; then
+    return 0
+  fi
+
+  echo "Stopping legacy host haproxy.service..."
+  if systemctl stop haproxy.service 2>/dev/null; then
+    return 0
+  fi
+  if sudo -n systemctl stop haproxy.service 2>/dev/null; then
+    return 0
+  fi
+  echo "Could not stop haproxy.service via systemctl (no non-interactive privileges)."
 }
 
 kill_any_on_8088() {
@@ -129,6 +172,10 @@ git stash push -u -m "auto-stash-before-deploy-$(date +%F_%H%M%S)" >/dev/null ||
 echo "[3/11] Fast-forward pull..."
 git pull --ff-only origin main
 
+echo "[3.1/11] Normalize HAProxy env for container runtime..."
+set_env_value "HAPROXY_OUTPUT_PATH" "ops/haproxy/runtime/haproxy.cfg"
+set_env_value "HAPROXY_RELOAD_CMD" ""
+
 echo "[4/11] Preflight checks..."
 ensure_frontdoor_port_available
 
@@ -140,6 +187,10 @@ docker compose --env-file .env up -d db wpdb
 
 echo "[7/11] Start app services..."
 docker compose --env-file .env up -d wordpress web
+echo "Rendering HAProxy runtime config for container..."
+run_in_web_with_retry 15 2 python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --output-path /app/ops/haproxy/runtime/haproxy.cfg --skip-validate --skip-reload
+stop_legacy_haproxy_service
+docker compose --env-file .env up -d haproxy
 start_proxy_with_port_takeover
 docker compose --env-file .env --profile bot up -d bot
 

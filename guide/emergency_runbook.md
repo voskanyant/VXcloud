@@ -71,15 +71,14 @@ Current production HAProxy checks:
 cd /srv/apps/vxcloud/app
 docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --frontend-port 29940 --dry-run > /tmp/haproxy-prod-cutover.cfg
 grep -n "server " /tmp/haproxy-prod-cutover.cfg
-sudo grep -n "server " /etc/haproxy/haproxy.cfg
-sudo journalctl -u haproxy --since "5 minutes ago" --no-pager | tail -n 40
+docker compose --env-file .env logs --tail=100 haproxy
+sudo tail -n 40 /usr/local/x-ui/access.log
 ```
 
 Expected production backend line:
 
-- `server node_10_node-1-main 82.21.117.154:29941 check weight 100`
-- no `send-proxy`
-- no `check-send-proxy`
+- `server node_10_node-1-main 82.21.117.154:29941 check weight 100 send-proxy check-send-proxy`
+- x-ui access log should show the real client IP, not `82.21.117.154`
 
 Быстрые operational reminders:
 
@@ -125,7 +124,7 @@ chmod +x scripts/ops/deploy-auto.sh
 Важно:
 - уже существующие активные TCP-сессии на этом узле могут оборваться
 - HAProxy не переносит уже установленную VPN-сессию на другой node
-- изменение флагов ноды в `/ops/` само по себе не меняет уже запущенный HAProxy; нужен отдельный render/restart or reload step
+- после HAProxy container migration изменение ноды в `/ops/` должно автоматически перерисовать runtime config; если этого не произошло, проверяйте warnings в Django и логи контейнера `haproxy`
 - после production cutover не искать Xray на `29940`; теперь его backend должен слушать `29941`
 
 ## 3. Сценарий: node жив, но Telegram не работает
@@ -332,10 +331,10 @@ git rev-parse HEAD
 - свежие DB backups
 - documented DNS access
 - быстрый способ выключить `lb_enabled` у плохого node
-- проверенный HAProxy reload path
+- проверенный containerized HAProxy runtime path
 - понимание, что main server можно временно оставить только control plane, отключив его VPN-роль через `/ops/`
 - понимание, что production `29940` уже HAProxy path, а Xray backend живёт на `29941`
-- понимание, что Xray access log сейчас не показывает реальный client IP после HAProxy cutover
+- понимание, что current production relies on PROXY protocol and this must stay aligned on both HAProxy and 3x-ui/Xray
 
 ## 10. Минимальный emergency checklist
 

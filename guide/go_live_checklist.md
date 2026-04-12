@@ -15,7 +15,7 @@
 - `VPN_PUBLIC_HOST=vxcloud.ru`
 - `VPN_PUBLIC_PORT=29940`
 - `HAPROXY_FRONTEND_PORT=29940`
-- `HAPROXY_BACKEND_SEND_PROXY=0`
+- `HAPROXY_BACKEND_SEND_PROXY=1`
 - `CMS_BASE_URL=` пусто
 - `CMS_TOKEN=` пусто
 
@@ -130,10 +130,11 @@ docker compose --env-file .env ps
 - current main server должен быть заведён в `VPN ноды` как `node-1`
 - у `node-1` должно быть понятно, что его можно отдельно выключить из LB через `lb_enabled`, не ломая site/bot/backend
 - production path должен быть уже переведён под HAProxy:
-  - public `29940` слушает HAProxy
+  - public `29940` слушает containerized HAProxy
   - `node-1-main backend_port = 29941`
   - local Xray inbound слушает `29941`
-  - 3x-ui inbound `Proxy Protocol = off`
+  - 3x-ui inbound `Proxy Protocol = on`
+  - runtime config лежит в `ops/haproxy/runtime/haproxy.cfg`
 
 ## 9. Support path
 
@@ -185,17 +186,16 @@ Current production HAProxy path:
 ```bash
 docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --frontend-port 29940 --dry-run > /tmp/haproxy-prod-cutover.cfg
 grep -n "server " /tmp/haproxy-prod-cutover.cfg
-sudo cp /tmp/haproxy-prod-cutover.cfg /etc/haproxy/haproxy.cfg
-sudo systemctl reload haproxy
-sudo grep -n "server " /etc/haproxy/haproxy.cfg
+docker compose --env-file .env exec -T web python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --output-path /app/ops/haproxy/runtime/haproxy.cfg --skip-validate --skip-reload
+docker compose --env-file .env logs --tail=100 haproxy
 ```
 
 Expected behavior:
 
 - backend line points to `82.21.117.154:29941`
 - backend line contains `check weight 100`
-- backend line does not contain `send-proxy`
-- backend line does not contain `check-send-proxy`
+- backend line contains `send-proxy`
+- backend line contains `check-send-proxy`
 - client keeps using the same old public port `29940`
 
 ## 11. First node add rehearsal

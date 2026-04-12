@@ -5,3 +5,5 @@ __pycache__/
 web/db.sqlite3
 web/staticfiles/
 *.log
+ops/haproxy/runtime/*
+!ops/haproxy/runtime/.gitkeep

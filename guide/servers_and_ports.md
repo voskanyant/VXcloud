@@ -48,7 +48,7 @@ Observed and must be reviewed:
 - `VPN_PUBLIC_HOST=vxcloud.ru`
 - `VPN_PUBLIC_PORT=29940`
 - `HAPROXY_FRONTEND_PORT=29940`
-- `HAPROXY_BACKEND_SEND_PROXY=0`
+- `HAPROXY_BACKEND_SEND_PROXY=1`
 
 ## 4. Node strategy
 
@@ -105,11 +105,13 @@ Suggested field values:
 - current production chain is:
   - `client -> 29940/tcp (HAProxy) -> 29941/tcp (Xray backend)`
 - current active HAProxy backend line must look like:
-  - `server node_10_node-1-main 82.21.117.154:29941 check weight 100`
-- current active HAProxy backend line must not contain:
-  - `send-proxy`
-  - `check-send-proxy`
-- current 3x-ui inbound for the production node should keep `Proxy Protocol = off`
-- current limitation:
+  - `server node_10_node-1-main 82.21.117.154:29941 check weight 100 send-proxy check-send-proxy`
+- current 3x-ui inbound for the production node should keep `Proxy Protocol = on`
+- current runtime ownership:
+  - HAProxy should run as Docker service `haproxy`
+  - runtime config should live in `ops/haproxy/runtime/haproxy.cfg`
+  - host `haproxy.service` should no longer be the intended runtime
+- current result:
   - HAProxy sees the real client IP
-  - Xray access log currently sees source as the server IP, so Xray-log-based IP analytics are not reliable
+  - Xray access log also sees the real client IP
+  - Xray-log-based IP analytics are meaningful again

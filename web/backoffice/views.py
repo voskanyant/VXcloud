@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import os
+import subprocess
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone as dt_timezone
@@ -55,6 +56,8 @@ from src.xui_client import NO_EXPIRY_SENTINEL
 
 
 LOGGER = logging.getLogger(__name__)
+REPO_ROOT = Path(__file__).resolve().parents[2]
+HAPROXY_RUNTIME_OUTPUT_PATH = REPO_ROOT / "ops" / "haproxy" / "runtime" / "haproxy.cfg"
 
 from .forms import (
     BackofficeCategoryForm,
@@ -671,6 +674,26 @@ def _haproxy_backend_preview(nodes: list[VPNNode]) -> str:
         lines.append("# no eligible lb nodes")
         lines.append("server cluster_empty 127.0.0.1:65535 disabled")
     return "\n".join(lines)
+
+
+def _render_local_haproxy_runtime() -> str | None:
+    script_path = REPO_ROOT / "scripts" / "ops" / "render_haproxy_cfg.py"
+    env_path = REPO_ROOT / ".env"
+    command = [
+        sys.executable,
+        str(script_path),
+        "--env-file",
+        str(env_path),
+        "--output-path",
+        str(HAPROXY_RUNTIME_OUTPUT_PATH),
+        "--skip-validate",
+        "--skip-reload",
+    ]
+    result = subprocess.run(command, cwd=str(REPO_ROOT), capture_output=True, text=True, check=False)
+    if result.returncode == 0:
+        return None
+    details = (result.stderr or result.stdout or "").strip()
+    return details or f"render_haproxy_cfg failed with code {result.returncode}"
 
 
 async def _push_subscription_expiry_to_xui(
@@ -2024,6 +2047,12 @@ class VPNNodeCreateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, Cre
         form.instance.updated_at = now
         response = super().form_valid(form)
         messages.success(self.request, "Сохранено")
+        render_error = _render_local_haproxy_runtime()
+        if render_error:
+            messages.warning(
+                self.request,
+                f"Нода сохранена, но runtime HAProxy config не обновлён автоматически: {render_error}",
+            )
         return response
 
 
@@ -2046,6 +2075,12 @@ class VPNNodeUpdateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, Upd
         form.instance.updated_at = timezone.now()
         response = super().form_valid(form)
         messages.success(self.request, "Сохранено")
+        render_error = _render_local_haproxy_runtime()
+        if render_error:
+            messages.warning(
+                self.request,
+                f"Нода сохранена, но runtime HAProxy config не обновлён автоматически: {render_error}",
+            )
         return response
 
 
@@ -2085,6 +2120,12 @@ class VPNNodeDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteVie
             VPNNodeClient.objects.filter(node_id=self.object.id).delete()
             self.object.delete()
         messages.success(request, "VPN нода удалена")
+        render_error = _render_local_haproxy_runtime()
+        if render_error:
+            messages.warning(
+                request,
+                f"Нода удалена, но runtime HAProxy config не обновлён автоматически: {render_error}",
+            )
         return redirect(self.success_url)
 
 
@@ -2173,10 +2214,10 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
         ]
         ctx["ops_commands"] = [
             "python scripts/ops/render_haproxy_cfg.py --env-file .env --dry-run",
-            "python scripts/ops/render_haproxy_cfg.py --env-file .env",
+            "python scripts/ops/render_haproxy_cfg.py --env-file .env --output-path ops/haproxy/runtime/haproxy.cfg",
         ]
         ctx["notes"] = [
-            "Из веб-интерфейса пока показывается operational state и конфиг. Релоад HAProxy и системные команды лучше оставлять на сервере, а не выполнять из Django-контейнера.",
+            "Из /ops изменение ноды теперь автоматически перерисовывает runtime haproxy.cfg для containerized HAProxy. Контейнер HAProxy сам подхватывает изменения файла.",
             "Если cluster mode выключен, таблицы нод и sync всё равно полезны как inventory и health audit.",
             "Перед включением lb_enabled на новой ноде: откройте firewall для backend/inbound port, дождитесь health=healthy, закончите backfill и сверьте REALITY key/shortId/SNI с majority пулом.",
             "HAProxy template теперь рассчитан на long-lived TCP sessions. При первом node-add всё равно сделайте dry-run render и тест старым и новым конфигом.",

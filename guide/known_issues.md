@@ -38,7 +38,7 @@ Node может:
 - site
 - ops
 - payments/webhooks
-- HAProxy on main server
+- HAProxy container on the main server
 
 ### Main server can still be used as node-1
 
@@ -57,12 +57,13 @@ Current intended model:
 - node on/off behavior in `/ops/` has already been proven on `30940`
 - node on/off behavior is now also wired into the real production path on `29940`, but only after HAProxy render/reload
 
-### Xray access log no longer shows the real client IP after HAProxy cutover
+### PROXY protocol must stay aligned between HAProxy and Xray
 
-- HAProxy logs still show the real client source IP
-- current Xray access log shows source as the server IP (`82.21.117.154`)
-- do not trust Xray access-log IP analysis for anti-sharing decisions in the current topology
-- if anti-sharing depends on real source IP inside Xray, this needs a separate follow-up task
+- current working production setup depends on both sides matching:
+  - 3x-ui inbound `Proxy Protocol = on`
+  - `.env` `HAPROXY_BACKEND_SEND_PROXY=1`
+- if one side is changed without the other, clients can start failing immediately
+- current good signal is that Xray `access.log` shows the real client IP, not the server IP
 
 ## 2. Practical rules
 
@@ -79,13 +80,13 @@ Current intended model:
 - use `/ops/` as the place to add, edit, disable and delete nodes
 - if one node behaves strangely, remove it from LB first and investigate second
 - do not do incident response by editing random production rows without understanding source of truth
-- after changing node flags in `/ops/`, re-render and restart/reload the relevant HAProxy instance before concluding anything about routing
+- after changing node flags in `/ops/`, confirm that the runtime HAProxy config was re-rendered if Django showed a warning
 - do not change the main 3x-ui inbound port during HAProxy tests unless the goal is an intentional production cutover
 - keep current production cutover consistent:
   - Xray inbound `29941`
   - public HAProxy `29940`
-  - 3x-ui `Proxy Protocol = off`
-  - `.env` `HAPROXY_BACKEND_SEND_PROXY=0`
+  - 3x-ui `Proxy Protocol = on`
+  - `.env` `HAPROXY_BACKEND_SEND_PROXY=1`
 
 ## 4. When returning to this project later
 
