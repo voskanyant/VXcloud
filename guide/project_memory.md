@@ -246,3 +246,4 @@ Recommended initial values:
 - [servers_and_ports.md](./servers_and_ports.md)
 - [known_issues.md](./known_issues.md)
 - [add_vpn_node_runbook.md](./add_vpn_node_runbook.md)
+- [main_server_dr_plan.md](./main_server_dr_plan.md)

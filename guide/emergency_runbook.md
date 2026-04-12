@@ -249,6 +249,8 @@ curl -I http://127.0.0.1:8088/account/
 - Postgres backup
 - WordPress/MariaDB backup
 - доступ к DNS
+- отдельный DR runbook:
+  - [main_server_dr_plan.md](./main_server_dr_plan.md)
 
 Порядок восстановления:
 
@@ -268,6 +270,8 @@ curl -I http://127.0.0.1:8088/account/
 
 Если standby не готов:
 - это значит, что полного backup plan для control plane пока нет
+- сначала открыть:
+  - [main_server_dr_plan.md](./main_server_dr_plan.md)
 
 ## 7. Сценарий: YooKassa/оплаты сломались
 

@@ -140,6 +140,7 @@ python scripts/ops/render_haproxy_cfg.py --env-file .env
 Detailed operator runbook with exact commands:
 
 - [guide/add_vpn_node_runbook.md](guide/add_vpn_node_runbook.md)
+- [guide/main_server_dr_plan.md](guide/main_server_dr_plan.md)
 
 ### Single-Node Compatibility
 
