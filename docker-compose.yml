@@ -3,6 +3,10 @@ services:
     image: postgres:16-alpine
     container_name: vxcloud-db
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     environment:
       POSTGRES_DB: vxcloud
       POSTGRES_USER: vxcloud
@@ -19,6 +23,10 @@ services:
     image: mariadb:11.4
     container_name: vxcloud-wpdb
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     environment:
       MARIADB_DATABASE: ${WORDPRESS_DB_NAME}
       MARIADB_USER: ${WORDPRESS_DB_USER}
@@ -37,6 +45,10 @@ services:
       context: ./wordpress
     container_name: vxcloud-wordpress
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     depends_on:
       wpdb:
         condition: service_healthy
@@ -67,6 +79,10 @@ services:
       context: .
     container_name: vxcloud-web
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     env_file:
       - .env
     environment:
@@ -83,6 +99,10 @@ services:
     image: nginx:1.27-alpine
     container_name: vxcloud-proxy
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     depends_on:
       - web
       - wordpress
@@ -95,6 +115,10 @@ services:
     image: haproxy:lts-alpine
     container_name: vxcloud-haproxy
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     network_mode: host
     depends_on:
       - web
@@ -112,6 +136,10 @@ services:
       context: .
     container_name: vxcloud-bot
     restart: unless-stopped
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
     env_file:
       - .env
     environment:
