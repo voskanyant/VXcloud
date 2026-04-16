@@ -195,6 +195,35 @@ class VPNNode(models.Model):
         return f"{self.name} ({self.backend_host}:{self.backend_port})"
 
 
+class EdgeServer(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.TextField(unique=True)
+    public_host = models.TextField()
+    public_ip = models.TextField()
+    frontend_port = models.IntegerField()
+    healthcheck_host = models.TextField(null=True, blank=True)
+    healthcheck_port = models.IntegerField(null=True, blank=True)
+    is_active = models.BooleanField()
+    is_primary = models.BooleanField()
+    accept_new_clients = models.BooleanField()
+    priority = models.IntegerField()
+    last_health_at = models.DateTimeField(null=True, blank=True)
+    last_health_ok = models.BooleanField(null=True, blank=True)
+    last_health_error = models.TextField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField()
+    updated_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = "edge_servers"
+        verbose_name = "HAProxy Edge"
+        verbose_name_plural = "HAProxy Edges"
+
+    def __str__(self) -> str:
+        return f"{self.name} ({self.public_host}:{self.frontend_port})"
+
+
 class VPNNodeClient(models.Model):
     id = models.BigAutoField(primary_key=True)
     node = models.ForeignKey(VPNNode, db_column="node_id", on_delete=models.DO_NOTHING)

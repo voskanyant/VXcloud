@@ -46,6 +46,72 @@
   </div>
 </div>
 
+{% if primary_edge %}
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Current primary edge</h3>
+      </div>
+      <div class="bo-info-grid">
+        <div><span>Name</span><strong>{{ primary_edge.name }}</strong></div>
+        <div><span>Endpoint</span><strong>{{ primary_edge.endpoint }}</strong></div>
+        <div><span>Public IP</span><strong>{{ primary_edge.public_ip }}</strong></div>
+        <div><span>Health</span><strong>{{ primary_edge.health }}</strong></div>
+        <div><span>New clients</span><strong>{{ primary_edge.accepting }}</strong></div>
+        <div><span>Priority</span><strong>{{ primary_edge.priority }}</strong></div>
+      </div>
+    </section>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>HAProxy edges</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="table bo-table align-middle">
+          <thead>
+            <tr>
+              <th>Edge</th>
+              <th>Endpoint</th>
+              <th>Public IP</th>
+              <th>Health</th>
+              <th>Role</th>
+              <th>Admission</th>
+              <th>Priority</th>
+              <th>Last check</th>
+              <th>Last error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in edge_rows %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td><code>{{ row.endpoint }}</code></td>
+                <td><code>{{ row.public_ip }}</code></td>
+                <td>{{ row.health }}</td>
+                <td>{{ row.role }}</td>
+                <td>{{ row.admission }}</td>
+                <td>{{ row.priority }}</td>
+                <td>{{ row.last_health_at }}</td>
+                <td>{{ row.last_health_error }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="9" class="text-muted">Edge inventory пока пуст. Сейчас HAProxy endpoint берётся только из env.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
 <div class="row g-3 mt-1">
   <div class="col-12 col-xl-6">
     <section class="bo-panel">

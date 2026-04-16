@@ -126,4 +126,29 @@
     </section>
   </div>
 </div>
+
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>HAProxy edges</h3>
+        <a href="{% url 'backoffice:edge_server_list' %}">Все edges</a>
+      </div>
+      <div class="bo-list-stack">
+        {% for edge in recent_edges %}
+          <div class="bo-list-item bo-list-item-static">
+            <div class="bo-list-title">{{ edge.name }}</div>
+            <div class="bo-list-meta">
+              <span>{{ edge.public_host }}:{{ edge.frontend_port }}</span>
+              <span>{% if edge.is_primary %}primary{% else %}secondary{% endif %}</span>
+              <span>{% if edge.last_health_ok %}healthy{% elif edge.last_health_ok == False %}error{% else %}unknown{% endif %}</span>
+            </div>
+          </div>
+        {% empty %}
+          <div class="bo-empty">Пока используется только env endpoint без inventory edges</div>
+        {% endfor %}
+      </div>
+    </section>
+  </div>
+</div>
 {% endblock %}

@@ -50,6 +50,9 @@
         <a class="bo-link {% if request.resolver_match.url_name == 'vpn_node_list' %}active{% endif %}" href="{% url 'backoffice:vpn_node_list' %}">
           <i class="bi bi-hdd-network"></i><span>VPN ноды</span>
         </a>
+        <a class="bo-link {% if request.resolver_match.url_name == 'edge_server_list' or request.resolver_match.url_name == 'edge_server_create' or request.resolver_match.url_name == 'edge_server_update' or request.resolver_match.url_name == 'edge_server_delete' %}active{% endif %}" href="{% url 'backoffice:edge_server_list' %}">
+          <i class="bi bi-router"></i><span>HAProxy edges</span>
+        </a>
         <a class="bo-link {% if request.resolver_match.url_name == 'vpn_node_client_list' %}active{% endif %}" href="{% url 'backoffice:vpn_node_client_list' %}">
           <i class="bi bi-arrow-repeat"></i><span>Node sync</span>
         </a>

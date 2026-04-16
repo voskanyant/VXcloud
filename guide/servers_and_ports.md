@@ -27,7 +27,8 @@ Public:
 
 - `80/tcp` - site HTTP
 - `443/tcp` - site HTTPS
-- `29940/tcp` - current production VPN public frontend on HAProxy
+- `29940/tcp` - current legacy VPN public frontend on HAProxy
+- `443/tcp` - target dedicated VPN public frontend on separate edge (`connect.vxcloud.ru`)
 - `30940/tcp` - temporary HAProxy test frontend used to verify node/LB routing
 - `2096/tcp` - subscription/config delivery port
 
@@ -43,12 +44,23 @@ Observed and must be reviewed:
 
 - `24886/tcp` - public on current server, do not forget this exists
 
-## 3. Expected env values
+## 3. Env values: current vs target
+
+Current legacy single-server mode:
 
 - `VPN_PUBLIC_HOST=vxcloud.ru`
 - `VPN_PUBLIC_PORT=29940`
 - `HAPROXY_FRONTEND_PORT=29940`
 - `HAPROXY_BACKEND_SEND_PROXY=1`
+
+Target split architecture:
+
+- `VPN_PUBLIC_HOST=connect.vxcloud.ru`
+- `VPN_PUBLIC_PORT=443`
+- `HAPROXY_FRONTEND_PORT=443`
+- `HAPROXY_BACKEND_SEND_PROXY=1`
+- `vxcloud.ru` and `www.vxcloud.ru` stay on the site/backend server
+- `connect.vxcloud.ru` points to the public HAProxy edge server
 
 ## 4. Node strategy
 
@@ -59,10 +71,12 @@ Current:
 
 Target future architecture:
 
-- separate control server
+- separate app/control server
+- separate public HAProxy edge
 - separate node-1
 - node-2
-- node-3
+- optional standby edge
+- node-3 later if capacity requires it
 
 Current `/ops/` capabilities:
 
@@ -70,6 +84,8 @@ Current `/ops/` capabilities:
 - edit node
 - disable/enable LB participation
 - delete node
+- manage HAProxy edge inventory
+- mark current primary edge for DNS/failover runbooks
 
 ## 5. Node checklist before enabling LB
 

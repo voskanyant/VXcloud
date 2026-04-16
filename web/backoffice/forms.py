@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 
 from blog.models import Category, Page, Post, PostType, SiteText
-from cabinet.models import BotUser, VPNNode
+from cabinet.models import BotUser, EdgeServer, VPNNode
 
 
 class StaffAuthenticationForm(AuthenticationForm):
@@ -412,3 +412,76 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["needs_backfill"].help_text = "Оставьте включённым для новой ноды, пока не закончите sync и ручную проверку."
 
         self._apply_bootstrap_classes()
+
+
+class BackofficeEdgeServerForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = EdgeServer
+        fields = [
+            "name",
+            "public_host",
+            "public_ip",
+            "frontend_port",
+            "healthcheck_host",
+            "healthcheck_port",
+            "is_active",
+            "is_primary",
+            "accept_new_clients",
+            "priority",
+            "notes",
+        ]
+        widgets = {
+            "notes": forms.Textarea(attrs={"rows": 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["name"].label = "Имя edge"
+        self.fields["public_host"].label = "Публичный host"
+        self.fields["public_ip"].label = "Публичный IP"
+        self.fields["frontend_port"].label = "Frontend port"
+        self.fields["healthcheck_host"].label = "Healthcheck host"
+        self.fields["healthcheck_port"].label = "Healthcheck port"
+        self.fields["is_active"].label = "Edge активен"
+        self.fields["is_primary"].label = "Primary edge"
+        self.fields["accept_new_clients"].label = "Принимать новых клиентов"
+        self.fields["priority"].label = "Приоритет"
+        self.fields["notes"].label = "Заметки"
+
+        self.fields["public_host"].help_text = "Домен, на который указывает публичный VPN endpoint, например connect.vxcloud.ru."
+        self.fields["public_ip"].help_text = "Публичный IP edge-сервера, который будет целевым DNS target."
+        self.fields["frontend_port"].help_text = "Обычно 443 для отдельного VPN edge."
+        self.fields["healthcheck_host"].help_text = "Если пусто, для healthcheck будет использоваться public_ip."
+        self.fields["healthcheck_port"].help_text = "Если пусто, будет использоваться frontend_port."
+        self.fields["is_primary"].help_text = "Primary edge — рекомендуемая текущая цель для DNS cutover."
+        self.fields["accept_new_clients"].help_text = "Drain режим: если выключено, edge остаётся в inventory, но не считается подходящим для новых клиентов."
+        self.fields["priority"].help_text = "Меньше число = выше приоритет при auto-selection primary edge."
+
+        self._apply_bootstrap_classes()
+
+    def clean_public_host(self) -> str:
+        return str(self.cleaned_data.get("public_host") or "").strip().lower()
+
+    def clean_public_ip(self) -> str:
+        return str(self.cleaned_data.get("public_ip") or "").strip()
+
+    def clean_healthcheck_host(self) -> str:
+        return str(self.cleaned_data.get("healthcheck_host") or "").strip()
+
+    def clean(self):
+        cleaned = super().clean()
+        is_active = bool(cleaned.get("is_active"))
+        is_primary = bool(cleaned.get("is_primary"))
+        accept_new_clients = bool(cleaned.get("accept_new_clients"))
+        frontend_port = cleaned.get("frontend_port")
+        healthcheck_port = cleaned.get("healthcheck_port")
+
+        if is_primary and not is_active:
+            self.add_error("is_primary", "Primary edge должен быть активным.")
+        if accept_new_clients and not is_active:
+            self.add_error("accept_new_clients", "Нельзя принимать новых клиентов на неактивном edge.")
+        if frontend_port is not None and int(frontend_port) <= 0:
+            self.add_error("frontend_port", "Порт должен быть больше нуля.")
+        if healthcheck_port is not None and int(healthcheck_port) <= 0:
+            self.add_error("healthcheck_port", "Порт healthcheck должен быть больше нуля.")
+        return cleaned

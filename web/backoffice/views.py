@@ -39,6 +39,7 @@ from cabinet.models import (
     BotOrder,
     BotSubscription,
     BotUser,
+    EdgeServer,
     LinkedAccount,
     SupportMessage,
     SupportTicket,
@@ -62,6 +63,7 @@ HAPROXY_RUNTIME_OUTPUT_PATH = REPO_ROOT / "ops" / "haproxy" / "runtime" / "hapro
 
 from .forms import (
     BackofficeCategoryForm,
+    BackofficeEdgeServerForm,
     BackofficePageForm,
     BackofficeSubscriptionCreateForm,
     BackofficeSubscriptionExpiryForm,
@@ -384,6 +386,32 @@ def health_badge(node: VPNNode) -> str:
     return status_badge("unknown", "warning")
 
 
+def edge_health_badge(edge: EdgeServer) -> str:
+    if not edge.is_active:
+        return status_badge("offline", "secondary")
+    if edge.last_health_ok is True:
+        return status_badge("healthy", "success")
+    if edge.last_health_ok is False:
+        return status_badge("error", "danger")
+    return status_badge("unknown", "warning")
+
+
+def edge_role_badge(edge: EdgeServer) -> str:
+    return status_badge("primary" if edge.is_primary else "secondary", "primary" if edge.is_primary else "secondary")
+
+
+def edge_admission_badge(edge: EdgeServer) -> str:
+    if not edge.is_active:
+        return status_badge("inactive", "secondary")
+    if edge.accept_new_clients:
+        return status_badge("accepting", "success")
+    return status_badge("drain", "warning")
+
+
+def edge_endpoint(edge: EdgeServer) -> str:
+    return f"{edge.public_host}:{edge.frontend_port}"
+
+
 def env_value(name: str, default: str = "") -> str:
     value = os.getenv(name, default)
     return value.strip() if isinstance(value, str) else str(value)
@@ -583,7 +611,13 @@ def ensure_local_main_node() -> VPNNode | None:
         return None
 
     backend_host = env_value("VPN_NODE_BACKEND_HOST") or env_value("MAIN_NODE_BACKEND_HOST") or "127.0.0.1"
-    backend_port = int_env("VPN_PUBLIC_PORT", 29940)
+    backend_port = int_env(
+        "VPN_NODE_BACKEND_PORT",
+        int_env(
+            "MAIN_NODE_BACKEND_PORT",
+            int_env("XRAY_BACKEND_PORT", 29941),
+        ),
+    )
     inferred_name = env_value("MAIN_NODE_NAME") or "node-1-main"
     inferred_region = env_value("MAIN_NODE_REGION") or "Germany"
     try:
@@ -701,6 +735,71 @@ def _render_local_haproxy_runtime() -> str | None:
         return None
     details = (result.stderr or result.stdout or "").strip()
     return details or f"render_haproxy_cfg failed with code {result.returncode}"
+
+
+def _pick_edge_primary_candidate() -> EdgeServer | None:
+    return safe_get(
+        lambda: EdgeServer.objects.filter(is_active=True)
+        .order_by("priority", "id")
+        .first()
+        or EdgeServer.objects.order_by("priority", "id").first(),
+        None,
+    )
+
+
+def _normalize_edge_primary_state(preferred_edge: EdgeServer | None = None) -> EdgeServer | None:
+    try:
+        if preferred_edge is not None and bool(getattr(preferred_edge, "is_primary", False)):
+            EdgeServer.objects.exclude(pk=preferred_edge.pk).update(is_primary=False)
+            return preferred_edge
+
+        primaries = list(EdgeServer.objects.filter(is_primary=True).order_by("priority", "id"))
+        if primaries:
+            keeper = primaries[0]
+            EdgeServer.objects.filter(is_primary=True).exclude(pk=keeper.pk).update(is_primary=False)
+            return keeper
+
+        candidate = _pick_edge_primary_candidate()
+        if candidate is None:
+            return None
+        EdgeServer.objects.filter(pk=candidate.pk).update(is_primary=True)
+        candidate.is_primary = True
+        return candidate
+    except (OperationalError, ProgrammingError):
+        return None
+
+
+def _promote_replacement_primary_on_delete(deleted_edge_id: int) -> EdgeServer | None:
+    try:
+        candidate = (
+            EdgeServer.objects.exclude(pk=deleted_edge_id)
+            .filter(is_active=True)
+            .order_by("priority", "id")
+            .first()
+            or EdgeServer.objects.exclude(pk=deleted_edge_id).order_by("priority", "id").first()
+        )
+        if candidate is None:
+            return None
+        EdgeServer.objects.exclude(pk=candidate.pk).update(is_primary=False)
+        EdgeServer.objects.filter(pk=candidate.pk).update(is_primary=True)
+        candidate.is_primary = True
+        return candidate
+    except (OperationalError, ProgrammingError):
+        return None
+
+
+def _current_primary_edge(edges: list[EdgeServer]) -> EdgeServer | None:
+    primaries = [edge for edge in edges if bool(getattr(edge, "is_primary", False))]
+    if primaries:
+        primaries.sort(key=lambda item: (int(getattr(item, "priority", 100) or 100), int(item.id)))
+        return primaries[0]
+    active = [edge for edge in edges if bool(getattr(edge, "is_active", False))]
+    if active:
+        active.sort(key=lambda item: (int(getattr(item, "priority", 100) or 100), int(item.id)))
+        return active[0]
+    if edges:
+        return sorted(edges, key=lambda item: (int(getattr(item, "priority", 100) or 100), int(item.id)))[0]
+    return None
 
 
 async def _push_subscription_expiry_to_xui(
@@ -993,8 +1092,20 @@ class DashboardView(StaffRequiredMixin, TemplateView):
             "nodes_unhealthy": safe_count(
                 VPNNode.objects.filter(is_active=True).exclude(last_health_ok=True)
             ),
+            "edges_total": safe_count(EdgeServer.objects.all()),
+            "edges_unhealthy": safe_count(
+                EdgeServer.objects.filter(is_active=True).exclude(last_health_ok=True)
+            ),
             "sync_errors": safe_count(VPNNodeClient.objects.exclude(sync_state="ok")),
         }
+        edges = list(safe_get(lambda: EdgeServer.objects.order_by("priority", "id"), []))
+        primary_edge = _current_primary_edge(edges)
+        public_vpn_label = edge_endpoint(primary_edge) if primary_edge else f"{env_value('VPN_PUBLIC_HOST', '-')}:{env_value('VPN_PUBLIC_PORT', '-')}"
+        public_vpn_meta = (
+            f"primary edge {primary_edge.name}"
+            if primary_edge
+            else f"inbound #{env_value('XUI_INBOUND_ID', '-')}"
+        )
         ctx["headline_metrics"] = [
             {"label": "Пользователи", "value": metrics["users_total"], "tone": "primary"},
             {"label": "Активные подписки", "value": metrics["subscriptions_active"], "tone": "success"},
@@ -1006,6 +1117,7 @@ class DashboardView(StaffRequiredMixin, TemplateView):
             {"label": "Fresh pending", "value": max(metrics["orders_pending"] - metrics["orders_pending_stale"], 0)},
             {"label": "Activated orders", "value": metrics["orders_activated"]},
             {"label": "VPN nodes", "value": metrics["nodes_total"]},
+            {"label": "HAProxy edges", "value": metrics["edges_total"]},
             {"label": "Node sync errors", "value": metrics["sync_errors"]},
         ]
         ctx["system_cards"] = [
@@ -1026,8 +1138,13 @@ class DashboardView(StaffRequiredMixin, TemplateView):
             },
             {
                 "label": "Public VPN",
-                "value": f"{env_value('VPN_PUBLIC_HOST', '-')}:{env_value('VPN_PUBLIC_PORT', '-')}",
-                "meta": f"inbound #{env_value('XUI_INBOUND_ID', '-')}",
+                "value": public_vpn_label,
+                "meta": public_vpn_meta,
+            },
+            {
+                "label": "Edge layer",
+                "value": "Configured" if metrics["edges_total"] else "Env only",
+                "meta": f"{metrics['edges_total']} total · {metrics['edges_unhealthy']} unhealthy",
             },
             {
                 "label": "Legacy Directus",
@@ -1055,11 +1172,13 @@ class DashboardView(StaffRequiredMixin, TemplateView):
             [],
         )
         ctx["recent_nodes"] = safe_get(lambda: VPNNode.objects.order_by("-updated_at")[:8], [])
+        ctx["recent_edges"] = edges[:6]
         ctx["action_links"] = [
             {"label": "Тикеты", "url": reverse("backoffice:ticket_list")},
             {"label": "Заказы", "url": reverse("backoffice:bot_order_list")},
             {"label": "Пользователи", "url": reverse("backoffice:bot_user_list")},
             {"label": "Ноды", "url": reverse("backoffice:vpn_node_list")},
+            {"label": "HAProxy edges", "url": reverse("backoffice:edge_server_list")},
             {"label": "Cluster & HAProxy", "url": reverse("backoffice:system_overview")},
         ]
         return ctx
@@ -2242,6 +2361,149 @@ class VPNNodeDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteVie
         return redirect(self.success_url)
 
 
+class EdgeServerListView(BaseListView):
+    model = EdgeServer
+    title = "HAProxy edges"
+    subtitle = "Публичные edge-серверы для connect.vxcloud.ru и будущего edge failover."
+    readonly = False
+    add_url_name = "backoffice:edge_server_create"
+    edit_url_name = "backoffice:edge_server_update"
+    delete_url_name = "backoffice:edge_server_delete"
+    columns = [
+        ("id", "ID"),
+        ("name", "Edge"),
+        ("endpoint", "Публичный endpoint"),
+        ("health", "Health"),
+        ("role", "Role"),
+        ("admission", "Новые клиенты"),
+        ("updated_at", "Обновлён"),
+    ]
+    search_fields = ["name", "public_host", "public_ip", "notes"]
+
+    def get_queryset(self):
+        return super().get_queryset().order_by("priority", "name", "id")
+
+    def get_table_rows(self) -> list[dict[str, Any]]:
+        rows = []
+        for item in self.object_list:
+            rows.append(
+                {
+                    "obj": item,
+                    "cells": [
+                        item.id,
+                        item.name,
+                        edge_endpoint(item),
+                        edge_health_badge(item),
+                        edge_role_badge(item),
+                        edge_admission_badge(item),
+                        format_cell(item.updated_at),
+                    ],
+                }
+            )
+        return rows
+
+
+class EdgeServerCreateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, CreateView):
+    model = EdgeServer
+    form_class = BackofficeEdgeServerForm
+    template_name = "backoffice/form.html"
+    title_create = "Новый HAProxy edge"
+
+    def get_success_url(self):
+        return reverse("backoffice:edge_server_list")
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = self.title_create
+        ctx["block_editor_asset_version"] = BLOCK_EDITOR_ASSET_VERSION
+        return self.add_wordpress_context(ctx)
+
+    def form_valid(self, form):
+        now = timezone.now()
+        form.instance.created_at = now
+        form.instance.updated_at = now
+        response = super().form_valid(form)
+        _normalize_edge_primary_state(self.object)
+        messages.success(self.request, "Edge сохранён")
+        render_error = _render_local_haproxy_runtime()
+        if render_error:
+            messages.warning(
+                self.request,
+                f"Edge сохранён, но runtime HAProxy config не обновлён автоматически: {render_error}",
+            )
+        return response
+
+
+class EdgeServerUpdateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, UpdateView):
+    model = EdgeServer
+    form_class = BackofficeEdgeServerForm
+    template_name = "backoffice/form.html"
+    title_update = "Редактирование HAProxy edge"
+
+    def get_success_url(self):
+        return reverse("backoffice:edge_server_list")
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = self.title_update
+        ctx["block_editor_asset_version"] = BLOCK_EDITOR_ASSET_VERSION
+        return self.add_wordpress_context(ctx)
+
+    def form_valid(self, form):
+        form.instance.updated_at = timezone.now()
+        response = super().form_valid(form)
+        _normalize_edge_primary_state(self.object)
+        messages.success(self.request, "Edge сохранён")
+        render_error = _render_local_haproxy_runtime()
+        if render_error:
+            messages.warning(
+                self.request,
+                f"Edge сохранён, но runtime HAProxy config не обновлён автоматически: {render_error}",
+            )
+        return response
+
+
+class EdgeServerDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteView):
+    model = EdgeServer
+    template_name = "backoffice/confirm_delete.html"
+    success_url = reverse_lazy("backoffice:edge_server_list")
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = "Удаление HAProxy edge"
+        ctx["object_label"] = edge_endpoint(self.object)
+        ctx["delete_blocked"] = False
+        ctx["related_counts"] = None
+        if bool(getattr(self.object, "is_primary", False)):
+            ctx["delete_warning"] = (
+                "Edge сейчас помечен как primary. После удаления нужно проверить, что в inventory остался другой готовый edge, "
+                "и при необходимости сделать DNS cutover на него."
+            )
+        else:
+            ctx["delete_warning"] = (
+                "Будет удалена только inventory-запись edge. Сам DNS, standby edge и backend nodes удалены не будут."
+            )
+        return self.add_wordpress_context(ctx)
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        self.object = self.get_object()
+        was_primary = bool(getattr(self.object, "is_primary", False))
+        deleted_id = int(self.object.id)
+        self.object.delete()
+        replacement = _promote_replacement_primary_on_delete(deleted_id) if was_primary else _normalize_edge_primary_state()
+        if was_primary and replacement is not None:
+            messages.success(request, f"HAProxy edge удалён. Новый primary edge: {replacement.name}")
+        else:
+            messages.success(request, "HAProxy edge удалён")
+        render_error = _render_local_haproxy_runtime()
+        if render_error:
+            messages.warning(
+                request,
+                f"Edge удалён, но runtime HAProxy config не обновлён автоматически: {render_error}",
+            )
+        return redirect(self.success_url)
+
+
 class VPNNodeClientListView(BaseListView):
     model = VPNNodeClient
     title = "Node sync"
@@ -2292,7 +2554,9 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
-        ctx["title"] = "Cluster & HAProxy"
+        edges = list(safe_get(lambda: EdgeServer.objects.order_by("priority", "id"), []))
+        primary_edge = _current_primary_edge(edges)
+        ctx["title"] = "Cluster, edges & HAProxy"
         ctx["system_groups"] = [
             {
                 "title": "VPN runtime",
@@ -2314,6 +2578,16 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
                 ],
             },
             {
+                "title": "Edge inventory",
+                "items": [
+                    ("Primary edge", primary_edge.name if primary_edge else "—"),
+                    ("Primary endpoint", edge_endpoint(primary_edge) if primary_edge else "—"),
+                    ("Primary IP", primary_edge.public_ip if primary_edge else "—"),
+                    ("Total edges", len(edges)),
+                    ("Healthy active edges", sum(1 for edge in edges if edge.is_active and edge.last_health_ok is True)),
+                ],
+            },
+            {
                 "title": "HAProxy",
                 "items": [
                     ("Bind address", env_value("HAPROXY_FRONTEND_BIND_ADDR", "0.0.0.0")),
@@ -2328,17 +2602,36 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
         ctx["ops_commands"] = [
             "python scripts/ops/render_haproxy_cfg.py --env-file .env --dry-run",
             "python scripts/ops/render_haproxy_cfg.py --env-file .env --output-path ops/haproxy/runtime/haproxy.cfg",
+            "python web/manage.py check_haproxy_edges",
         ]
         ctx["notes"] = [
             "Из /ops изменение ноды теперь автоматически перерисовывает runtime haproxy.cfg для containerized HAProxy. Контейнер HAProxy сам подхватывает изменения файла.",
+            "Edge inventory в /ops — это control plane для DNS/floating-IP cutover. Сам DNS всё равно переключается отдельно.",
+            "Primary edge должен совпадать с тем endpoint, на который реально смотрит connect.vxcloud.ru. Если не совпадает — сначала правьте DNS/env, потом inventory.",
             "Если cluster mode выключен, таблицы нод и sync всё равно полезны как inventory и health audit.",
             "Перед включением lb_enabled на новой ноде: откройте firewall для backend/inbound port, дождитесь health=healthy, закончите backfill и сверьте REALITY key/shortId/SNI с majority пулом.",
-            "HAProxy template теперь рассчитан на long-lived TCP sessions. При первом node-add всё равно сделайте dry-run render и тест старым и новым конфигом.",
+            "Для целевого split rollout новые VPN конфиги должны смотреть на connect.vxcloud.ru:443, а не на домен сайта.",
+            "HAProxy template рассчитан на long-lived TCP sessions. При первом node-add или edge-cutover всё равно делайте dry-run render и ручной тест новым конфигом.",
         ]
 
         nodes = list(safe_get(lambda: VPNNode.objects.order_by("name", "id"), []))
         pool_nodes, majority_signature = _eligible_lb_nodes(nodes)
         pool_ids = {int(node.id) for node in pool_nodes}
+        ctx["edge_rows"] = [
+            {
+                "name": edge.name,
+                "endpoint": edge_endpoint(edge),
+                "public_ip": edge.public_ip,
+                "health": edge_health_badge(edge),
+                "role": edge_role_badge(edge),
+                "admission": edge_admission_badge(edge),
+                "priority": int(getattr(edge, "priority", 100) or 100),
+                "last_health_at": format_cell(edge.last_health_at),
+                "last_health_error": getattr(edge, "last_health_error", "") or "—",
+                "notes": getattr(edge, "notes", "") or "—",
+            }
+            for edge in edges
+        ]
         ctx["lb_rows"] = [
             {
                 "id": node.id,
@@ -2400,6 +2693,14 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
             }
             for node in nodes
         ]
+        ctx["primary_edge"] = {
+            "name": primary_edge.name,
+            "endpoint": edge_endpoint(primary_edge),
+            "public_ip": primary_edge.public_ip,
+            "accepting": edge_admission_badge(primary_edge),
+            "health": edge_health_badge(primary_edge),
+            "priority": int(getattr(primary_edge, "priority", 100) or 100),
+        } if primary_edge else None
         return ctx
 
 
