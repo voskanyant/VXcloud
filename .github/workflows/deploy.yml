@@ -25,20 +25,31 @@ jobs:
           script: |
             set -euo pipefail
             cd /srv/apps/vxcloud/app
-            echo "[preflight] free 127.0.0.1:8088 if occupied..."
-            if ss -lntH "( sport = :8088 )" | grep -q .; then
-              sudo -n systemctl stop vxcloud-web.service 2>/dev/null || true
-              sudo -n systemctl disable vxcloud-web.service 2>/dev/null || true
-              pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
-              for pid in $pids; do
-                kill -TERM "$pid" 2>/dev/null || true
-              done
-              sleep 1
-              pids="$(ss -lntp "( sport = :8088 )" 2>/dev/null | grep -oE 'pid=[0-9]+' | cut -d= -f2 | sort -u || true)"
-              for pid in $pids; do
-                kill -KILL "$pid" 2>/dev/null || true
-              done
-            fi
             git fetch origin main
             git reset --hard origin/main
-            bash scripts/ops/deploy-auto.sh
+            if [[ ! -f .env && -f /srv/secrets/vxcloud.env ]]; then
+              cp /srv/secrets/vxcloud.env .env
+              chmod 600 .env
+            fi
+
+            docker compose --env-file .env build wordpress web
+            docker compose --env-file .env up -d db wpdb
+            docker compose --env-file .env up -d wordpress web proxy
+            docker compose --env-file .env stop haproxy bot || true
+
+            docker compose --env-file .env exec -T web python /app/web/manage.py makemigrations --check --dry-run
+
+            attempt=1
+            max_attempts=45
+            until curl -fsS -o /dev/null http://127.0.0.1:8088/ops/login/?next=/ops/; do
+              if [[ "$attempt" -ge "$max_attempts" ]]; then
+                echo "ERROR: local proxy healthcheck failed"
+                docker compose --env-file .env ps
+                docker compose --env-file .env logs --tail=100 web proxy
+                exit 1
+              fi
+              sleep 2
+              attempt=$((attempt + 1))
+            done
+
+            docker compose --env-file .env ps
