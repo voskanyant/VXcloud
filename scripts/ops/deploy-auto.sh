@@ -58,25 +58,8 @@ set_env_value() {
   fi
 }
 
-haproxy_frontend_port() {
-  local port
-  port="$(grep -E '^HAPROXY_FRONTEND_PORT=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
-  if [[ -z "$port" ]]; then
-    port="$(grep -E '^VPN_PUBLIC_PORT=' .env 2>/dev/null | tail -n 1 | cut -d= -f2- || true)"
-  fi
-  if [[ -z "$port" ]]; then
-    port="29940"
-  fi
-  printf '%s' "$port"
-}
-
 port_in_use() {
   ss -lntH "( sport = :8088 )" | grep -q .
-}
-
-port_in_use_exact() {
-  local port="$1"
-  ss -lntH "( sport = :${port} )" | grep -q .
 }
 
 show_port_occupant() {
@@ -84,14 +67,6 @@ show_port_occupant() {
   ss -lntp "( sport = :8088 )" || true
   echo "---- docker publish 8088 ----"
   docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep '127.0.0.1:8088->' || true
-}
-
-show_port_occupant_exact() {
-  local port="$1"
-  echo "---- ss (${port}) ----"
-  ss -lntp "( sport = :${port} )" || true
-  echo "---- docker publish ${port} ----"
-  docker ps --format 'table {{.Names}}\t{{.Ports}}' | grep ":${port}->" || true
 }
 
 kill_any_on_8088() {
@@ -126,21 +101,6 @@ ensure_frontdoor_port_available() {
     echo "Port 8088 is still in use after cleanup."
     show_port_occupant
   fi
-}
-
-ensure_haproxy_frontend_port_available() {
-  local port
-  port="$(haproxy_frontend_port)"
-
-  if ! port_in_use_exact "$port"; then
-    return 0
-  fi
-
-  echo "HAProxy frontend port ${port} is busy before starting containerized HAProxy."
-  echo "ERROR: port ${port} is already occupied."
-  show_port_occupant_exact "$port"
-  echo "Free that port manually, then re-run deploy."
-  exit 1
 }
 
 start_proxy_with_port_takeover() {
@@ -189,19 +149,16 @@ echo "[4/11] Preflight checks..."
 ensure_frontdoor_port_available
 
 echo "[5/11] Build custom images..."
-docker compose --env-file .env build web bot
+docker compose --env-file .env build wordpress web
 
 echo "[6/11] Start data services..."
 docker compose --env-file .env up -d db wpdb
 
 echo "[7/11] Start app services..."
 docker compose --env-file .env up -d wordpress web
-echo "Rendering HAProxy runtime config for container..."
-run_in_web_with_retry 15 2 python /app/scripts/ops/render_haproxy_cfg.py --env-file /app/.env --output-path /app/ops/haproxy/runtime/haproxy.cfg --skip-validate --skip-reload
-ensure_haproxy_frontend_port_available
-docker compose --env-file .env up -d haproxy
+echo "Stopping disabled services (haproxy, bot) if they are running..."
+docker compose --env-file .env stop haproxy bot || true
 start_proxy_with_port_takeover
-docker compose --env-file .env --profile bot up -d bot
 
 echo "[8/11] Django migrations + static are handled by web entrypoint..."
 
