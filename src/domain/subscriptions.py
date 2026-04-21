@@ -12,6 +12,7 @@ from src.cluster.rebalance import pick_best_node
 from src.client_naming import build_xui_client_name
 from src.config import Settings
 from src.db import DB
+from src.dns_alias import ensure_subscription_alias_record, generate_subscription_alias
 from src.subscription_links import build_subscription_vless_url
 from src.xui_client import InboundRealityInfo, XUIClient
 
@@ -244,6 +245,12 @@ async def activate_subscription(
             )
             new_exp = now + timedelta(days=settings.plan_days)
             xui_sub_id = _deterministic_sub_id(client_uuid) if cluster_mode else None
+            alias_fqdn = generate_subscription_alias(settings) if cluster_mode else None
+            compatibility_pool = (
+                str(assigned_node.get("compatibility_pool") or "").strip() or "default"
+                if cluster_mode and assigned_node is not None
+                else None
+            )
 
             if cluster_mode:
                 node_result = await create_client_on_node(
@@ -272,6 +279,7 @@ async def activate_subscription(
                 node=assigned_node,
                 client_uuid=client_uuid,
                 reality=reality,
+                subscription={"alias_fqdn": alias_fqdn},
             ) if cluster_mode else build_subscription_vless_url(
                 settings=settings,
                 node={"backend_host": settings.vpn_public_host, "backend_port": settings.vpn_public_port or inbound_port},
@@ -287,11 +295,42 @@ async def activate_subscription(
                 assigned_node_id=(int(assigned_node["id"]) if assigned_node is not None else None),
                 assignment_source=("new" if cluster_mode else "single_node"),
                 migration_state="ready",
+                alias_fqdn=alias_fqdn,
+                current_node_id=(int(assigned_node["id"]) if assigned_node is not None else None),
+                desired_node_id=None,
+                assignment_state=("steady" if cluster_mode else "single_node"),
+                ttl_seconds=int(getattr(settings, "vpn_alias_default_ttl", 300)),
+                dns_provider=(settings.vpn_alias_provider if cluster_mode else None),
+                compatibility_pool=compatibility_pool,
                 vless_url=vless_url,
                 expires_at=new_exp,
             )
             feed_token = await db.ensure_subscription_feed_token(sub_id)
             await db.update_subscription_xui_sub_id(sub_id, xui_sub_id)
+            if cluster_mode and alias_fqdn and assigned_node is not None:
+                alias_result = await ensure_subscription_alias_record(
+                    settings=settings,
+                    alias_fqdn=alias_fqdn,
+                    node=assigned_node,
+                    ttl=int(getattr(settings, "vpn_alias_default_ttl", 300)),
+                )
+                await db.update_subscription_assignment(
+                    sub_id,
+                    assigned_node_id=int(assigned_node["id"]),
+                    vless_url=vless_url,
+                    assignment_source="new",
+                    migration_state="ready",
+                    alias_fqdn=alias_fqdn,
+                    current_node_id=int(assigned_node["id"]),
+                    desired_node_id=None,
+                    assignment_state="steady",
+                    ttl_seconds=alias_result.ttl,
+                    dns_provider=alias_result.provider,
+                    dns_record_id=alias_result.record_id,
+                    last_dns_change_id=alias_result.change_id,
+                    compatibility_pool=compatibility_pool,
+                    mark_rebalanced=False,
+                )
             await db.mark_order_activated(order_id)
             paid_to_ready_ms: int | None = None
             paid_at = order.get("paid_at")
@@ -325,6 +364,12 @@ async def activate_subscription(
             xui_sub_id = _deterministic_sub_id(client_uuid)
 
         if cluster_mode:
+            alias_fqdn = str(current_sub.get("alias_fqdn") or "").strip() or generate_subscription_alias(settings)
+            compatibility_pool = (
+                str(current_sub.get("compatibility_pool") or "").strip()
+                or str(assigned_node.get("compatibility_pool") or "").strip()
+                or "default"
+            )
             node_result = await update_client_on_node(
                 assigned_node,
                 client_uuid,
@@ -340,6 +385,7 @@ async def activate_subscription(
                 node=assigned_node,
                 client_uuid=client_uuid,
                 reality=reality,
+                subscription={"alias_fqdn": alias_fqdn},
             )
         else:
             await xui.update_client(
@@ -365,7 +411,39 @@ async def activate_subscription(
             assigned_node_id=(int(assigned_node["id"]) if assigned_node is not None else None),
             assignment_source=("renew_preserve" if assignment_reason == "preserved_assignment" else "renew_reassign"),
             migration_state="ready",
+            alias_fqdn=(alias_fqdn if cluster_mode else None),
+            current_node_id=(int(assigned_node["id"]) if assigned_node is not None else None),
+            desired_node_id=None,
+            assignment_state=("steady" if cluster_mode else None),
+            ttl_seconds=(int(getattr(settings, "vpn_alias_default_ttl", 300)) if cluster_mode else None),
+            dns_provider=(settings.vpn_alias_provider if cluster_mode else None),
+            compatibility_pool=(compatibility_pool if cluster_mode else None),
         )
+        if cluster_mode and alias_fqdn and assigned_node is not None:
+            alias_result = await ensure_subscription_alias_record(
+                settings=settings,
+                alias_fqdn=alias_fqdn,
+                node=assigned_node,
+                ttl=int(getattr(settings, "vpn_alias_default_ttl", 300)),
+                record_id=str(current_sub.get("dns_record_id") or "").strip() or None,
+            )
+            await db.update_subscription_assignment(
+                int(current_sub["id"]),
+                assigned_node_id=int(assigned_node["id"]),
+                vless_url=vless_url,
+                assignment_source=("renew_preserve" if assignment_reason == "preserved_assignment" else "renew_reassign"),
+                migration_state="ready",
+                alias_fqdn=alias_fqdn,
+                current_node_id=int(assigned_node["id"]),
+                desired_node_id=None,
+                assignment_state="steady",
+                ttl_seconds=alias_result.ttl,
+                dns_provider=alias_result.provider,
+                dns_record_id=alias_result.record_id,
+                last_dns_change_id=alias_result.change_id,
+                compatibility_pool=compatibility_pool,
+                mark_rebalanced=False,
+            )
         await db.update_subscription_xui_sub_id(int(current_sub["id"]), xui_sub_id)
         feed_token = await db.ensure_subscription_feed_token(int(current_sub["id"]))
         await db.mark_order_activated(order_id)

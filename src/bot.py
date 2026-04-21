@@ -38,10 +38,11 @@ from .config import Settings
 from .client_naming import build_xui_client_name
 from .cms import DirectusCMS
 from .db import DB
+from .dns_alias import ensure_subscription_alias_record, generate_subscription_alias
 from .domain.subscriptions import activate_subscription
 from .subscription_links import build_bot_feed_url, build_subscription_vless_url
 from .vless import build_vless_url
-from .xui_client import XUIClient
+from .xui_client import InboundRealityInfo, XUIClient
 
 
 LOGGER = logging.getLogger(__name__)
@@ -50,6 +51,21 @@ V2BOX_PLAYSTORE_URL = "https://play.google.com/store/search?q=V2Box&c=apps"
 IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 EMAIL_RE = re.compile(r"(?:email|user)[:=]\s*([^\s,\]]+)", re.IGNORECASE)
 BRACKET_RE = re.compile(r"\[([^\[\]\s]+)\]")
+
+
+def _node_reality_info(node: dict[str, object]) -> InboundRealityInfo | None:
+    public_key = str(node.get("last_reality_public_key") or "").strip()
+    short_id = str(node.get("last_reality_short_id") or "").strip()
+    sni = str(node.get("last_reality_sni") or "").strip()
+    fingerprint = str(node.get("last_reality_fingerprint") or "chrome").strip() or "chrome"
+    if not (public_key and short_id and sni):
+        return None
+    return InboundRealityInfo(
+        public_key=public_key,
+        short_id=short_id,
+        sni=sni,
+        fingerprint=fingerprint,
+    )
 
 
 def _log_payment_event(
@@ -2310,35 +2326,58 @@ class VPNBot:
         assigned_node_id: int | None = None
 
         if bool(getattr(self.settings, "vpn_cluster_enabled", False)):
-            node = await pick_best_node(self.db)
-            if not node:
+            best = await pick_best_node(self.db)
+            if not best:
                 raise RuntimeError("No eligible VPN node found for trial activation")
+            node = best.node
+            reality = _node_reality_info(node)
+            if reality is None:
+                raise RuntimeError("Selected trial node has no usable Reality metadata")
+            xui_sub_id = uuid.uuid5(uuid.NAMESPACE_URL, f"vxcloud:{client_uuid}").hex
+            alias_fqdn = generate_subscription_alias(self.settings)
             created = await create_client_on_node(
-                db=self.db,
-                node_row=node,
-                client_uuid=client_uuid,
-                client_email=client_email,
-                expires_at=new_exp,
-                settings=self.settings,
-                comment="trial",
-            )
-            vless_url = build_subscription_vless_url(
-                self.settings,
                 node,
                 client_uuid=client_uuid,
-                reality=created.reality,
+                client_email=client_email,
+                sub_id=xui_sub_id,
+                expires_at=new_exp,
+                limit_ip=self.settings.max_devices_per_sub,
+                flow=self.settings.vpn_flow,
+            )
+            alias_result = await ensure_subscription_alias_record(
+                settings=self.settings,
+                alias_fqdn=alias_fqdn,
+                node=node,
+                ttl=int(getattr(self.settings, "vpn_alias_default_ttl", 300)),
+            )
+            vless_url = build_subscription_vless_url(
+                settings=self.settings,
+                node=node,
+                client_uuid=client_uuid,
+                reality=reality,
+                subscription={"alias_fqdn": alias_fqdn},
             )
             assigned_node_id = int(node["id"])
             await self.db.create_subscription(
                 user_id=user_id,
-                inbound_id=created.inbound_id,
+                inbound_id=int(node.get("xui_inbound_id") or self.settings.xui_inbound_id),
                 client_uuid=client_uuid,
                 client_email=client_email,
+                xui_sub_id=str(created.get("xui_sub_id") or xui_sub_id),
                 vless_url=vless_url,
                 expires_at=new_exp,
                 assigned_node_id=assigned_node_id,
                 assignment_source="trial",
-                migration_state="direct",
+                migration_state="ready",
+                alias_fqdn=alias_fqdn,
+                current_node_id=assigned_node_id,
+                desired_node_id=None,
+                assignment_state="steady",
+                ttl_seconds=alias_result.ttl,
+                dns_provider=alias_result.provider,
+                dns_record_id=alias_result.record_id,
+                last_dns_change_id=alias_result.change_id,
+                compatibility_pool=str(node.get("compatibility_pool") or "default"),
             )
         else:
             inbound = await self.xui.get_inbound(self.settings.xui_inbound_id)

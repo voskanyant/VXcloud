@@ -34,10 +34,23 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     display_name TEXT NOT NULL DEFAULT '',
     xui_sub_id TEXT,
     assigned_node_id BIGINT REFERENCES vpn_nodes(id) ON DELETE SET NULL,
+    alias_fqdn TEXT UNIQUE,
+    current_node_id BIGINT REFERENCES vpn_nodes(id) ON DELETE SET NULL,
+    desired_node_id BIGINT REFERENCES vpn_nodes(id) ON DELETE SET NULL,
     assignment_source TEXT NOT NULL DEFAULT 'legacy',
     assigned_at TIMESTAMPTZ,
     last_rebalanced_at TIMESTAMPTZ,
     migration_state TEXT NOT NULL DEFAULT 'pending',
+    assignment_state TEXT NOT NULL DEFAULT 'steady',
+    ttl_seconds INTEGER NOT NULL DEFAULT 300,
+    overlap_until TIMESTAMPTZ,
+    dns_provider TEXT,
+    dns_record_id TEXT,
+    last_dns_change_id TEXT,
+    compatibility_pool TEXT,
+    planned_at TIMESTAMPTZ,
+    presynced_at TIMESTAMPTZ,
+    cutover_at TIMESTAMPTZ,
     feed_token TEXT UNIQUE,
     vless_url TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
@@ -51,6 +64,10 @@ CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_expires_at ON subscriptions(expires_at);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_assigned_node_id ON subscriptions(assigned_node_id);
 CREATE INDEX IF NOT EXISTS idx_subscriptions_assignment_state ON subscriptions(migration_state, assigned_node_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_current_node_id ON subscriptions(current_node_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_desired_node_id ON subscriptions(desired_node_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_dns_state ON subscriptions(assignment_state, current_node_id, desired_node_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_overlap_until ON subscriptions(overlap_until);
 
 CREATE TABLE IF NOT EXISTS reminder_logs (
     id BIGSERIAL PRIMARY KEY,
@@ -134,6 +151,15 @@ CREATE TABLE IF NOT EXISTS vpn_nodes (
     xui_inbound_id INTEGER NOT NULL,
     backend_host TEXT NOT NULL,
     backend_port INTEGER NOT NULL,
+    public_ip TEXT,
+    node_fqdn TEXT,
+    compatibility_pool TEXT NOT NULL DEFAULT 'default',
+    xray_api_host TEXT,
+    xray_api_port INTEGER,
+    xray_metrics_host TEXT,
+    xray_metrics_port INTEGER,
+    bandwidth_capacity_mbps INTEGER NOT NULL DEFAULT 1000,
+    connection_capacity INTEGER NOT NULL DEFAULT 10000,
     backend_weight INTEGER NOT NULL DEFAULT 100,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     lb_enabled BOOLEAN NOT NULL DEFAULT FALSE,
@@ -188,6 +214,7 @@ CREATE TABLE IF NOT EXISTS vpn_node_load_snapshots (
     observed_enabled_clients INTEGER NOT NULL DEFAULT 0,
     total_traffic_bytes BIGINT NOT NULL DEFAULT 0,
     peak_concurrency INTEGER,
+    probe_latency_ms INTEGER,
     health_ok BOOLEAN NOT NULL DEFAULT FALSE,
     health_error TEXT,
     score NUMERIC(18,6),
@@ -206,6 +233,8 @@ CREATE TABLE IF NOT EXISTS vpn_rebalance_decisions (
     score_before NUMERIC(18,6),
     score_after NUMERIC(18,6),
     reason TEXT,
+    dns_change_id TEXT,
+    rollback_reason TEXT,
     details JSONB NOT NULL DEFAULT '{}'::jsonb,
     decided_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

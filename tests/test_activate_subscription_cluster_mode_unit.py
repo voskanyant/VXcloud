@@ -25,10 +25,18 @@ def _settings(*, cluster_enabled: bool) -> Settings:
         vpn_cluster_sync_batch_size=200,
         vpn_rebalance_enabled=cluster_enabled,
         vpn_rebalance_interval_seconds=604800,
+        vpn_rebalance_workflow_tick_seconds=60,
         vpn_rebalance_max_moves_per_node=50,
         vpn_rebalance_move_fraction=0.20,
         vpn_rebalance_cooldown_hours=168,
         vpn_rebalance_min_score_gap=2.5,
+        vpn_alias_namespace="vpn.vxcloud.ru",
+        vpn_alias_provider="cloudflare",
+        vpn_alias_default_ttl=300,
+        vpn_alias_cutover_ttl=60,
+        vpn_alias_overlap_minutes=310,
+        cloudflare_api_token=None,
+        cloudflare_zone_id=None,
         vpn_tag="VXcloud",
         vpn_flow="xtls-rprx-vision",
         plan_days=30,
@@ -113,7 +121,7 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
         self.assertIn("@connect.vxcloud.ru:443", result.vless_url)
         self.assertEqual(result.feed_token, "feed-token-777")
 
-    async def test_cluster_mode_assigns_one_best_node_and_uses_direct_backend_link(self):
+    async def test_cluster_mode_assigns_one_best_node_and_uses_alias_link(self):
         db = AsyncMock()
         db.claim_order_for_activation.return_value = {
             "id": 601,
@@ -136,6 +144,8 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
             "name": "node-1-main",
             "backend_host": "de1.vxcloud.ru",
             "backend_port": 443,
+            "public_ip": "116.202.10.113",
+            "compatibility_pool": "default",
             "xui_base_url": "https://node-1.local",
             "xui_username": "u1",
             "xui_password": "p1",
@@ -158,6 +168,10 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
                 "src.domain.subscriptions.create_client_on_node",
                 new=AsyncMock(return_value={"node_id": 1, "ok": True, "xui_sub_id": "cluster-sub-id"}),
             ) as create_mock,
+            patch(
+                "src.domain.subscriptions.ensure_subscription_alias_record",
+                new=AsyncMock(return_value=SimpleNamespace(record_id="dns-1", provider="cloudflare", change_id="chg-1", ttl=300)),
+            ),
         ):
             result = await activate_subscription(
                 601,
@@ -169,9 +183,12 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
         create_mock.assert_awaited_once()
         create_kwargs = db.create_subscription.await_args.kwargs
         self.assertEqual(create_kwargs["assigned_node_id"], 1)
+        self.assertEqual(create_kwargs["current_node_id"], 1)
         self.assertEqual(create_kwargs["assignment_source"], "new")
         self.assertEqual(create_kwargs["migration_state"], "ready")
-        self.assertIn("@de1.vxcloud.ru:443", create_kwargs["vless_url"])
+        self.assertEqual(create_kwargs["assignment_state"], "steady")
+        self.assertTrue(str(create_kwargs["alias_fqdn"]).endswith(".vpn.vxcloud.ru"))
+        self.assertIn(f"@{create_kwargs['alias_fqdn']}:443", create_kwargs["vless_url"])
         self.assertEqual(result.vless_url, create_kwargs["vless_url"])
         self.assertEqual(result.feed_token, "feed-token-9001")
         self.assertTrue(result.created)

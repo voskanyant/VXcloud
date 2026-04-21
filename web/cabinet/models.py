@@ -83,6 +83,7 @@ class BotSubscription(models.Model):
     xui_sub_id = models.TextField(null=True, blank=True)
     display_name = models.TextField()
     vless_url = models.TextField()
+    alias_fqdn = models.TextField(null=True, blank=True)
     assigned_node = models.ForeignKey(
         "VPNNode",
         db_column="assigned_node_id",
@@ -90,10 +91,36 @@ class BotSubscription(models.Model):
         null=True,
         blank=True,
     )
+    current_node = models.ForeignKey(
+        "VPNNode",
+        db_column="current_node_id",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+        related_name="subscriptions_current",
+    )
+    desired_node = models.ForeignKey(
+        "VPNNode",
+        db_column="desired_node_id",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+        related_name="subscriptions_desired",
+    )
     assignment_source = models.TextField()
     assigned_at = models.DateTimeField(null=True, blank=True)
     last_rebalanced_at = models.DateTimeField(null=True, blank=True)
     migration_state = models.TextField()
+    assignment_state = models.TextField()
+    ttl_seconds = models.IntegerField()
+    overlap_until = models.DateTimeField(null=True, blank=True)
+    dns_provider = models.TextField(null=True, blank=True)
+    dns_record_id = models.TextField(null=True, blank=True)
+    last_dns_change_id = models.TextField(null=True, blank=True)
+    compatibility_pool = models.TextField(null=True, blank=True)
+    planned_at = models.DateTimeField(null=True, blank=True)
+    presynced_at = models.DateTimeField(null=True, blank=True)
+    cutover_at = models.DateTimeField(null=True, blank=True)
     feed_token = models.TextField(null=True, blank=True)
     expires_at = models.DateTimeField()
     is_active = models.BooleanField()
@@ -180,6 +207,15 @@ class VPNNode(models.Model):
     xui_inbound_id = models.IntegerField()
     backend_host = models.TextField()
     backend_port = models.IntegerField()
+    public_ip = models.TextField(null=True, blank=True)
+    node_fqdn = models.TextField(null=True, blank=True)
+    compatibility_pool = models.TextField()
+    xray_api_host = models.TextField(null=True, blank=True)
+    xray_api_port = models.IntegerField(null=True, blank=True)
+    xray_metrics_host = models.TextField(null=True, blank=True)
+    xray_metrics_port = models.IntegerField(null=True, blank=True)
+    bandwidth_capacity_mbps = models.IntegerField()
+    connection_capacity = models.IntegerField()
     backend_weight = models.IntegerField()
     is_active = models.BooleanField()
     lb_enabled = models.BooleanField()
@@ -270,6 +306,7 @@ class VPNNodeLoadSnapshot(models.Model):
     observed_enabled_clients = models.IntegerField()
     total_traffic_bytes = models.BigIntegerField()
     peak_concurrency = models.IntegerField()
+    probe_latency_ms = models.IntegerField(null=True, blank=True)
     health_ok = models.BooleanField()
     health_error = models.TextField(null=True, blank=True)
     score_hint = models.FloatField(null=True, blank=True)
@@ -307,6 +344,8 @@ class VPNRebalanceDecision(models.Model):
     to_score = models.FloatField(null=True, blank=True)
     score_delta = models.FloatField(null=True, blank=True)
     reason = models.TextField(null=True, blank=True)
+    dns_change_id = models.TextField(null=True, blank=True)
+    rollback_reason = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField()
 
     class Meta:

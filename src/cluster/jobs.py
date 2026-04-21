@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+import time
 from typing import Any
 
 from src.cluster.provisioner import create_client_on_node, delete_or_disable_client_on_node, update_client_on_node
@@ -207,10 +208,12 @@ async def healthcheck_tick(db: DB) -> dict[str, int]:
         inbound_id = _node_inbound_id(node)
         xui = _node_client(node)
         try:
+            started = time.perf_counter()
             await xui.start()
             inbound = await xui.get_inbound(inbound_id)
             reality = xui.parse_reality(inbound)
             clients = await xui.list_clients(inbound_id)
+            probe_latency_ms = int((time.perf_counter() - started) * 1000)
             observed_enabled_clients = sum(1 for client in clients if bool(client.enabled))
             await db.mark_node_health(
                 node_id=node_id,
@@ -231,6 +234,7 @@ async def healthcheck_tick(db: DB) -> dict[str, int]:
                 observed_enabled_clients=observed_enabled_clients,
                 total_traffic_bytes=int(node.get("total_traffic_bytes") or 0),
                 peak_concurrency=int(node.get("peak_concurrency") or 0) if node.get("peak_concurrency") is not None else None,
+                probe_latency_ms=probe_latency_ms,
                 health_ok=True,
                 health_error=None,
                 score=(snapshot_score.score if snapshot_score is not None else None),
@@ -246,6 +250,7 @@ async def healthcheck_tick(db: DB) -> dict[str, int]:
                 observed_enabled_clients=int(node.get("observed_enabled_clients") or 0),
                 total_traffic_bytes=int(node.get("total_traffic_bytes") or 0),
                 peak_concurrency=int(node.get("peak_concurrency") or 0) if node.get("peak_concurrency") is not None else None,
+                probe_latency_ms=None,
                 health_ok=False,
                 health_error=str(exc),
                 score=None,

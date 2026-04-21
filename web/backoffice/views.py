@@ -55,9 +55,10 @@ if str(REPO_ROOT) not in sys.path:
 from src.xui_client import XUIClient
 import qrcode
 from src.cluster.provisioner import create_client_on_node
+from src.dns_alias import ensure_subscription_alias_record, generate_subscription_alias
 from src.cluster.rebalance import score_node
 from src.client_naming import build_xui_client_name
-from src.subscription_links import build_bot_feed_url
+from src.subscription_links import build_bot_feed_url, build_subscription_vless_url
 from src.vless import build_vless_url
 from src.xui_client import NO_EXPIRY_SENTINEL
 
@@ -308,6 +309,8 @@ def build_subscription_result(subscription: BotSubscription) -> dict[str, Any]:
     feed_url = build_bot_feed_url(site_url=_site_base_url(), feed_token=feed_token) if feed_token else ""
     primary_link = feed_url or vless_url
     assigned_node = getattr(subscription, "assigned_node", None)
+    current_node = getattr(subscription, "current_node", None) or assigned_node
+    desired_node = getattr(subscription, "desired_node", None)
     return {
         "subscription_id": int(getattr(subscription, "id", 0) or 0),
         "display_name": str(getattr(subscription, "display_name", "") or ""),
@@ -318,7 +321,15 @@ def build_subscription_result(subscription: BotSubscription) -> dict[str, Any]:
         "raw_vless_url": vless_url,
         "assignment_source": str(getattr(subscription, "assignment_source", "") or ""),
         "migration_state": str(getattr(subscription, "migration_state", "") or ""),
-        "assigned_node_label": str(getattr(assigned_node, "name", "") or ""),
+        "assigned_node_label": str(getattr(current_node, "name", "") or ""),
+        "current_node_label": str(getattr(current_node, "name", "") or ""),
+        "desired_node_label": str(getattr(desired_node, "name", "") or ""),
+        "alias_fqdn": str(getattr(subscription, "alias_fqdn", "") or ""),
+        "assignment_state": str(getattr(subscription, "assignment_state", "") or ""),
+        "compatibility_pool": str(getattr(subscription, "compatibility_pool", "") or ""),
+        "overlap_until_label": format_subscription_expires_at(getattr(subscription, "overlap_until", None))
+        if getattr(subscription, "overlap_until", None)
+        else "",
         "qr_image_data_url": build_qr_data_url(primary_link) if primary_link else "",
     }
 
@@ -474,6 +485,25 @@ def int_env(name: str, default: int) -> int:
         return int(default)
 
 
+def _alias_runtime_settings() -> Any:
+    return type(
+        "AliasSettings",
+        (),
+        {
+            "vpn_alias_namespace": env_value("VPN_ALIAS_NAMESPACE", "vpn.vxcloud.ru"),
+            "vpn_alias_provider": env_value("VPN_ALIAS_PROVIDER", "cloudflare"),
+            "vpn_alias_default_ttl": int_env("VPN_ALIAS_DEFAULT_TTL", 300),
+            "vpn_alias_cutover_ttl": int_env("VPN_ALIAS_CUTOVER_TTL", 60),
+            "vpn_alias_overlap_minutes": int_env("VPN_ALIAS_OVERLAP_MINUTES", 310),
+            "cloudflare_api_token": env_value("CLOUDFLARE_API_TOKEN", "") or None,
+            "cloudflare_zone_id": env_value("CLOUDFLARE_ZONE_ID", "") or None,
+            "vpn_public_port": int_env("VPN_PUBLIC_PORT", 443),
+            "vpn_tag": env_value("VPN_TAG", "VXcloud"),
+            "vpn_flow": env_value("VPN_FLOW", "xtls-rprx-vision"),
+        },
+    )()
+
+
 def backoffice_limit_ip() -> int:
     return int_env("BACKOFFICE_MAX_DEVICES_PER_SUB", 0)
 
@@ -490,9 +520,14 @@ def _active_vpn_nodes_snapshot() -> list[dict[str, Any]]:
                 "xui_password",
                 "xui_inbound_id",
                 "is_active",
+                "public_ip",
+                "node_fqdn",
+                "compatibility_pool",
                 "backend_host",
                 "backend_port",
                 "backend_weight",
+                "bandwidth_capacity_mbps",
+                "connection_capacity",
                 "lb_enabled",
                 "needs_backfill",
                 "last_health_ok",
@@ -524,17 +559,17 @@ def _active_assignment_counts(node_ids: list[int]) -> dict[int, int]:
     try:
         rows = list(
             BotSubscription.objects.filter(
-                assigned_node_id__in=node_ids,
+                current_node_id__in=node_ids,
                 is_active=True,
                 revoked_at__isnull=True,
                 expires_at__gt=now,
             )
-            .values("assigned_node_id")
+            .values("current_node_id")
             .annotate(total=Count("id"))
         )
     except (OperationalError, ProgrammingError):
         return {}
-    return {int(row["assigned_node_id"]): int(row["total"]) for row in rows if row.get("assigned_node_id")}
+    return {int(row["current_node_id"]): int(row["total"]) for row in rows if row.get("current_node_id")}
 
 
 def _recent_move_counts(node_ids: list[int]) -> dict[int, int]:
@@ -573,6 +608,7 @@ def _pick_best_assignment_node_snapshot() -> tuple[dict[str, Any] | None, float 
         payload["observed_enabled_clients"] = int(getattr(snapshot, "observed_enabled_clients", 0) or 0)
         payload["total_traffic_bytes"] = int(getattr(snapshot, "total_traffic_bytes", 0) or 0)
         payload["peak_concurrency"] = int(getattr(snapshot, "peak_concurrency", 0) or 0)
+        payload["probe_latency_ms"] = int(getattr(snapshot, "probe_latency_ms", 0) or 0)
         payload["moves_in_week"] = move_counts.get(node_id, 0)
         scored = score_node(payload)
         if scored is None:
@@ -1798,6 +1834,7 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
         now = timezone.now()
         should_be_active = True if infinite_expiry else expires_at > now
         cluster_mode = bool_env("VPN_CLUSTER_ENABLED", False)
+        alias_settings = _alias_runtime_settings()
         assigned_node_snapshot: dict[str, Any] | None = None
         assignment_score: float | None = None
         assignment_reasons: dict[str, float] = {}
@@ -1820,6 +1857,12 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
         stored_display_name = display_name or client_email
         xui_sub_id = _deterministic_sub_id(client_uuid) if cluster_mode else None
         feed_token = get_random_string(43, allowed_chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+        alias_fqdn = generate_subscription_alias(alias_settings) if cluster_mode else ""
+        compatibility_pool = (
+            str((assigned_node_snapshot or {}).get("compatibility_pool") or "").strip() or "default"
+            if cluster_mode
+            else ""
+        )
 
         try:
             runtime = _run_async_from_sync(_load_subscription_runtime(cluster_nodes=cluster_nodes))
@@ -1828,17 +1871,26 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             return self.render_to_response(self.get_context_data(form=form))
 
         reality = runtime["reality"]
-        vless_url = build_vless_url(
-            uuid=client_uuid,
-            host=str((assigned_node_snapshot or {}).get("backend_host") or env_value("VPN_PUBLIC_HOST")),
-            port=int((assigned_node_snapshot or {}).get("backend_port") or int_env("VPN_PUBLIC_PORT", int(runtime["inbound_port"]))),
-            tag=env_value("VPN_TAG", "VPN"),
-            public_key=reality.public_key,
-            short_id=reality.short_id,
-            sni=reality.sni,
-            fingerprint=reality.fingerprint,
-            flow=env_value("VPN_FLOW", "xtls-rprx-vision"),
-        )
+        if cluster_mode:
+            vless_url = build_subscription_vless_url(
+                settings=alias_settings,
+                node=assigned_node_snapshot,
+                client_uuid=client_uuid,
+                reality=reality,
+                subscription={"alias_fqdn": alias_fqdn},
+            )
+        else:
+            vless_url = build_vless_url(
+                uuid=client_uuid,
+                host=str((assigned_node_snapshot or {}).get("backend_host") or env_value("VPN_PUBLIC_HOST")),
+                port=int((assigned_node_snapshot or {}).get("backend_port") or int_env("VPN_PUBLIC_PORT", int(runtime["inbound_port"]))),
+                tag=env_value("VPN_TAG", "VPN"),
+                public_key=reality.public_key,
+                short_id=reality.short_id,
+                sni=reality.sni,
+                fingerprint=reality.fingerprint,
+                flow=env_value("VPN_FLOW", "xtls-rprx-vision"),
+            )
 
         subscription = BotSubscription(
             user_id=user_id,
@@ -1849,10 +1901,17 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             display_name=stored_display_name,
             vless_url=vless_url,
             assigned_node_id=int((assigned_node_snapshot or {}).get("id") or 0) or None,
-            assignment_source="backoffice_direct" if cluster_mode else "backoffice_single_node",
+            current_node_id=int((assigned_node_snapshot or {}).get("id") or 0) or None,
+            desired_node_id=None,
+            alias_fqdn=(alias_fqdn or None),
+            assignment_source="backoffice_alias" if cluster_mode else "backoffice_single_node",
             assigned_at=now,
             last_rebalanced_at=None,
-            migration_state="direct" if cluster_mode else "single_node",
+            migration_state="ready" if cluster_mode else "single_node",
+            assignment_state="steady" if cluster_mode else "single_node",
+            ttl_seconds=int(getattr(alias_settings, "vpn_alias_default_ttl", 300)) if cluster_mode else 300,
+            dns_provider=(alias_settings.vpn_alias_provider if cluster_mode else ""),
+            compatibility_pool=(compatibility_pool or ""),
             feed_token=feed_token,
             expires_at=expires_at,
             is_active=should_be_active,
@@ -1919,10 +1978,40 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
                 LOGGER.exception(
                     "backoffice_subscription_create_update_sub_id_failed",
                 extra={"subscription_id": int(getattr(subscription, "id", 0) or 0)},
-            )
+                )
 
         sync_state_errors: list[str] = []
         if cluster_mode and assigned_node_snapshot is not None:
+            try:
+                alias_result = _run_async_from_sync(
+                    ensure_subscription_alias_record(
+                        settings=alias_settings,
+                        alias_fqdn=alias_fqdn,
+                        node=assigned_node_snapshot,
+                        ttl=int(getattr(alias_settings, "vpn_alias_default_ttl", 300)),
+                        record_id=None,
+                    )
+                )
+                subscription.dns_record_id = alias_result.record_id or ""
+                subscription.last_dns_change_id = alias_result.change_id or ""
+                subscription.dns_provider = alias_result.provider or subscription.dns_provider
+                subscription.ttl_seconds = alias_result.ttl
+                subscription.updated_at = timezone.now()
+                subscription.save(
+                    update_fields=[
+                        "dns_record_id",
+                        "last_dns_change_id",
+                        "dns_provider",
+                        "ttl_seconds",
+                        "updated_at",
+                    ]
+                )
+            except Exception as exc:
+                LOGGER.exception(
+                    "backoffice_subscription_create_dns_alias_failed",
+                    extra={"subscription_id": int(getattr(subscription, "id", 0) or 0)},
+                )
+                sync_state_errors.append(f"dns-alias: {exc}")
             try:
                 sync_now = timezone.now()
                 VPNNodeClient.objects.update_or_create(

@@ -131,7 +131,7 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         self.assertEqual(provision_mock.await_args.kwargs["display_name"], "my VPN")
         self.assertEqual(provision_mock.await_args.kwargs["enabled"], True)
 
-    def test_create_subscription_in_cluster_mode_assigns_best_node_and_uses_direct_node_host(self):
+    def test_create_subscription_in_cluster_mode_assigns_best_node_and_uses_alias_host(self):
         now = timezone.now()
         expires_at = timezone.localtime(now + timedelta(days=16)).strftime("%Y-%m-%dT%H:%M")
         runtime = {
@@ -150,6 +150,8 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
             "name": "node-10",
             "backend_host": "de1.vxcloud.ru",
             "backend_port": 443,
+            "public_ip": "116.202.10.113",
+            "compatibility_pool": "default",
             "xui_base_url": "https://node.local",
             "xui_username": "u",
             "xui_password": "p",
@@ -168,6 +170,10 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
             patch("backoffice.views._load_subscription_runtime", new=AsyncMock(return_value=runtime)),
             patch("backoffice.views._pick_best_assignment_node_snapshot", return_value=(assigned_node_snapshot, 11.5, {"traffic": 4.2})),
             patch("backoffice.views.create_client_on_node", new=AsyncMock(return_value=created_client)) as create_mock,
+            patch(
+                "backoffice.views.ensure_subscription_alias_record",
+                new=AsyncMock(return_value=SimpleNamespace(record_id="dns-1", provider="cloudflare", change_id="chg-1", ttl=300)),
+            ),
             patch("backoffice.views.VPNNodeClient.objects.update_or_create", return_value=(SimpleNamespace(), True)),
             patch(
                 "backoffice.views.env_value",
@@ -190,9 +196,12 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         self.assertTrue(saved_objects)
         saved = saved_objects[0]
         self.assertEqual(saved.assigned_node_id, 10)
-        self.assertEqual(saved.assignment_source, "backoffice_direct")
-        self.assertEqual(saved.migration_state, "direct")
-        self.assertIn("@de1.vxcloud.ru:443", saved.vless_url)
+        self.assertEqual(saved.current_node_id, 10)
+        self.assertEqual(saved.assignment_source, "backoffice_alias")
+        self.assertEqual(saved.migration_state, "ready")
+        self.assertEqual(saved.assignment_state, "steady")
+        self.assertTrue(saved.alias_fqdn.endswith(".vpn.vxcloud.ru"))
+        self.assertIn(f"@{saved.alias_fqdn}:443", saved.vless_url)
         self.assertTrue(saved.feed_token)
 
     def test_create_subscription_without_expiry_uses_no_expiry_semantics(self):

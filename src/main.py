@@ -81,7 +81,7 @@ async def run() -> None:
             await asyncio.sleep(interval)
 
     async def cluster_rebalance_loop() -> None:
-        interval = max(3600, int(getattr(settings, "vpn_rebalance_interval_seconds", 604800)))
+        interval = max(30, int(getattr(settings, "vpn_rebalance_workflow_tick_seconds", 60)))
         while True:
             try:
                 await rebalance_tick(db, settings)

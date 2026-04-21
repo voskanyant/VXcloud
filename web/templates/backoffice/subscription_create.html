@@ -74,9 +74,15 @@
             <dt class="col-sm-4">3x-ui name</dt>
             <dd class="col-sm-8"><code>{{ created_result.client_email }}</code></dd>
             <dt class="col-sm-4">Нода</dt>
-            <dd class="col-sm-8">{{ created_result.assigned_node_label|default:"—" }}</dd>
+            <dd class="col-sm-8">{{ created_result.current_node_label|default:"—" }}</dd>
+            <dt class="col-sm-4">Alias host</dt>
+            <dd class="col-sm-8"><code>{{ created_result.alias_fqdn|default:"—" }}</code></dd>
             <dt class="col-sm-4">Assignment</dt>
             <dd class="col-sm-8">{{ created_result.assignment_source|default:"legacy" }}</dd>
+            <dt class="col-sm-4">State</dt>
+            <dd class="col-sm-8">{{ created_result.assignment_state|default:"—" }}</dd>
+            <dt class="col-sm-4">Pool</dt>
+            <dd class="col-sm-8">{{ created_result.compatibility_pool|default:"—" }}</dd>
             <dt class="col-sm-4">Срок</dt>
             <dd class="col-sm-8">{{ created_result.expires_at_label }}</dd>
           </dl>
