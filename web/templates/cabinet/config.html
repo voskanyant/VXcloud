@@ -9,131 +9,112 @@
 {% cms_text "cabinet.config.copy_action" "Скопировать ссылку" as cabinet_config_copy_action %}
 {% cms_text "cabinet.config.back_action" "Назад в кабинет" as cabinet_config_back_action %}
 
-<div class="cabinet-page cabinet-page-config">
-  <div class="account-workspace account-workspace-compact">
-    <aside class="account-rail">
-      <div class="account-rail-brand">
-        <div class="account-rail-kicker">VXcloud config</div>
-        <div class="account-rail-title">{{ display_name }}</div>
-        <p class="account-rail-subtitle">Один QR и один subscription URL. VXcloud сам меняет назначенную ноду, когда это нужно.</p>
+<div class="cabinet-page account-site-shell account-site-shell-config">
+  <section class="account-site-panel">
+    <div class="account-site-config-head">
+      <div>
+        <div class="account-site-kicker">Configuration</div>
+        <h1 class="account-site-panel-title">{{ cabinet_config_heading }}</h1>
+        <p class="account-site-lead">Один QR и один subscription URL. VXcloud сам обновляет назначенную ноду за этой ссылкой, когда это требуется.</p>
+      </div>
+      <div class="account-site-config-actions">
+        <button class="btn btn-dark" type="button" id="copy-config-button">{{ cabinet_config_copy_action }}</button>
+        <a class="btn btn-outline-secondary" href="{{ backend_dashboard_url }}">{{ cabinet_config_back_action }}</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="account-site-config-grid">
+    <article class="account-site-panel account-site-qr-panel">
+      <div class="account-site-panel-head account-site-panel-head-compact">
+        <div>
+          <div class="account-site-kicker">QR import</div>
+          <h2 class="account-site-panel-title">{{ display_name }}</h2>
+        </div>
+        <div class="account-site-pill">#{{ subscription.id }}</div>
       </div>
 
-      <div class="account-rail-section">
-        <div class="account-rail-label">Статус</div>
-        {% if has_active %}
-          <span class="vx-pill vx-pill-success status-pill">Активна</span>
-        {% else %}
-          <span class="vx-pill vx-pill-muted status-pill">Неактивна</span>
+      <div class="account-site-qr-frame">
+        <img id="qr" class="img-fluid config-qr-img" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
+      </div>
+
+      <div class="account-site-device-meta">
+        <div class="account-site-meta-card">
+          <span>Статус</span>
+          <strong>{% if has_active %}Активна{% else %}Неактивна{% endif %}</strong>
+        </div>
+        <div class="account-site-meta-card">
+          <span>Действует до</span>
+          <strong>{{ subscription.expires_at|date:'d.m.Y H:i' }}</strong>
+        </div>
+        {% if subscription.user and subscription.user.client_code %}
+          <div class="account-site-meta-card account-site-meta-card-wide">
+            <span>ID клиента</span>
+            <strong><span class="account-site-token">{{ subscription.user.client_code }}</span></strong>
+          </div>
         {% endif %}
       </div>
+    </article>
 
-      <div class="account-rail-section">
-        <div class="account-rail-label">Действия</div>
-        <div class="account-rail-actions">
-          <button class="account-rail-action account-rail-action-primary" type="button" id="copy-config-button">
-            <span>{{ cabinet_config_copy_action }}</span>
-            <strong>copy</strong>
-          </button>
-          <a class="account-rail-action" href="{{ backend_dashboard_url }}">
-            <span>{{ cabinet_config_back_action }}</span>
-            <strong>account</strong>
-          </a>
-          {% if not has_active %}
-            <form method="post" action="/account/subscriptions/{{ subscription.id }}/delete/" class="d-grid">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-              <button class="account-rail-action account-rail-action-danger" type="submit">
-                <span>Удалить</span>
-                <strong>device</strong>
-              </button>
-            </form>
-          {% endif %}
-        </div>
-      </div>
-    </aside>
-
-    <div class="account-main">
-      <section class="account-topbar">
-        <div>
-          <div class="account-topbar-label">Configuration</div>
-          <h1 class="account-topbar-title">{{ cabinet_config_heading }}</h1>
-        </div>
-        <div class="account-topbar-badge">#{{ subscription.id }}</div>
-      </section>
-
-      <section class="account-config-grid">
-        <article class="account-panel account-config-qr-panel">
-          <div class="account-panel-head">
-            <div>
-              <div class="account-panel-kicker">QR import</div>
-              <h2 class="account-panel-title">{{ display_name }}</h2>
-            </div>
-          </div>
-          <div class="config-qr-wrap account-config-qr-wrap">
-            <img id="qr" class="img-fluid config-qr-img" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
-          </div>
+    <div class="account-site-config-stack">
+      {% if subscriptions %}
+        <article class="account-site-panel">
+          <label class="form-label fw-semibold" for="config-switch">Все конфиги</label>
+          <select id="config-switch" class="form-select" onchange="if(this.value){window.location.href=this.value;}">
+            {% for sub_item in subscriptions %}
+              <option value="{{ backend_config_prefix }}{{ sub_item.id }}/" {% if sub_item.id == subscription.id %}selected{% endif %}>
+                #{{ sub_item.id }} — {{ sub_item.expires_at|date:'d.m.Y H:i' }} {% if sub_item.is_active %}(активен){% endif %}
+              </option>
+            {% endfor %}
+          </select>
         </article>
+      {% endif %}
 
-        <div class="account-config-side">
-          <article class="account-panel">
-            <div class="account-detail-grid">
-              <div class="account-detail-card">
-                <span class="account-detail-label">Статус</span>
-                <strong>{% if has_active %}Активна{% else %}Неактивна{% endif %}</strong>
-              </div>
-              <div class="account-detail-card">
-                <span class="account-detail-label">Действует до</span>
-                <strong>{{ subscription.expires_at|date:'d.m.Y H:i' }}</strong>
-              </div>
-              {% if subscription.user and subscription.user.client_code %}
-                <div class="account-detail-card account-detail-card-wide">
-                  <span class="account-detail-label">ID клиента</span>
-                  <strong><span class="account-token account-token-light">{{ subscription.user.client_code }}</span></strong>
-                </div>
-              {% endif %}
-            </div>
-          </article>
+      <article class="account-site-panel">
+        <label class="form-label fw-semibold" for="cfg">Subscription URL</label>
+        <div class="vx-link-input-wrap">
+          <input id="cfg" type="text" class="form-control form-control-sm config-link-field" value="{{ copy_text }}" readonly>
+          <button type="button" class="btn btn-sm btn-outline-secondary js-copy-icon vx-icon-button" id="copy-config-icon" data-copy-text="{{ copy_text }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+            <i class="bi bi-copy"></i>
+          </button>
+        </div>
+        <p class="account-site-muted mb-0">Импортируйте эту ссылку один раз. После этого VXcloud сможет менять назначенную ноду без ручной замены конфига.</p>
+      </article>
 
-          {% if subscriptions %}
-            <article class="account-panel">
-              <label class="form-label fw-semibold" for="config-switch">Все конфиги</label>
-              <select id="config-switch" class="form-select" onchange="if(this.value){window.location.href=this.value;}">
-                {% for sub_item in subscriptions %}
-                  <option value="{{ backend_config_prefix }}{{ sub_item.id }}/" {% if sub_item.id == subscription.id %}selected{% endif %}>
-                    #{{ sub_item.id }} — {{ sub_item.expires_at|date:'d.m.Y H:i' }} {% if sub_item.is_active %}(активен){% endif %}
-                  </option>
-                {% endfor %}
-              </select>
-            </article>
-          {% endif %}
+      <article class="account-site-panel">
+        <label class="form-label fw-semibold" for="cfg-rename">Имя устройства</label>
+        <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="vx-inline-action-form account-site-rename-form">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+          <input id="cfg-rename" type="text" class="form-control form-control-sm vx-rename-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Имя устройства" />
+          <button type="submit" class="btn btn-sm btn-outline-secondary js-rename-icon vx-icon-button" title="Переименовать" aria-label="Переименовать">
+            <i class="bi bi-pencil"></i>
+          </button>
+        </form>
+        <p class="account-site-muted mb-0">Меняйте название, чтобы проще различать конфиги в кабинете.</p>
+      </article>
 
-          <article class="account-panel">
-            <label class="form-label fw-semibold" for="cfg">Подписка VXcloud</label>
-            <div class="vx-link-input-wrap">
-              <input id="cfg" type="text" class="form-control form-control-sm config-link-field" value="{{ copy_text }}" readonly>
-              <button type="button" class="btn btn-sm btn-outline-secondary js-copy-icon vx-icon-button" id="copy-config-icon" data-copy-text="{{ copy_text }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
-                <i class="bi bi-copy"></i>
-              </button>
-            </div>
-            <p class="small text-secondary mb-0">Импортируйте эту ссылку один раз. Потом VXcloud сможет менять назначенную ноду без ручной замены конфига.</p>
-          </article>
-
-          <article class="account-panel">
-            <label class="form-label fw-semibold" for="cfg-rename">Имя устройства</label>
-            <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="vx-inline-action-form">
+      <article class="account-site-panel">
+        <div class="account-site-panel-head account-site-panel-head-compact">
+          <div>
+            <div class="account-site-kicker">Actions</div>
+            <h2 class="account-site-panel-title">Быстрые действия</h2>
+          </div>
+        </div>
+        <div class="account-site-config-actions account-site-config-actions-inline">
+          <button class="btn btn-dark" type="button" onclick="copyCfg()">Скопировать</button>
+          <a class="btn btn-outline-secondary" href="{{ dashboard_url }}">В кабинет</a>
+          {% if not has_active %}
+            <form method="post" action="/account/subscriptions/{{ subscription.id }}/delete/">
               {% csrf_token %}
               <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-              <input id="cfg-rename" type="text" class="form-control form-control-sm vx-rename-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Имя устройства" />
-              <button type="submit" class="btn btn-sm btn-outline-secondary js-rename-icon vx-icon-button" title="Переименовать" aria-label="Переименовать">
-                <i class="bi bi-pencil"></i>
-              </button>
+              <button class="btn btn-outline-danger w-100" type="submit">Удалить</button>
             </form>
-            <p class="small text-secondary mb-0">Измените название, чтобы проще различать конфиги в кабинете.</p>
-          </article>
+          {% endif %}
         </div>
-      </section>
+      </article>
     </div>
-  </div>
+  </section>
 </div>
 
 <script>
