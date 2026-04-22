@@ -39,6 +39,7 @@ MIGRATIONS=(
   "sql/migrations/20260402_create_vpn_cluster_tables.sql"
   "sql/migrations/20260402_add_vpn_nodes_backfill_requested_at.sql"
   "sql/migrations/20260402_extend_vpn_nodes_ops_fields.sql"
+  "sql/migrations/20260420_add_subscription_assignment_and_rebalance.sql"
 )
 
 set_env_var() {

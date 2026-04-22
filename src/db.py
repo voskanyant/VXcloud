@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -8,6 +9,10 @@ import asyncpg
 
 
 WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
+
+
+def _new_feed_token() -> str:
+    return secrets.token_urlsafe(24)
 
 
 def _site_placeholder_telegram_id_for_auth_user(user_id: int) -> int:
@@ -294,7 +299,21 @@ class DB:
         assert self.pool is not None
         rows = await self.pool.fetch(
             """
-            SELECT id, user_id, inbound_id, client_uuid, client_email, expires_at
+            SELECT
+                id,
+                user_id,
+                inbound_id,
+                client_uuid,
+                client_email,
+                expires_at,
+                assigned_node_id,
+                current_node_id,
+                desired_node_id,
+                alias_fqdn,
+                assignment_state,
+                compatibility_pool,
+                feed_token,
+                vless_url
             FROM subscriptions
             WHERE is_active = TRUE
               AND expires_at > NOW()
@@ -311,6 +330,87 @@ class DB:
             FROM subscriptions
             ORDER BY id
             """
+        )
+        return [dict(r) for r in rows]
+
+    async def get_subscription_by_feed_token(self, feed_token: str) -> dict[str, Any] | None:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            SELECT
+                s.*,
+                n.name AS assigned_node_name,
+                n.backend_host AS assigned_backend_host,
+                n.backend_port AS assigned_backend_port
+            FROM subscriptions s
+            LEFT JOIN vpn_nodes n ON n.id = COALESCE(s.current_node_id, s.assigned_node_id)
+            WHERE s.feed_token = $1
+            LIMIT 1
+            """,
+            str(feed_token).strip(),
+        )
+        return dict(row) if row else None
+
+    async def get_subscription_by_id(self, subscription_id: int) -> dict[str, Any] | None:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            SELECT *
+            FROM subscriptions
+            WHERE id = $1
+            LIMIT 1
+            """,
+            int(subscription_id),
+        )
+        return dict(row) if row else None
+
+    async def list_unassigned_active_subscriptions(self, limit: int = 500) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        rows = await self.pool.fetch(
+            """
+            SELECT *
+            FROM subscriptions
+            WHERE is_active = TRUE
+              AND expires_at > NOW()
+              AND COALESCE(current_node_id, assigned_node_id) IS NULL
+            ORDER BY created_at ASC, id ASC
+            LIMIT $1
+            """,
+            max(1, int(limit)),
+        )
+        return [dict(r) for r in rows]
+
+    async def list_subscriptions_missing_alias(self, limit: int = 500) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        rows = await self.pool.fetch(
+            """
+            SELECT *
+            FROM subscriptions
+            WHERE is_active = TRUE
+              AND expires_at > NOW()
+              AND COALESCE(alias_fqdn, '') = ''
+            ORDER BY created_at ASC, id ASC
+            LIMIT $1
+            """,
+            max(1, int(limit)),
+        )
+        return [dict(r) for r in rows]
+
+    async def list_subscriptions_by_assignment_state(self, states: list[str], limit: int = 500) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        normalized = [str(state).strip() for state in states if str(state).strip()]
+        if not normalized:
+            return []
+        rows = await self.pool.fetch(
+            """
+            SELECT *
+            FROM subscriptions
+            WHERE assignment_state = ANY($1::text[])
+            ORDER BY COALESCE(planned_at, created_at) ASC, id ASC
+            LIMIT $2
+            """,
+            normalized,
+            max(1, int(limit)),
         )
         return [dict(r) for r in rows]
 
@@ -349,6 +449,91 @@ class DB:
             return []
         return [dict(r) for r in rows]
 
+    async def list_node_assignment_metrics(self) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        try:
+            rows = await self.pool.fetch(
+                """
+                WITH active_subs AS (
+                    SELECT
+                        COALESCE(current_node_id, assigned_node_id) AS node_id,
+                        COUNT(*) FILTER (
+                            WHERE is_active = TRUE
+                              AND expires_at > NOW()
+                              AND revoked_at IS NULL
+                        ) AS active_assigned_subscriptions
+                    FROM subscriptions
+                    WHERE COALESCE(current_node_id, assigned_node_id) IS NOT NULL
+                    GROUP BY COALESCE(current_node_id, assigned_node_id)
+                ),
+                recent_snapshots AS (
+                    SELECT *
+                    FROM vpn_node_load_snapshots
+                    WHERE observed_at >= (NOW() - INTERVAL '7 days')
+                ),
+                latest_snapshots AS (
+                    SELECT DISTINCT ON (node_id)
+                        node_id,
+                        observed_at,
+                        assigned_active_subscriptions,
+                        observed_enabled_clients,
+                        total_traffic_bytes,
+                        peak_concurrency,
+                        probe_latency_ms,
+                        health_ok,
+                        health_error,
+                        score
+                    FROM recent_snapshots
+                    ORDER BY node_id, observed_at DESC
+                ),
+                rollup_snapshots AS (
+                    SELECT
+                        node_id,
+                        COALESCE(MAX(total_traffic_bytes) - MIN(total_traffic_bytes), MAX(total_traffic_bytes), 0) AS weekly_traffic_bytes,
+                        MAX(peak_concurrency) AS peak_concurrency,
+                        COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY COALESCE(peak_concurrency, 0)), 0) AS p95_concurrency,
+                        COALESCE(PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY COALESCE(probe_latency_ms, 0)), 0) AS p95_probe_latency_ms,
+                        COUNT(*) FILTER (WHERE COALESCE(health_ok, FALSE) = FALSE) AS health_failures,
+                        MAX(observed_at) AS last_snapshot_at,
+                        AVG(score) AS avg_score
+                    FROM recent_snapshots
+                    GROUP BY node_id
+                ),
+                weekly_moves AS (
+                    SELECT
+                        to_node_id AS node_id,
+                        COUNT(*) AS moves_in_week
+                    FROM vpn_rebalance_decisions
+                    WHERE decided_at >= (NOW() - INTERVAL '7 days')
+                      AND to_node_id IS NOT NULL
+                    GROUP BY to_node_id
+                )
+                SELECT
+                    n.*,
+                    COALESCE(a.active_assigned_subscriptions, 0) AS active_assigned_subscriptions,
+                    COALESCE(s.observed_enabled_clients, 0) AS observed_enabled_clients,
+                    COALESCE(s.total_traffic_bytes, 0) AS total_traffic_bytes,
+                    COALESCE(r.weekly_traffic_bytes, COALESCE(s.total_traffic_bytes, 0)) AS weekly_traffic_bytes,
+                    COALESCE(r.peak_concurrency, s.peak_concurrency) AS peak_concurrency,
+                    r.p95_concurrency,
+                    COALESCE(r.p95_probe_latency_ms, s.probe_latency_ms) AS p95_probe_latency_ms,
+                    COALESCE(r.health_failures, 0) AS health_failures,
+                    COALESCE(s.probe_latency_ms, 0) AS probe_latency_ms,
+                    COALESCE(r.last_snapshot_at, s.observed_at) AS last_snapshot_at,
+                    COALESCE(w.moves_in_week, 0) AS moves_in_week,
+                    COALESCE(r.avg_score, s.score) AS last_snapshot_score
+                FROM vpn_nodes n
+                LEFT JOIN active_subs a ON a.node_id = n.id
+                LEFT JOIN latest_snapshots s ON s.node_id = n.id
+                LEFT JOIN rollup_snapshots r ON r.node_id = n.id
+                LEFT JOIN weekly_moves w ON w.node_id = n.id
+                ORDER BY n.id
+                """
+            )
+        except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
+            return []
+        return [dict(r) for r in rows]
+
     async def get_cluster_sync_nodes(self) -> list[dict[str, Any]]:
         assert self.pool is not None
         try:
@@ -376,6 +561,23 @@ class DB:
                 LIMIT 1
                 """,
                 node_id,
+            )
+        except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
+            return None
+        return dict(row) if row else None
+
+    async def get_subscription_assigned_node(self, subscription_id: int) -> dict[str, Any] | None:
+        assert self.pool is not None
+        try:
+            row = await self.pool.fetchrow(
+                """
+                SELECT n.*
+                FROM subscriptions s
+                JOIN vpn_nodes n ON n.id = COALESCE(s.current_node_id, s.assigned_node_id)
+                WHERE s.id = $1
+                LIMIT 1
+                """,
+                subscription_id,
             )
         except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
             return None
@@ -439,33 +641,77 @@ class DB:
         try:
             rows = await self.pool.fetch(
                 """
+                WITH tracked AS (
+                    SELECT DISTINCT subscription_id
+                    FROM vpn_node_clients
+                    WHERE node_id = $1
+                ),
+                candidates AS (
+                    SELECT s.*
+                    FROM subscriptions s
+                    WHERE COALESCE(s.current_node_id, s.assigned_node_id) = $1
+                       OR s.desired_node_id = $1
+                    UNION
+                    SELECT s.*
+                    FROM subscriptions s
+                    JOIN tracked t ON t.subscription_id = s.id
+                )
                 SELECT
-                    s.id AS subscription_id,
-                    s.user_id,
-                    s.inbound_id,
-                    s.client_uuid,
-                    s.client_email,
-                    s.xui_sub_id,
-                    s.expires_at,
-                    s.is_active,
-                    s.revoked_at,
-                    COALESCE(vnc.desired_enabled, (s.is_active = TRUE AND s.expires_at > NOW() AND s.revoked_at IS NULL)) AS desired_enabled,
-                    COALESCE(vnc.desired_expires_at, s.expires_at) AS desired_expires_at,
+                    c.id AS subscription_id,
+                    c.user_id,
+                    c.inbound_id,
+                    c.client_uuid,
+                    c.client_email,
+                    c.xui_sub_id,
+                    c.expires_at,
+                    c.is_active,
+                    c.revoked_at,
+                    c.assigned_node_id,
+                    c.current_node_id,
+                    c.desired_node_id,
+                    c.assignment_state,
+                    COALESCE(
+                        vnc.desired_enabled,
+                        (
+                            c.is_active = TRUE
+                            AND c.expires_at > NOW()
+                            AND c.revoked_at IS NULL
+                            AND (
+                                COALESCE(c.current_node_id, c.assigned_node_id) = $1
+                                OR (
+                                    c.desired_node_id = $1
+                                    AND COALESCE(c.assignment_state, 'steady') IN ('planned', 'presync', 'cutover', 'cleanup', 'rollback')
+                                )
+                            )
+                        )
+                    ) AS desired_enabled,
+                    COALESCE(vnc.desired_expires_at, c.expires_at) AS desired_expires_at,
                     vnc.observed_enabled,
                     vnc.observed_expires_at,
                     COALESCE(vnc.sync_state, 'pending') AS sync_state,
                     vnc.last_synced_at,
                     vnc.last_error
-                FROM subscriptions s
+                FROM candidates c
                 LEFT JOIN vpn_node_clients vnc
-                  ON vnc.subscription_id = s.id
+                  ON vnc.subscription_id = c.id
                  AND vnc.node_id = $1
                 WHERE
                     vnc.id IS NULL
                     OR vnc.sync_state <> 'ok'
-                    OR vnc.desired_enabled IS DISTINCT FROM (s.is_active = TRUE AND s.expires_at > NOW() AND s.revoked_at IS NULL)
-                    OR vnc.desired_expires_at IS DISTINCT FROM s.expires_at
-                ORDER BY COALESCE(vnc.last_synced_at, TO_TIMESTAMP(0)) ASC, s.id ASC
+                    OR vnc.desired_enabled IS DISTINCT FROM (
+                        c.is_active = TRUE
+                        AND c.expires_at > NOW()
+                        AND c.revoked_at IS NULL
+                        AND (
+                            COALESCE(c.current_node_id, c.assigned_node_id) = $1
+                            OR (
+                                c.desired_node_id = $1
+                                AND COALESCE(c.assignment_state, 'steady') IN ('planned', 'presync', 'cutover', 'cleanup', 'rollback')
+                            )
+                        )
+                    )
+                    OR vnc.desired_expires_at IS DISTINCT FROM c.expires_at
+                ORDER BY COALESCE(vnc.last_synced_at, TO_TIMESTAMP(0)) ASC, c.id ASC
                 LIMIT $2
                 """,
                 node_id,
@@ -727,15 +973,58 @@ class DB:
         vless_url: str,
         expires_at: datetime,
         xui_sub_id: str | None = None,
+        assigned_node_id: int | None = None,
+        assignment_source: str = "new",
+        migration_state: str = "ready",
+        feed_token: str | None = None,
+        alias_fqdn: str | None = None,
+        current_node_id: int | None = None,
+        desired_node_id: int | None = None,
+        assignment_state: str = "steady",
+        ttl_seconds: int = 300,
+        overlap_until: datetime | None = None,
+        dns_provider: str | None = None,
+        dns_record_id: str | None = None,
+        last_dns_change_id: str | None = None,
+        compatibility_pool: str | None = None,
+        planned_at: datetime | None = None,
+        presynced_at: datetime | None = None,
+        cutover_at: datetime | None = None,
     ) -> int:
         assert self.pool is not None
+        resolved_feed_token = str(feed_token or _new_feed_token())
         try:
             row = await self.pool.fetchrow(
                 """
                 INSERT INTO subscriptions (
-                    user_id, inbound_id, client_uuid, client_email, xui_sub_id, vless_url, expires_at, is_active
+                    user_id,
+                    inbound_id,
+                    client_uuid,
+                    client_email,
+                    xui_sub_id,
+                    assigned_node_id,
+                    current_node_id,
+                    desired_node_id,
+                    alias_fqdn,
+                    assignment_source,
+                    assigned_at,
+                    migration_state,
+                    assignment_state,
+                    ttl_seconds,
+                    overlap_until,
+                    dns_provider,
+                    dns_record_id,
+                    last_dns_change_id,
+                    compatibility_pool,
+                    planned_at,
+                    presynced_at,
+                    cutover_at,
+                    feed_token,
+                    vless_url,
+                    expires_at,
+                    is_active
                 )
-                VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, TRUE)
+                VALUES ($1, $2, $3::uuid, $4, $5, $6, $7, $8, $9, $10, NOW(), $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, TRUE)
                 RETURNING id
                 """,
                 user_id,
@@ -743,6 +1032,23 @@ class DB:
                 client_uuid,
                 client_email,
                 xui_sub_id,
+                assigned_node_id,
+                current_node_id,
+                desired_node_id,
+                alias_fqdn,
+                assignment_source,
+                migration_state,
+                assignment_state,
+                int(ttl_seconds),
+                overlap_until,
+                dns_provider,
+                dns_record_id,
+                last_dns_change_id,
+                compatibility_pool,
+                planned_at,
+                presynced_at,
+                cutover_at,
+                resolved_feed_token,
                 vless_url,
                 expires_at,
             )
@@ -762,18 +1068,88 @@ class DB:
             )
         return int(row["id"])
 
-    async def extend_subscription(self, subscription_id: int, new_expiry: datetime, vless_url: str) -> None:
+    async def extend_subscription(
+        self,
+        subscription_id: int,
+        new_expiry: datetime,
+        vless_url: str,
+        *,
+        assigned_node_id: int | None = None,
+        assignment_source: str | None = None,
+        migration_state: str | None = None,
+        alias_fqdn: str | None = None,
+        current_node_id: int | None = None,
+        desired_node_id: int | None = None,
+        assignment_state: str | None = None,
+        ttl_seconds: int | None = None,
+        overlap_until: datetime | None = None,
+        dns_provider: str | None = None,
+        dns_record_id: str | None = None,
+        last_dns_change_id: str | None = None,
+        compatibility_pool: str | None = None,
+        planned_at: datetime | None = None,
+        presynced_at: datetime | None = None,
+        cutover_at: datetime | None = None,
+    ) -> None:
         assert self.pool is not None
-        await self.pool.execute(
-            """
-            UPDATE subscriptions
-            SET expires_at = $2, vless_url = $3, is_active = TRUE, updated_at = NOW()
-            WHERE id = $1
-            """,
-            subscription_id,
-            new_expiry,
-            vless_url,
-        )
+        try:
+            await self.pool.execute(
+                """
+                UPDATE subscriptions
+                SET expires_at = $2,
+                    vless_url = $3,
+                    is_active = TRUE,
+                    assigned_node_id = COALESCE($4, assigned_node_id),
+                    assignment_source = COALESCE($5, assignment_source),
+                    assigned_at = CASE WHEN $4 IS NOT NULL THEN NOW() ELSE assigned_at END,
+                    migration_state = COALESCE($6, migration_state),
+                    alias_fqdn = COALESCE($7, alias_fqdn),
+                    current_node_id = COALESCE($8, current_node_id),
+                    desired_node_id = COALESCE($9, desired_node_id),
+                    assignment_state = COALESCE($10, assignment_state),
+                    ttl_seconds = COALESCE($11, ttl_seconds),
+                    overlap_until = COALESCE($12, overlap_until),
+                    dns_provider = COALESCE($13, dns_provider),
+                    dns_record_id = COALESCE($14, dns_record_id),
+                    last_dns_change_id = COALESCE($15, last_dns_change_id),
+                    compatibility_pool = COALESCE($16, compatibility_pool),
+                    planned_at = COALESCE($17, planned_at),
+                    presynced_at = COALESCE($18, presynced_at),
+                    cutover_at = COALESCE($19, cutover_at),
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                subscription_id,
+                new_expiry,
+                vless_url,
+                assigned_node_id,
+                assignment_source,
+                migration_state,
+                alias_fqdn,
+                current_node_id,
+                desired_node_id,
+                assignment_state,
+                ttl_seconds,
+                overlap_until,
+                dns_provider,
+                dns_record_id,
+                last_dns_change_id,
+                compatibility_pool,
+                planned_at,
+                presynced_at,
+                cutover_at,
+            )
+        except asyncpg.UndefinedColumnError:
+            await self.pool.execute(
+                """
+                UPDATE subscriptions
+                SET expires_at = $2, vless_url = $3, is_active = TRUE, updated_at = NOW()
+                WHERE id = $1
+                """,
+                subscription_id,
+                new_expiry,
+                vless_url,
+            )
 
     async def update_subscription_xui_sub_id(self, subscription_id: int, xui_sub_id: str | None) -> None:
         assert self.pool is not None
@@ -790,6 +1166,230 @@ class DB:
         except asyncpg.UndefinedColumnError:
             # Early rollout compatibility.
             return
+
+    async def update_subscription_assignment(
+        self,
+        subscription_id: int,
+        *,
+        assigned_node_id: int,
+        vless_url: str,
+        assignment_source: str,
+        migration_state: str = "ready",
+        mark_rebalanced: bool = False,
+        alias_fqdn: str | None = None,
+        current_node_id: int | None = None,
+        desired_node_id: int | None = None,
+        assignment_state: str | None = None,
+        ttl_seconds: int | None = None,
+        overlap_until: datetime | None = None,
+        dns_provider: str | None = None,
+        dns_record_id: str | None = None,
+        last_dns_change_id: str | None = None,
+        compatibility_pool: str | None = None,
+        planned_at: datetime | None = None,
+        presynced_at: datetime | None = None,
+        cutover_at: datetime | None = None,
+    ) -> None:
+        assert self.pool is not None
+        try:
+            await self.pool.execute(
+                """
+                UPDATE subscriptions
+                SET assigned_node_id = $2,
+                    vless_url = $3,
+                    assignment_source = $4,
+                    assigned_at = NOW(),
+                    last_rebalanced_at = CASE WHEN $6 THEN NOW() ELSE last_rebalanced_at END,
+                    migration_state = $5,
+                    alias_fqdn = COALESCE($7, alias_fqdn),
+                    current_node_id = COALESCE($8, current_node_id),
+                    desired_node_id = COALESCE($9, desired_node_id),
+                    assignment_state = COALESCE($10, assignment_state),
+                    ttl_seconds = COALESCE($11, ttl_seconds),
+                    overlap_until = COALESCE($12, overlap_until),
+                    dns_provider = COALESCE($13, dns_provider),
+                    dns_record_id = COALESCE($14, dns_record_id),
+                    last_dns_change_id = COALESCE($15, last_dns_change_id),
+                    compatibility_pool = COALESCE($16, compatibility_pool),
+                    planned_at = COALESCE($17, planned_at),
+                    presynced_at = COALESCE($18, presynced_at),
+                    cutover_at = COALESCE($19, cutover_at),
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                subscription_id,
+                assigned_node_id,
+                vless_url,
+                assignment_source,
+                migration_state,
+                bool(mark_rebalanced),
+                alias_fqdn,
+                current_node_id,
+                desired_node_id,
+                assignment_state,
+                ttl_seconds,
+                overlap_until,
+                dns_provider,
+                dns_record_id,
+                last_dns_change_id,
+                compatibility_pool,
+                planned_at,
+                presynced_at,
+                cutover_at,
+            )
+        except asyncpg.UndefinedColumnError:
+            await self.pool.execute(
+                """
+                UPDATE subscriptions
+                SET vless_url = $2,
+                    updated_at = NOW()
+                WHERE id = $1
+                """,
+                subscription_id,
+                vless_url,
+            )
+
+    async def ensure_subscription_feed_token(self, subscription_id: int) -> str | None:
+        assert self.pool is not None
+        try:
+            token = _new_feed_token()
+            row = await self.pool.fetchrow(
+                """
+                UPDATE subscriptions
+                SET feed_token = COALESCE(NULLIF(feed_token, ''), $2),
+                    updated_at = NOW()
+                WHERE id = $1
+                RETURNING feed_token
+                """,
+                subscription_id,
+                token,
+            )
+        except asyncpg.UndefinedColumnError:
+            return None
+        if not row:
+            return None
+        value = row["feed_token"]
+        return str(value) if value else None
+
+    async def record_node_load_snapshot(
+        self,
+        *,
+        node_id: int,
+        assigned_active_subscriptions: int,
+        observed_enabled_clients: int,
+        total_traffic_bytes: int = 0,
+        peak_concurrency: int | None = None,
+        probe_latency_ms: int | None = None,
+        health_ok: bool,
+        health_error: str | None = None,
+        score: float | None = None,
+        meta: dict[str, Any] | None = None,
+    ) -> bool:
+        assert self.pool is not None
+        try:
+            await self.pool.execute(
+                """
+                INSERT INTO vpn_node_load_snapshots (
+                    node_id,
+                    assigned_active_subscriptions,
+                    observed_enabled_clients,
+                    total_traffic_bytes,
+                    peak_concurrency,
+                    probe_latency_ms,
+                    health_ok,
+                    health_error,
+                    score,
+                    meta
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+                """,
+                node_id,
+                int(assigned_active_subscriptions),
+                int(observed_enabled_clients),
+                int(total_traffic_bytes),
+                peak_concurrency,
+                probe_latency_ms,
+                bool(health_ok),
+                health_error,
+                score,
+                json.dumps(meta or {}, ensure_ascii=False),
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+            return False
+        return True
+
+    async def record_rebalance_decision(
+        self,
+        *,
+        subscription_id: int,
+        from_node_id: int | None,
+        to_node_id: int | None,
+        decision_kind: str,
+        score_before: float | None = None,
+        score_after: float | None = None,
+        reason: str | None = None,
+        details: dict[str, Any] | None = None,
+        dns_change_id: str | None = None,
+        rollback_reason: str | None = None,
+    ) -> bool:
+        assert self.pool is not None
+        try:
+            await self.pool.execute(
+                """
+                INSERT INTO vpn_rebalance_decisions (
+                    subscription_id,
+                    from_node_id,
+                    to_node_id,
+                    decision_kind,
+                    score_before,
+                    score_after,
+                    reason,
+                    details,
+                    dns_change_id,
+                    rollback_reason
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10)
+                """,
+                subscription_id,
+                from_node_id,
+                to_node_id,
+                decision_kind,
+                score_before,
+                score_after,
+                reason,
+                json.dumps(details or {}, ensure_ascii=False),
+                dns_change_id,
+                rollback_reason,
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+            return False
+        return True
+
+    async def list_rebalance_candidates(self, from_node_id: int, cooldown_hours: int, limit: int) -> list[dict[str, Any]]:
+        assert self.pool is not None
+        try:
+            rows = await self.pool.fetch(
+                """
+                SELECT *
+                FROM subscriptions
+                WHERE COALESCE(current_node_id, assigned_node_id) = $1
+                  AND is_active = TRUE
+                  AND expires_at > NOW()
+                  AND revoked_at IS NULL
+                  AND (
+                        last_rebalanced_at IS NULL
+                     OR last_rebalanced_at < (NOW() - make_interval(hours => $2))
+                  )
+                ORDER BY COALESCE(last_rebalanced_at, TO_TIMESTAMP(0)) ASC, expires_at DESC, id ASC
+                LIMIT $3
+                """,
+                from_node_id,
+                max(0, int(cooldown_hours)),
+                max(1, int(limit)),
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+            return []
+        return [dict(r) for r in rows]
 
     async def due_reminders(self) -> list[dict[str, Any]]:
         assert self.pool is not None

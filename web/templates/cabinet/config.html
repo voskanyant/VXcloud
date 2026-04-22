@@ -81,15 +81,28 @@
       {% endif %}
 
       <div class="surface-panel config-link-panel">
-        <label class="form-label fw-semibold" for="cfg">Ссылка конфигурации</label>
+        <label class="form-label fw-semibold" for="cfg">Подписка VXcloud</label>
         <div class="vx-link-input-wrap">
           <input id="cfg" type="text" class="form-control form-control-sm config-link-field" value="{{ copy_text }}" readonly>
           <button type="button" class="btn btn-sm btn-outline-secondary js-copy-icon vx-icon-button" id="copy-config-icon" data-copy-text="{{ copy_text }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
             <i class="bi bi-copy"></i>
           </button>
         </div>
-        <p class="small text-secondary mb-0">Скопируйте ссылку и импортируйте ее в клиент VPN.</p>
+        <p class="small text-secondary mb-0">Импортируйте эту ссылку один раз. Потом VXcloud сможет менять назначенную ноду без ручной замены конфига.</p>
       </div>
+
+      {% if vless_url %}
+        <div class="surface-panel config-link-panel">
+          <label class="form-label fw-semibold" for="cfg-raw">Raw VLESS (legacy)</label>
+          <div class="vx-link-input-wrap">
+            <input id="cfg-raw" type="text" class="form-control form-control-sm config-link-field" value="{{ vless_url }}" readonly>
+            <button type="button" class="btn btn-sm btn-outline-secondary js-copy-icon vx-icon-button" id="copy-raw-config-icon" data-copy-text="{{ vless_url }}" title="Скопировать raw VLESS" aria-label="Скопировать raw VLESS">
+              <i class="bi bi-copy"></i>
+            </button>
+          </div>
+          <p class="small text-secondary mb-0">Используйте raw-ссылку только для ручной диагностики. Для нормальной работы и автоперебалансировки используйте подписку VXcloud выше.</p>
+        </div>
+      {% endif %}
 
       <div class="surface-panel config-rename-panel">
         <label class="form-label fw-semibold" for="cfg-rename">Имя устройства</label>
@@ -132,7 +145,19 @@
 
   const copyButton = document.getElementById('copy-config-button');
   const copyIconButton = document.getElementById('copy-config-icon');
+  const copyRawIconButton = document.getElementById('copy-raw-config-icon');
   if (copyButton) copyButton.addEventListener('click', copyCfg);
   if (copyIconButton) copyIconButton.addEventListener('click', copyCfg);
+  if (copyRawIconButton) {
+    copyRawIconButton.addEventListener('click', async () => {
+      const rawBox = document.getElementById('cfg-raw');
+      if (!rawBox || !rawBox.value) return;
+      try {
+        await navigator.clipboard.writeText(rawBox.value);
+      } catch (e) {
+        console.debug('copy raw failed', e);
+      }
+    });
+  }
 </script>
 {% endblock %}

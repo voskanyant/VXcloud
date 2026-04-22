@@ -379,6 +379,15 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
             "xui_username",
             "xui_password",
             "xui_inbound_id",
+            "public_ip",
+            "node_fqdn",
+            "compatibility_pool",
+            "xray_api_host",
+            "xray_api_port",
+            "xray_metrics_host",
+            "xray_metrics_port",
+            "bandwidth_capacity_mbps",
+            "connection_capacity",
             "backend_host",
             "backend_port",
             "backend_weight",
@@ -398,6 +407,15 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["xui_username"].label = "3x-ui логин"
         self.fields["xui_password"].label = "3x-ui пароль"
         self.fields["xui_inbound_id"].label = "3x-ui inbound ID"
+        self.fields["public_ip"].label = "Public IP"
+        self.fields["node_fqdn"].label = "Node FQDN"
+        self.fields["compatibility_pool"].label = "Compatibility pool"
+        self.fields["xray_api_host"].label = "Xray API host"
+        self.fields["xray_api_port"].label = "Xray API port"
+        self.fields["xray_metrics_host"].label = "Xray metrics host"
+        self.fields["xray_metrics_port"].label = "Xray metrics port"
+        self.fields["bandwidth_capacity_mbps"].label = "Bandwidth capacity (Mbps)"
+        self.fields["connection_capacity"].label = "Connection capacity"
         self.fields["backend_host"].label = "Backend host"
         self.fields["backend_port"].label = "Backend port"
         self.fields["backend_weight"].label = "Вес в HAProxy"
@@ -406,12 +424,41 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["needs_backfill"].label = "Требует backfill"
 
         self.fields["xui_base_url"].help_text = "Например: https://node-1.example.com:2053"
+        self.fields["public_ip"].help_text = "Публичный IPv4 ноды, на который будут указывать DNS alias cutover-ы."
+        self.fields["node_fqdn"].help_text = "Стабильное имя самой ноды, если хотите хранить его отдельно от alias."
+        self.fields["compatibility_pool"].help_text = "Только ноды из одного pool могут обмениваться подписками через DNS rebalance."
+        self.fields["xray_api_host"].help_text = "Loopback/внутренний host Xray API для будущей stats automation."
+        self.fields["xray_metrics_host"].help_text = "Loopback/внутренний host Xray metrics listener."
         self.fields["backend_host"].help_text = "Куда HAProxy будет направлять VPN-трафик."
         self.fields["backend_port"].help_text = "Обычно тот же inbound port Xray на ноде."
         self.fields["lb_enabled"].help_text = "Новые подключения пойдут на ноду только если это поле включено, health=ok и backfill завершён."
         self.fields["needs_backfill"].help_text = "Оставьте включённым для новой ноды, пока не закончите sync и ручную проверку."
 
         self._apply_bootstrap_classes()
+
+    def clean_public_ip(self) -> str:
+        return str(self.cleaned_data.get("public_ip") or "").strip()
+
+    def clean_node_fqdn(self) -> str:
+        return str(self.cleaned_data.get("node_fqdn") or "").strip().lower()
+
+    def clean_compatibility_pool(self) -> str:
+        return str(self.cleaned_data.get("compatibility_pool") or "default").strip().lower() or "default"
+
+    def clean(self):
+        cleaned = super().clean()
+        public_ip = str(cleaned.get("public_ip") or "").strip()
+        node_fqdn = str(cleaned.get("node_fqdn") or "").strip()
+        compatibility_pool = str(cleaned.get("compatibility_pool") or "").strip()
+        lb_enabled = bool(cleaned.get("lb_enabled"))
+        is_active = bool(cleaned.get("is_active"))
+        if (lb_enabled or is_active) and not public_ip:
+            self.add_error("public_ip", "Для активной или балансируемой ноды укажите публичный IP.")
+        if lb_enabled and not compatibility_pool:
+            self.add_error("compatibility_pool", "Для ноды в балансировке нужен compatibility pool.")
+        if lb_enabled and not node_fqdn:
+            self.add_error("node_fqdn", "Для multi-node rollout укажите стабильный hostname ноды (например de1.vxcloud.ru).")
+        return cleaned
 
 
 class BackofficeEdgeServerForm(BootstrapFormMixin, forms.ModelForm):

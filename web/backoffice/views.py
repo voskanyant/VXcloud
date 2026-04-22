@@ -23,7 +23,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -45,6 +45,8 @@ from cabinet.models import (
     SupportTicket,
     VPNNode,
     VPNNodeClient,
+    VPNNodeLoadSnapshot,
+    VPNRebalanceDecision,
 )
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -52,7 +54,13 @@ if str(REPO_ROOT) not in sys.path:
 
 from src.xui_client import XUIClient
 import qrcode
+from src.cluster.provisioner import create_client_on_node
+from src.dns_alias import ensure_subscription_alias_record, generate_subscription_alias
+from src.cluster.rebalance import node_ineligibility_reason, preview_rebalance_plan, score_node
 from src.client_naming import build_xui_client_name
+from src.config import load_settings
+from src.db import DB
+from src.subscription_links import build_bot_feed_url, build_subscription_vless_url
 from src.vless import build_vless_url
 from src.xui_client import NO_EXPIRY_SENTINEL
 
@@ -290,15 +298,41 @@ def build_qr_data_url(text: str) -> str:
     return f"data:image/png;base64,{base64.b64encode(buff.getvalue()).decode('ascii')}"
 
 
+def _site_base_url() -> str:
+    explicit = str(getattr(settings, "WORDPRESS_PUBLIC_SITE_URL", "") or "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    return env_value("WORDPRESS_PUBLIC_SITE_URL", "https://vxcloud.ru").strip().rstrip("/")
+
+
 def build_subscription_result(subscription: BotSubscription) -> dict[str, Any]:
     vless_url = str(getattr(subscription, "vless_url", "") or "")
+    feed_token = str(getattr(subscription, "feed_token", "") or "").strip()
+    feed_url = build_bot_feed_url(site_url=_site_base_url(), feed_token=feed_token) if feed_token else ""
+    primary_link = feed_url or vless_url
+    assigned_node = getattr(subscription, "assigned_node", None)
+    current_node = getattr(subscription, "current_node", None) or assigned_node
+    desired_node = getattr(subscription, "desired_node", None)
     return {
         "subscription_id": int(getattr(subscription, "id", 0) or 0),
         "display_name": str(getattr(subscription, "display_name", "") or ""),
         "client_email": str(getattr(subscription, "client_email", "") or ""),
         "expires_at_label": format_subscription_expires_at(getattr(subscription, "expires_at", None)),
-        "vless_url": vless_url,
-        "qr_image_data_url": build_qr_data_url(vless_url) if vless_url else "",
+        "feed_url": feed_url,
+        "primary_link": primary_link,
+        "raw_vless_url": vless_url,
+        "assignment_source": str(getattr(subscription, "assignment_source", "") or ""),
+        "migration_state": str(getattr(subscription, "migration_state", "") or ""),
+        "assigned_node_label": str(getattr(current_node, "name", "") or ""),
+        "current_node_label": str(getattr(current_node, "name", "") or ""),
+        "desired_node_label": str(getattr(desired_node, "name", "") or ""),
+        "alias_fqdn": str(getattr(subscription, "alias_fqdn", "") or ""),
+        "assignment_state": str(getattr(subscription, "assignment_state", "") or ""),
+        "compatibility_pool": str(getattr(subscription, "compatibility_pool", "") or ""),
+        "overlap_until_label": format_subscription_expires_at(getattr(subscription, "overlap_until", None))
+        if getattr(subscription, "overlap_until", None)
+        else "",
+        "qr_image_data_url": build_qr_data_url(primary_link) if primary_link else "",
     }
 
 
@@ -453,6 +487,43 @@ def int_env(name: str, default: int) -> int:
         return int(default)
 
 
+def float_env(name: str, default: float) -> float:
+    try:
+        return float(env_value(name, str(default)))
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def _cluster_runtime_settings() -> Any:
+    return type(
+        "ClusterRuntimeSettings",
+        (),
+        {
+            "vpn_alias_namespace": env_value("VPN_ALIAS_NAMESPACE", "vpn.vxcloud.ru"),
+            "vpn_alias_provider": env_value("VPN_ALIAS_PROVIDER", "cloudflare"),
+            "vpn_alias_default_ttl": int_env("VPN_ALIAS_DEFAULT_TTL", 300),
+            "vpn_alias_cutover_ttl": int_env("VPN_ALIAS_CUTOVER_TTL", 60),
+            "vpn_alias_overlap_minutes": int_env("VPN_ALIAS_OVERLAP_MINUTES", 310),
+            "cloudflare_api_token": env_value("CLOUDFLARE_API_TOKEN", "") or None,
+            "cloudflare_zone_id": env_value("CLOUDFLARE_ZONE_ID", "") or None,
+            "vpn_public_port": int_env("VPN_PUBLIC_PORT", 443),
+            "vpn_tag": env_value("VPN_TAG", "VXcloud"),
+            "vpn_flow": env_value("VPN_FLOW", "xtls-rprx-vision"),
+            "timezone": env_value("TIMEZONE", "UTC"),
+            "vpn_rebalance_interval_seconds": int_env("VPN_REBALANCE_INTERVAL_SECONDS", 604800),
+            "vpn_rebalance_workflow_tick_seconds": int_env("VPN_REBALANCE_WORKFLOW_TICK_SECONDS", 300),
+            "vpn_rebalance_max_moves_per_node": int_env("VPN_REBALANCE_MAX_MOVES_PER_NODE", 50),
+            "vpn_rebalance_move_fraction": float_env("VPN_REBALANCE_MOVE_FRACTION", 0.20),
+            "vpn_rebalance_cooldown_hours": int_env("VPN_REBALANCE_COOLDOWN_HOURS", 168),
+            "vpn_rebalance_min_score_gap": float_env("VPN_REBALANCE_MIN_SCORE_GAP", 2.5),
+        },
+    )()
+
+
+def _alias_runtime_settings() -> Any:
+    return _cluster_runtime_settings()
+
+
 def backoffice_limit_ip() -> int:
     return int_env("BACKOFFICE_MAX_DEVICES_PER_SUB", 0)
 
@@ -468,11 +539,105 @@ def _active_vpn_nodes_snapshot() -> list[dict[str, Any]]:
                 "xui_username",
                 "xui_password",
                 "xui_inbound_id",
+                "is_active",
+                "public_ip",
+                "node_fqdn",
+                "compatibility_pool",
+                "backend_host",
+                "backend_port",
+                "backend_weight",
+                "bandwidth_capacity_mbps",
+                "connection_capacity",
+                "lb_enabled",
+                "needs_backfill",
+                "last_health_ok",
+                "last_reality_public_key",
+                "last_reality_short_id",
+                "last_reality_sni",
+                "last_reality_fingerprint",
             )
         )
     except (OperationalError, ProgrammingError):
         return []
     return [dict(row) for row in rows]
+
+
+def _latest_node_snapshots(node_ids: list[int]) -> dict[int, VPNNodeLoadSnapshot]:
+    if not node_ids:
+        return {}
+    rows = safe_list(lambda: VPNNodeLoadSnapshot.objects.filter(node_id__in=node_ids).order_by("node_id", "-created_at"))
+    snapshots: dict[int, VPNNodeLoadSnapshot] = {}
+    for row in rows:
+        snapshots.setdefault(int(row.node_id), row)
+    return snapshots
+
+
+def _active_assignment_counts(node_ids: list[int]) -> dict[int, int]:
+    if not node_ids:
+        return {}
+    now = timezone.now()
+    try:
+        rows = list(
+            BotSubscription.objects.filter(
+                current_node_id__in=node_ids,
+                is_active=True,
+                revoked_at__isnull=True,
+                expires_at__gt=now,
+            )
+            .values("current_node_id")
+            .annotate(total=Count("id"))
+        )
+    except (OperationalError, ProgrammingError):
+        return {}
+    return {int(row["current_node_id"]): int(row["total"]) for row in rows if row.get("current_node_id")}
+
+
+def _recent_move_counts(node_ids: list[int]) -> dict[int, int]:
+    if not node_ids:
+        return {}
+    cutoff = timezone.now() - timedelta(days=7)
+    try:
+        rows = list(
+            VPNRebalanceDecision.objects.filter(to_node_id__in=node_ids, created_at__gte=cutoff)
+            .values("to_node_id")
+            .annotate(total=Count("id"))
+        )
+    except (OperationalError, ProgrammingError):
+        return {}
+    return {int(row["to_node_id"]): int(row["total"]) for row in rows if row.get("to_node_id")}
+
+
+def _pick_best_assignment_node_snapshot() -> tuple[dict[str, Any] | None, float | None, dict[str, float]]:
+    candidates = _active_vpn_nodes_snapshot()
+    if not candidates:
+        return None, None, {}
+    node_ids = [int(item["id"]) for item in candidates]
+    snapshot_map = _latest_node_snapshots(node_ids)
+    assignment_counts = _active_assignment_counts(node_ids)
+    move_counts = _recent_move_counts(node_ids)
+
+    best_node: dict[str, Any] | None = None
+    best_score: float | None = None
+    best_reasons: dict[str, float] = {}
+
+    for item in candidates:
+        node_id = int(item["id"])
+        snapshot = snapshot_map.get(node_id)
+        payload = dict(item)
+        payload["active_assigned_subscriptions"] = assignment_counts.get(node_id, 0)
+        payload["observed_enabled_clients"] = int(getattr(snapshot, "observed_enabled_clients", 0) or 0)
+        payload["total_traffic_bytes"] = int(getattr(snapshot, "total_traffic_bytes", 0) or 0)
+        payload["peak_concurrency"] = int(getattr(snapshot, "peak_concurrency", 0) or 0)
+        payload["probe_latency_ms"] = int(getattr(snapshot, "probe_latency_ms", 0) or 0)
+        payload["moves_in_week"] = move_counts.get(node_id, 0)
+        scored = score_node(payload)
+        if scored is None:
+            continue
+        if best_score is None or scored.score < best_score:
+            best_node = payload
+            best_score = scored.score
+            best_reasons = scored.reasons
+    return best_node, best_score, best_reasons
 
 
 def _deterministic_sub_id(client_uuid: str) -> str:
@@ -886,6 +1051,16 @@ async def _await_passthrough(awaitable):
 
 def _run_async_from_sync(awaitable):
     return async_to_sync(_await_passthrough)(awaitable)
+
+
+async def _build_rebalance_preview(settings_obj: Any) -> dict[str, Any]:
+    app_settings = load_settings()
+    db = DB(app_settings.database_url)
+    try:
+        await db.connect()
+        return await preview_rebalance_plan(db, settings_obj)
+    finally:
+        await db.close()
 
 
 def _update_node_client_sync_state(subscription_id: int, **fields: Any) -> None:
@@ -1584,7 +1759,7 @@ class BotUserDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteVie
 class BotSubscriptionListView(BaseListView):
     model = BotSubscription
     title = "Подписки"
-    subtitle = "Текущие устройства, сроки и импортные конфиги."
+    subtitle = "Текущие устройства, сроки, назначенные ноды и subscription-first delivery."
     readonly = False
     add_url_name = "backoffice:bot_subscription_create"
     edit_url_name = "backoffice:bot_subscription_expiry_update"
@@ -1594,6 +1769,8 @@ class BotSubscriptionListView(BaseListView):
         ("user_id", "User ID"),
         ("display_name", "Имя"),
         ("client_email", "3x-ui name"),
+        ("assigned_node", "Нода"),
+        ("assignment_source", "Источник"),
         ("is_active", "Статус"),
         ("expires_at", "Истекает"),
         ("updated_at", "Обновлена"),
@@ -1601,7 +1778,7 @@ class BotSubscriptionListView(BaseListView):
     search_fields = ["display_name", "client_email", "user__username", "user__client_code"]
 
     def get_queryset(self):
-        return super().get_queryset().select_related("user").order_by("-id")
+        return super().get_queryset().select_related("user", "assigned_node").order_by("-id")
 
     def get_table_rows(self) -> list[dict[str, Any]]:
         rows = []
@@ -1615,6 +1792,8 @@ class BotSubscriptionListView(BaseListView):
                         item.user_id,
                         item.display_name,
                         item.client_email,
+                        getattr(getattr(item, "assigned_node", None), "name", "") or "—",
+                        item.assignment_source or "legacy",
                         status_badge(status_label, status_tone),
                         format_subscription_expires_at(item.expires_at),
                         format_cell(item.updated_at),
@@ -1684,7 +1863,18 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             expires_at = expires_at.astimezone(dt_timezone.utc)
         now = timezone.now()
         should_be_active = True if infinite_expiry else expires_at > now
-        cluster_nodes = _active_vpn_nodes_snapshot() if bool_env("VPN_CLUSTER_ENABLED", False) else None
+        cluster_mode = bool_env("VPN_CLUSTER_ENABLED", False)
+        alias_settings = _alias_runtime_settings()
+        assigned_node_snapshot: dict[str, Any] | None = None
+        assignment_score: float | None = None
+        assignment_reasons: dict[str, float] = {}
+        cluster_nodes = None
+        if cluster_mode:
+            assigned_node_snapshot, assignment_score, assignment_reasons = _pick_best_assignment_node_snapshot()
+            if assigned_node_snapshot is None:
+                form.add_error(None, "Нет здоровой VPN ноды, доступной для нового назначения.")
+                return self.render_to_response(self.get_context_data(form=form))
+            cluster_nodes = [assigned_node_snapshot]
 
         client_uuid = str(uuid.uuid4())
         client_email = build_xui_client_name(
@@ -1695,7 +1885,14 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             client_code=str(getattr(user, "client_code", "") or "") or None,
         )
         stored_display_name = display_name or client_email
-        xui_sub_id = _deterministic_sub_id(client_uuid) if bool_env("VPN_CLUSTER_ENABLED", False) else None
+        xui_sub_id = _deterministic_sub_id(client_uuid) if cluster_mode else None
+        feed_token = get_random_string(43, allowed_chars="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+        alias_fqdn = generate_subscription_alias(alias_settings) if cluster_mode else ""
+        compatibility_pool = (
+            str((assigned_node_snapshot or {}).get("compatibility_pool") or "").strip() or "default"
+            if cluster_mode
+            else ""
+        )
 
         try:
             runtime = _run_async_from_sync(_load_subscription_runtime(cluster_nodes=cluster_nodes))
@@ -1704,17 +1901,26 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             return self.render_to_response(self.get_context_data(form=form))
 
         reality = runtime["reality"]
-        vless_url = build_vless_url(
-            uuid=client_uuid,
-            host=env_value("VPN_PUBLIC_HOST"),
-            port=int_env("VPN_PUBLIC_PORT", int(runtime["inbound_port"])),
-            tag=env_value("VPN_TAG", "VPN"),
-            public_key=reality.public_key,
-            short_id=reality.short_id,
-            sni=reality.sni,
-            fingerprint=reality.fingerprint,
-            flow=env_value("VPN_FLOW", "xtls-rprx-vision"),
-        )
+        if cluster_mode:
+            vless_url = build_subscription_vless_url(
+                settings=alias_settings,
+                node=assigned_node_snapshot,
+                client_uuid=client_uuid,
+                reality=reality,
+                subscription={"alias_fqdn": alias_fqdn},
+            )
+        else:
+            vless_url = build_vless_url(
+                uuid=client_uuid,
+                host=str((assigned_node_snapshot or {}).get("backend_host") or env_value("VPN_PUBLIC_HOST")),
+                port=int((assigned_node_snapshot or {}).get("backend_port") or int_env("VPN_PUBLIC_PORT", int(runtime["inbound_port"]))),
+                tag=env_value("VPN_TAG", "VPN"),
+                public_key=reality.public_key,
+                short_id=reality.short_id,
+                sni=reality.sni,
+                fingerprint=reality.fingerprint,
+                flow=env_value("VPN_FLOW", "xtls-rprx-vision"),
+            )
 
         subscription = BotSubscription(
             user_id=user_id,
@@ -1724,6 +1930,19 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             xui_sub_id=xui_sub_id,
             display_name=stored_display_name,
             vless_url=vless_url,
+            assigned_node_id=int((assigned_node_snapshot or {}).get("id") or 0) or None,
+            current_node_id=int((assigned_node_snapshot or {}).get("id") or 0) or None,
+            desired_node_id=None,
+            alias_fqdn=(alias_fqdn or None),
+            assignment_source="backoffice_alias" if cluster_mode else "backoffice_single_node",
+            assigned_at=now,
+            last_rebalanced_at=None,
+            migration_state="ready" if cluster_mode else "single_node",
+            assignment_state="steady" if cluster_mode else "single_node",
+            ttl_seconds=int(getattr(alias_settings, "vpn_alias_default_ttl", 300)) if cluster_mode else 300,
+            dns_provider=(alias_settings.vpn_alias_provider if cluster_mode else ""),
+            compatibility_pool=(compatibility_pool or ""),
+            feed_token=feed_token,
             expires_at=expires_at,
             is_active=should_be_active,
             revoked_at=None,
@@ -1737,17 +1956,37 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             return self.render_to_response(self.get_context_data(form=form))
 
         try:
-            provision_results = _run_async_from_sync(
-                _create_subscription_on_xui(
-                    client_uuid=client_uuid,
-                    client_email=client_email,
-                    display_name=stored_display_name,
-                    expires_at=None if infinite_expiry else expires_at,
-                    enabled=should_be_active,
-                    cluster_nodes=cluster_nodes,
-                    xui_sub_id=xui_sub_id,
+            if cluster_mode and assigned_node_snapshot is not None:
+                node_result = _run_async_from_sync(
+                    create_client_on_node(
+                        assigned_node_snapshot,
+                        client_uuid,
+                        client_email,
+                        xui_sub_id,
+                        expires_at,
+                        backoffice_limit_ip(),
+                        flow=env_value("VPN_FLOW", "xtls-rprx-vision"),
+                    )
                 )
-            )
+                provision_results = [
+                    {
+                        "node_id": int(assigned_node_snapshot["id"]),
+                        "ok": True,
+                        "xui_sub_id": node_result.get("xui_sub_id"),
+                    }
+                ]
+            else:
+                provision_results = _run_async_from_sync(
+                    _create_subscription_on_xui(
+                        client_uuid=client_uuid,
+                        client_email=client_email,
+                        display_name=stored_display_name,
+                        expires_at=None if infinite_expiry else expires_at,
+                        enabled=should_be_active,
+                        cluster_nodes=cluster_nodes,
+                        xui_sub_id=xui_sub_id,
+                    )
+                )
         except Exception as exc:
             subscription.delete()
             form.add_error(None, f"Не удалось создать клиента в 3x-ui: {exc}")
@@ -1768,56 +2007,61 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             except Exception:
                 LOGGER.exception(
                     "backoffice_subscription_create_update_sub_id_failed",
-                    extra={"subscription_id": int(getattr(subscription, "id", 0) or 0)},
+                extra={"subscription_id": int(getattr(subscription, "id", 0) or 0)},
                 )
 
         sync_state_errors: list[str] = []
-        if cluster_nodes:
+        if cluster_mode and assigned_node_snapshot is not None:
             try:
-                results_by_node = {int(item.get("node_id", 0) or 0): item for item in provision_results}
+                alias_result = _run_async_from_sync(
+                    ensure_subscription_alias_record(
+                        settings=alias_settings,
+                        alias_fqdn=alias_fqdn,
+                        node=assigned_node_snapshot,
+                        ttl=int(getattr(alias_settings, "vpn_alias_default_ttl", 300)),
+                        record_id=None,
+                    )
+                )
+                subscription.dns_record_id = alias_result.record_id or ""
+                subscription.last_dns_change_id = alias_result.change_id or ""
+                subscription.dns_provider = alias_result.provider or subscription.dns_provider
+                subscription.ttl_seconds = alias_result.ttl
+                subscription.updated_at = timezone.now()
+                subscription.save(
+                    update_fields=[
+                        "dns_record_id",
+                        "last_dns_change_id",
+                        "dns_provider",
+                        "ttl_seconds",
+                        "updated_at",
+                    ]
+                )
+            except Exception as exc:
+                LOGGER.exception(
+                    "backoffice_subscription_create_dns_alias_failed",
+                    extra={"subscription_id": int(getattr(subscription, "id", 0) or 0)},
+                )
+                sync_state_errors.append(f"dns-alias: {exc}")
+            try:
                 sync_now = timezone.now()
-                for node in cluster_nodes:
-                    node_id = int(node.get("id", 0) or 0)
-                    result = results_by_node.get(node_id) or {"ok": False, "error": "node was not provisioned"}
-                    defaults = {
+                VPNNodeClient.objects.update_or_create(
+                    node_id=int(assigned_node_snapshot["id"]),
+                    subscription_id=subscription.id,
+                    defaults={
                         "client_uuid": client_uuid,
                         "client_email": client_email,
-                        "xui_sub_id": result.get("xui_sub_id") or primary_sub_id,
+                        "xui_sub_id": primary_sub_id,
                         "desired_enabled": should_be_active,
                         "desired_expires_at": expires_at,
-                        "observed_enabled": should_be_active if result.get("ok") else None,
-                        "observed_expires_at": expires_at if result.get("ok") else None,
-                        "sync_state": "ok" if result.get("ok") else "error",
-                        "last_synced_at": sync_now if result.get("ok") else None,
-                        "last_error": None if result.get("ok") else str(result.get("error") or "unknown error")[:1000],
+                        "observed_enabled": should_be_active,
+                        "observed_expires_at": expires_at,
+                        "sync_state": "ok",
+                        "last_synced_at": sync_now,
+                        "last_error": None,
                         "updated_at": sync_now,
-                    }
-                    existing = VPNNodeClient.objects.filter(node_id=node_id, subscription_id=subscription.id).first()
-                    if existing:
-                        for field, value in defaults.items():
-                            setattr(existing, field, value)
-                        existing.save(
-                            update_fields=[
-                                "client_uuid",
-                                "client_email",
-                                "xui_sub_id",
-                                "desired_enabled",
-                                "desired_expires_at",
-                                "observed_enabled",
-                                "observed_expires_at",
-                                "sync_state",
-                                "last_synced_at",
-                                "last_error",
-                                "updated_at",
-                            ]
-                        )
-                    else:
-                        VPNNodeClient.objects.create(
-                            node_id=node_id,
-                            subscription_id=subscription.id,
-                            created_at=sync_now,
-                            **defaults,
-                        )
+                        "created_at": sync_now,
+                    },
+                )
             except Exception as exc:
                 LOGGER.exception(
                     "backoffice_subscription_create_sync_state_failed",
@@ -1842,6 +2086,12 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
             )
         else:
             messages.success(request, "Подписка создана")
+        if cluster_mode and assigned_node_snapshot is not None and assignment_score is not None:
+            messages.info(
+                request,
+                f"Новая подписка назначена на ноду {assigned_node_snapshot.get('name', assigned_node_snapshot['id'])} "
+                f"(score {assignment_score:.2f}).",
+            )
         created_subscription_id = int(getattr(subscription, "id", 0) or 0)
         if created_subscription_id:
             request.session[self._session_key()] = created_subscription_id
@@ -2229,9 +2479,13 @@ class VPNNodeListView(BaseListView):
         ("id", "ID"),
         ("name", "Нода"),
         ("region", "Регион"),
-        ("backend", "Backend"),
+        ("backend", "Backend / endpoint"),
+        ("pool", "Pool"),
         ("status", "Статус"),
         ("lb", "LB"),
+        ("assigned", "Назначено"),
+        ("score", "7d score"),
+        ("rebalanced_at", "Rebalance"),
         ("sync", "Backfill"),
         ("updated_at", "Обновлена"),
     ]
@@ -2242,11 +2496,59 @@ class VPNNodeListView(BaseListView):
         return super().get_queryset().order_by("name", "id")
 
     def get_table_rows(self) -> list[dict[str, Any]]:
+        node_ids = [int(item.id) for item in self.object_list]
+        assignment_counts = _active_assignment_counts(node_ids)
+        snapshot_map = _latest_node_snapshots(node_ids)
+        rebalance_events = safe_list(
+            lambda: VPNRebalanceDecision.objects.filter(Q(from_node_id__in=node_ids) | Q(to_node_id__in=node_ids)).order_by("-created_at")
+        )
+        last_rebalanced_at: dict[int, Any] = {}
+        for decision in rebalance_events:
+            from_node_id = int(decision.from_node_id or 0)
+            to_node_id = int(decision.to_node_id or 0)
+            if from_node_id > 0:
+                last_rebalanced_at.setdefault(from_node_id, decision.created_at)
+            if to_node_id > 0:
+                last_rebalanced_at.setdefault(to_node_id, decision.created_at)
+
         rows = []
         for item in self.object_list:
             backfill_state = "needed" if item.needs_backfill else "ok"
             if item.last_backfill_error:
                 backfill_state = "error"
+            snapshot = snapshot_map.get(int(item.id))
+            payload = {
+                "id": int(item.id),
+                "name": item.name,
+                "is_active": bool(item.is_active),
+                "lb_enabled": bool(item.lb_enabled),
+                "needs_backfill": bool(item.needs_backfill),
+                "last_health_ok": item.last_health_ok,
+                "compatibility_pool": str(item.compatibility_pool or "default"),
+                "last_reality_public_key": item.last_reality_public_key,
+                "last_reality_short_id": item.last_reality_short_id,
+                "last_reality_sni": item.last_reality_sni,
+                "last_reality_fingerprint": item.last_reality_fingerprint,
+                "backend_weight": int(item.backend_weight or 100),
+                "bandwidth_capacity_mbps": int(item.bandwidth_capacity_mbps or 0),
+                "connection_capacity": int(item.connection_capacity or 0),
+                "active_assigned_subscriptions": assignment_counts.get(int(item.id), 0),
+                "observed_enabled_clients": int(getattr(snapshot, "observed_enabled_clients", 0) or 0),
+                "weekly_traffic_bytes": int(getattr(snapshot, "total_traffic_bytes", 0) or 0),
+                "peak_concurrency": int(getattr(snapshot, "peak_concurrency", 0) or 0),
+                "probe_latency_ms": int(getattr(snapshot, "probe_latency_ms", 0) or 0),
+                "moves_in_week": 0,
+            }
+            issue = node_ineligibility_reason(payload, compatibility_pool=str(item.compatibility_pool or "default"))
+            scored = score_node(payload, compatibility_pool=str(item.compatibility_pool or "default")) if issue is None else None
+            score_label = "—" if scored is None else f"{float(scored.score):.2f}"
+            backend_label = f"{item.backend_host}:{item.backend_port}"
+            if item.node_fqdn or item.public_ip:
+                endpoint_parts = [part for part in [item.node_fqdn, item.public_ip] if part]
+                backend_label = f"{backend_label} → {' / '.join(endpoint_parts)}"
+            lb_badge = boolean_badge(item.lb_enabled, "enabled", "off")
+            if issue:
+                lb_badge = format_html("{} {}", lb_badge, status_badge(issue, "secondary"))
             rows.append(
                 {
                     "obj": item,
@@ -2254,9 +2556,13 @@ class VPNNodeListView(BaseListView):
                         item.id,
                         item.name,
                         item.region or "",
-                        f"{item.backend_host}:{item.backend_port}",
+                        backend_label,
+                        str(item.compatibility_pool or "default"),
                         health_badge(item),
-                        boolean_badge(item.lb_enabled, "enabled", "off"),
+                        lb_badge,
+                        assignment_counts.get(int(item.id), 0),
+                        score_label,
+                        format_cell(last_rebalanced_at.get(int(item.id))),
                         sync_state_badge(backfill_state),
                         format_cell(item.updated_at),
                     ],
@@ -2561,6 +2867,7 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
+        runtime_settings = _cluster_runtime_settings()
         edges = safe_list(lambda: EdgeServer.objects.order_by("priority", "id"))
         primary_edge = _current_primary_edge(edges)
         ctx["title"] = "Cluster, edges & HAProxy"
@@ -2576,12 +2883,33 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
                 ],
             },
             {
+                "title": "DNS alias layer",
+                "items": [
+                    ("Namespace", runtime_settings.vpn_alias_namespace),
+                    ("Provider", runtime_settings.vpn_alias_provider),
+                    ("Default TTL", f"{runtime_settings.vpn_alias_default_ttl} sec"),
+                    ("Cutover TTL", f"{runtime_settings.vpn_alias_cutover_ttl} sec"),
+                    ("Overlap window", f"{runtime_settings.vpn_alias_overlap_minutes} min"),
+                ],
+            },
+            {
                 "title": "Cluster mode",
                 "items": [
                     ("VPN_CLUSTER_ENABLED", env_value("VPN_CLUSTER_ENABLED", "0")),
                     ("Healthcheck interval", f"{env_value('VPN_CLUSTER_HEALTHCHECK_INTERVAL_SECONDS', '30')} sec"),
                     ("Sync interval", f"{env_value('VPN_CLUSTER_SYNC_INTERVAL_SECONDS', '60')} sec"),
                     ("Sync batch size", env_value("VPN_CLUSTER_SYNC_BATCH_SIZE", "200")),
+                ],
+            },
+            {
+                "title": "Rebalance policy",
+                "items": [
+                    ("Workflow tick", f"{runtime_settings.vpn_rebalance_workflow_tick_seconds} sec"),
+                    ("Planning interval", f"{runtime_settings.vpn_rebalance_interval_seconds} sec"),
+                    ("Max moves / node", runtime_settings.vpn_rebalance_max_moves_per_node),
+                    ("Move fraction", f"{runtime_settings.vpn_rebalance_move_fraction:.0%}"),
+                    ("Cooldown", f"{runtime_settings.vpn_rebalance_cooldown_hours} h"),
+                    ("Min score gap", f"{runtime_settings.vpn_rebalance_min_score_gap:.2f}"),
                 ],
             },
             {
@@ -2616,8 +2944,10 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
             "Edge inventory в /ops — это control plane для DNS/floating-IP cutover. Сам DNS всё равно переключается отдельно.",
             "Primary edge должен совпадать с тем endpoint, на который реально смотрит connect.vxcloud.ru. Если не совпадает — сначала правьте DNS/env, потом inventory.",
             "Если cluster mode выключен, таблицы нод и sync всё равно полезны как inventory и health audit.",
-            "Перед включением lb_enabled на новой ноде: откройте firewall для backend/inbound port, дождитесь health=healthy, закончите backfill и сверьте REALITY key/shortId/SNI с majority пулом.",
-            "Для целевого split rollout новые VPN конфиги должны смотреть на connect.vxcloud.ru:443, а не на домен сайта.",
+            "Перед включением lb_enabled на новой ноде: задайте public_ip, node_fqdn, compatibility_pool, откройте firewall для inbound/backend порта и дождитесь health=healthy.",
+            "Автобаланс смотрит не на raw client count, а на 7-дневные active assignments, weekly traffic, peak/p95 concurrency, probe latency, health failures и recent move penalty.",
+            "Alias-based DNS rollout делает user-facing host стабильным: subscription URL и alias host не меняются, меняется только A-record alias → node IP.",
+            "Для production rollout сначала проверяйте planner preview ниже: pool mismatch, reality_missing и backfill_pending должны быть устранены до включения новой ноды в rebalance.",
             "HAProxy template рассчитан на long-lived TCP sessions. При первом node-add или edge-cutover всё равно делайте dry-run render и ручной тест новым конфигом.",
         ]
 
@@ -2708,6 +3038,55 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
             "health": edge_health_badge(primary_edge),
             "priority": int(getattr(primary_edge, "priority", 100) or 100),
         } if primary_edge else None
+        try:
+            rebalance_preview = _run_async_from_sync(_build_rebalance_preview(runtime_settings))
+        except Exception as exc:
+            LOGGER.exception("Failed to build rebalance preview")
+            rebalance_preview = {
+                "generated_at": None,
+                "nodes": [],
+                "moves": [],
+                "summary": {"eligible_nodes": 0, "planned_moves": 0, "compatible_pools": 0},
+                "error": str(exc),
+            }
+        ctx["rebalance_preview_error"] = rebalance_preview.get("error", "")
+        summary = dict(rebalance_preview.get("summary") or {})
+        ctx["rebalance_preview_summary"] = {
+            "generated_at": format_cell(rebalance_preview.get("generated_at")) if rebalance_preview.get("generated_at") else "—",
+            "eligible_nodes": int(summary.get("eligible_nodes") or 0),
+            "planned_moves": int(summary.get("planned_moves") or 0),
+            "compatible_pools": int(summary.get("compatible_pools") or 0),
+        }
+        ctx["rebalance_node_rows"] = [
+            {
+                "name": row.get("name") or f"node-{int(row.get('id') or 0)}",
+                "pool": row.get("pool") or "default",
+                "score": "—" if row.get("score") is None else f"{float(row['score']):.2f}",
+                "eligible": status_badge("eligible", "success") if row.get("eligible") else status_badge(str(row.get("issue") or "blocked"), "secondary"),
+                "assigned": int(row.get("active_assigned_subscriptions") or 0),
+                "observed": int(row.get("observed_enabled_clients") or 0),
+                "weekly_traffic_gb": f"{(int(row.get('weekly_traffic_bytes') or 0) / (1024 ** 3)):.2f}",
+                "peak_concurrency": int(row.get("peak_concurrency") or 0),
+                "probe_latency_ms": "—" if row.get("p95_probe_latency_ms") is None else f"{float(row.get('p95_probe_latency_ms') or 0):.0f}",
+                "capacity": f"{int(row.get('bandwidth_capacity_mbps') or 0)} Mbps / {int(row.get('connection_capacity') or 0)} conn",
+                "reasons": ", ".join(f"{key}={float(value):.2f}" for key, value in sorted((row.get('reasons') or {}).items())),
+            }
+            for row in rebalance_preview.get("nodes", [])
+        ]
+        ctx["rebalance_move_rows"] = [
+            {
+                "subscription_id": int(row.get("subscription_id") or 0),
+                "display_name": row.get("display_name") or f"sub-{int(row.get('subscription_id') or 0)}",
+                "alias_fqdn": row.get("alias_fqdn") or "—",
+                "from_node_id": int(row.get("from_node_id") or 0),
+                "to_node_id": int(row.get("to_node_id") or 0),
+                "pool": row.get("compatibility_pool") or "default",
+                "score_gap": f"{float(row.get('score_gap') or 0):.2f}",
+                "from_score": f"{float(row.get('from_score') or 0):.2f}",
+                "to_score": f"{float(row.get('to_score') or 0):.2f}",
+            }
+            for row in rebalance_preview.get("moves", [])
+        ]
         return ctx
 
 

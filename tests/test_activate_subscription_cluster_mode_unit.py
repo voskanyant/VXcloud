@@ -17,12 +17,26 @@ def _settings(*, cluster_enabled: bool) -> Settings:
         xui_password="p",
         xui_inbound_id=1,
         xui_sub_port=2096,
-        vpn_public_host="lb.vxcloud.ru",
-        vpn_public_port=29940,
+        vpn_public_host="connect.vxcloud.ru",
+        vpn_public_port=443,
         vpn_cluster_enabled=cluster_enabled,
         vpn_cluster_healthcheck_interval_seconds=30,
         vpn_cluster_sync_interval_seconds=60,
         vpn_cluster_sync_batch_size=200,
+        vpn_rebalance_enabled=cluster_enabled,
+        vpn_rebalance_interval_seconds=604800,
+        vpn_rebalance_workflow_tick_seconds=60,
+        vpn_rebalance_max_moves_per_node=50,
+        vpn_rebalance_move_fraction=0.20,
+        vpn_rebalance_cooldown_hours=168,
+        vpn_rebalance_min_score_gap=2.5,
+        vpn_alias_namespace="vpn.vxcloud.ru",
+        vpn_alias_provider="cloudflare",
+        vpn_alias_default_ttl=300,
+        vpn_alias_cutover_ttl=60,
+        vpn_alias_overlap_minutes=310,
+        cloudflare_api_token=None,
+        cloudflare_zone_id=None,
         vpn_tag="VXcloud",
         vpn_flow="xtls-rprx-vision",
         plan_days=30,
@@ -62,32 +76,8 @@ def _xui_mock() -> MagicMock:
     return xui
 
 
-class _FakeNodeXUI:
-    def __init__(self, base_url: str, username: str, password: str) -> None:
-        self.base_url = base_url
-        self.username = username
-        self.password = password
-
-    async def start(self) -> None:
-        return None
-
-    async def close(self) -> None:
-        return None
-
-    async def get_inbound(self, inbound_id: int) -> dict[str, object]:
-        return {"port": 29940, "id": inbound_id}
-
-    def parse_reality(self, inbound_obj):  # noqa: ANN001
-        return SimpleNamespace(
-            public_key="cluster-pubkey",
-            short_id="ec40",
-            sni="www.cloudflare.com",
-            fingerprint="chrome",
-        )
-
-
 class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase):
-    async def test_single_node_mode_does_not_use_cluster_ensure(self):
+    async def test_single_node_mode_keeps_single_node_link_and_assignment_empty(self):
         now = datetime.now(timezone.utc)
         db = AsyncMock()
         db.claim_order_for_activation.return_value = {
@@ -112,22 +102,26 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
             "xui_sub_id": "sub-old",
         }
         db.get_active_subscription.return_value = None
+        db.ensure_subscription_feed_token = AsyncMock(return_value="feed-token-777")
 
-        with patch("src.domain.subscriptions.ensure_client_on_all_active_nodes", new=AsyncMock()) as ensure_mock:
-            result = await activate_subscription(
-                501,
-                db=db,
-                xui=_xui_mock(),
-                settings=_settings(cluster_enabled=False),
-            )
+        result = await activate_subscription(
+            501,
+            db=db,
+            xui=_xui_mock(),
+            settings=_settings(cluster_enabled=False),
+        )
 
-        ensure_mock.assert_not_awaited()
         self.assertEqual(result.subscription_id, 777)
         self.assertFalse(result.created)
         self.assertFalse(result.idempotent)
         db.extend_subscription.assert_awaited_once()
+        extend_kwargs = db.extend_subscription.await_args.kwargs
+        self.assertIsNone(extend_kwargs["assigned_node_id"])
+        self.assertEqual(extend_kwargs["migration_state"], "ready")
+        self.assertIn("@connect.vxcloud.ru:443", result.vless_url)
+        self.assertEqual(result.feed_token, "feed-token-777")
 
-    async def test_cluster_mode_uses_cluster_ensure_and_public_host_port_link(self):
+    async def test_cluster_mode_assigns_one_best_node_and_uses_alias_link(self):
         db = AsyncMock()
         db.claim_order_for_activation.return_value = {
             "id": 601,
@@ -143,36 +137,41 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
         }
         db.get_active_subscription.return_value = None
         db.create_subscription.return_value = 9001
-        db.get_ready_lb_vpn_nodes.return_value = [
-            {
-                "id": 2,
-                "xui_base_url": "https://node-2.local",
-                "xui_username": "u2",
-                "xui_password": "p2",
-                "xui_inbound_id": 1,
-                "is_active": True,
-                "lb_enabled": True,
-                "last_health_ok": False,
-            },
-            {
-                "id": 1,
-                "xui_base_url": "https://node-1.local",
-                "xui_username": "u1",
-                "xui_password": "p1",
-                "xui_inbound_id": 1,
-                "is_active": True,
-                "lb_enabled": True,
-                "last_health_ok": True,
-                "needs_backfill": False,
-            },
-        ]
+        db.ensure_subscription_feed_token = AsyncMock(return_value="feed-token-9001")
+
+        assigned_node = {
+            "id": 1,
+            "name": "node-1-main",
+            "backend_host": "de1.vxcloud.ru",
+            "backend_port": 443,
+            "public_ip": "116.202.10.113",
+            "compatibility_pool": "default",
+            "xui_base_url": "https://node-1.local",
+            "xui_username": "u1",
+            "xui_password": "p1",
+            "xui_inbound_id": 1,
+        }
+        inbound = {"port": 443, "id": 1}
+        reality = SimpleNamespace(
+            public_key="cluster-pubkey",
+            short_id="ec40",
+            sni="www.cloudflare.com",
+            fingerprint="chrome",
+        )
 
         with (
-            patch("src.domain.subscriptions.XUIClient", new=_FakeNodeXUI),
             patch(
-                "src.domain.subscriptions.ensure_client_on_all_active_nodes",
-                new=AsyncMock(return_value={"total": 2, "ok": 2, "failed": 0, "results": []}),
-            ) as ensure_mock,
+                "src.domain.subscriptions._pick_subscription_node",
+                new=AsyncMock(return_value=(assigned_node, inbound, reality, 1, "scored_best")),
+            ),
+            patch(
+                "src.domain.subscriptions.create_client_on_node",
+                new=AsyncMock(return_value={"node_id": 1, "ok": True, "xui_sub_id": "cluster-sub-id"}),
+            ) as create_mock,
+            patch(
+                "src.domain.subscriptions.ensure_subscription_alias_record",
+                new=AsyncMock(return_value=SimpleNamespace(record_id="dns-1", provider="cloudflare", change_id="chg-1", ttl=300)),
+            ),
         ):
             result = await activate_subscription(
                 601,
@@ -181,11 +180,17 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
                 settings=_settings(cluster_enabled=True),
             )
 
-        ensure_mock.assert_awaited_once()
+        create_mock.assert_awaited_once()
         create_kwargs = db.create_subscription.await_args.kwargs
-        created_vless = str(create_kwargs["vless_url"])
-        self.assertIn("@lb.vxcloud.ru:29940", created_vless)
-        self.assertEqual(result.vless_url, created_vless)
+        self.assertEqual(create_kwargs["assigned_node_id"], 1)
+        self.assertEqual(create_kwargs["current_node_id"], 1)
+        self.assertEqual(create_kwargs["assignment_source"], "new")
+        self.assertEqual(create_kwargs["migration_state"], "ready")
+        self.assertEqual(create_kwargs["assignment_state"], "steady")
+        self.assertTrue(str(create_kwargs["alias_fqdn"]).endswith(".vpn.vxcloud.ru"))
+        self.assertIn(f"@{create_kwargs['alias_fqdn']}:443", create_kwargs["vless_url"])
+        self.assertEqual(result.vless_url, create_kwargs["vless_url"])
+        self.assertEqual(result.feed_token, "feed-token-9001")
         self.assertTrue(result.created)
         self.assertFalse(result.idempotent)
 

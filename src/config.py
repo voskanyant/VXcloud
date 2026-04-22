@@ -46,6 +46,20 @@ class Settings:
     vpn_cluster_healthcheck_interval_seconds: int
     vpn_cluster_sync_interval_seconds: int
     vpn_cluster_sync_batch_size: int
+    vpn_rebalance_enabled: bool
+    vpn_rebalance_interval_seconds: int
+    vpn_rebalance_workflow_tick_seconds: int
+    vpn_rebalance_max_moves_per_node: int
+    vpn_rebalance_move_fraction: float
+    vpn_rebalance_cooldown_hours: int
+    vpn_rebalance_min_score_gap: float
+    vpn_alias_namespace: str
+    vpn_alias_provider: str | None
+    vpn_alias_default_ttl: int
+    vpn_alias_cutover_ttl: int
+    vpn_alias_overlap_minutes: int
+    cloudflare_api_token: str | None
+    cloudflare_zone_id: str | None
     vpn_tag: str
     vpn_flow: str
     plan_days: int
@@ -90,6 +104,20 @@ def load_settings() -> Settings:
         vpn_cluster_healthcheck_interval_seconds=int(_get("VPN_CLUSTER_HEALTHCHECK_INTERVAL_SECONDS", "30")),
         vpn_cluster_sync_interval_seconds=int(_get("VPN_CLUSTER_SYNC_INTERVAL_SECONDS", "60")),
         vpn_cluster_sync_batch_size=int(_get("VPN_CLUSTER_SYNC_BATCH_SIZE", "200")),
+        vpn_rebalance_enabled=_get("VPN_REBALANCE_ENABLED", _get("VPN_CLUSTER_ENABLED", "0")).strip() == "1",
+        vpn_rebalance_interval_seconds=int(_get("VPN_REBALANCE_INTERVAL_SECONDS", "604800")),
+        vpn_rebalance_workflow_tick_seconds=int(_get("VPN_REBALANCE_WORKFLOW_TICK_SECONDS", "300")),
+        vpn_rebalance_max_moves_per_node=int(_get("VPN_REBALANCE_MAX_MOVES_PER_NODE", "50")),
+        vpn_rebalance_move_fraction=float(_get("VPN_REBALANCE_MOVE_FRACTION", "0.20")),
+        vpn_rebalance_cooldown_hours=int(_get("VPN_REBALANCE_COOLDOWN_HOURS", "168")),
+        vpn_rebalance_min_score_gap=float(_get("VPN_REBALANCE_MIN_SCORE_GAP", "2.5")),
+        vpn_alias_namespace=_get("VPN_ALIAS_NAMESPACE", "vpn.vxcloud.ru").strip().strip("."),
+        vpn_alias_provider=_get_optional("VPN_ALIAS_PROVIDER"),
+        vpn_alias_default_ttl=int(_get("VPN_ALIAS_DEFAULT_TTL", "300")),
+        vpn_alias_cutover_ttl=int(_get("VPN_ALIAS_CUTOVER_TTL", "60")),
+        vpn_alias_overlap_minutes=int(_get("VPN_ALIAS_OVERLAP_MINUTES", "310")),
+        cloudflare_api_token=_get_optional("CLOUDFLARE_API_TOKEN"),
+        cloudflare_zone_id=_get_optional("CLOUDFLARE_ZONE_ID"),
         vpn_tag=_get("VPN_TAG", "VPN"),
         vpn_flow=_get("VPN_FLOW", "xtls-rprx-vision"),
         plan_days=int(_get("PLAN_DAYS", "30")),

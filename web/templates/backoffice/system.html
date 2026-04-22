@@ -218,6 +218,117 @@
 </div>
 
 <div class="row g-3 mt-1">
+  <div class="col-12 col-xl-4">
+    <section class="bo-panel h-100">
+      <div class="bo-panel-head">
+        <h3>Rebalance dry-run</h3>
+      </div>
+      {% if rebalance_preview_error %}
+        <div class="alert alert-warning py-2 mb-3">{{ rebalance_preview_error }}</div>
+      {% endif %}
+      <div class="bo-info-grid">
+        <div><span>Generated</span><strong>{{ rebalance_preview_summary.generated_at }}</strong></div>
+        <div><span>Eligible nodes</span><strong>{{ rebalance_preview_summary.eligible_nodes }}</strong></div>
+        <div><span>Compatible pools</span><strong>{{ rebalance_preview_summary.compatible_pools }}</strong></div>
+        <div><span>Planned moves</span><strong>{{ rebalance_preview_summary.planned_moves }}</strong></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="col-12 col-xl-8">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Planner node readiness</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="table bo-table align-middle">
+          <thead>
+            <tr>
+              <th>Node</th>
+              <th>Pool</th>
+              <th>Eligibility</th>
+              <th>7d score</th>
+              <th>Assigned</th>
+              <th>Observed</th>
+              <th>7d traffic (GB)</th>
+              <th>Peak conn</th>
+              <th>P95 latency</th>
+              <th>Capacity</th>
+              <th>Reasons</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rebalance_node_rows %}
+              <tr>
+                <td>{{ row.name }}</td>
+                <td><code>{{ row.pool }}</code></td>
+                <td>{{ row.eligible }}</td>
+                <td>{{ row.score }}</td>
+                <td>{{ row.assigned }}</td>
+                <td>{{ row.observed }}</td>
+                <td>{{ row.weekly_traffic_gb }}</td>
+                <td>{{ row.peak_concurrency }}</td>
+                <td>{{ row.probe_latency_ms }}</td>
+                <td>{{ row.capacity }}</td>
+                <td><small>{{ row.reasons|default:"—" }}</small></td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="11" class="text-muted">Planner preview ещё не собрал данные по нодам.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
+  <div class="col-12">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Planned rebalance moves</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="table bo-table align-middle">
+          <thead>
+            <tr>
+              <th>Subscription</th>
+              <th>Alias host</th>
+              <th>Pool</th>
+              <th>From node</th>
+              <th>To node</th>
+              <th>Score gap</th>
+              <th>From score</th>
+              <th>To score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rebalance_move_rows %}
+              <tr>
+                <td>{{ row.display_name }} <small class="text-muted">#{{ row.subscription_id }}</small></td>
+                <td><code>{{ row.alias_fqdn }}</code></td>
+                <td><code>{{ row.pool }}</code></td>
+                <td>{{ row.from_node_id }}</td>
+                <td>{{ row.to_node_id }}</td>
+                <td>{{ row.score_gap }}</td>
+                <td>{{ row.from_score }}</td>
+                <td>{{ row.to_score }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td colspan="8" class="text-muted">Сейчас planner не предлагает переносов. Это нормально для single-node или равномерного пула.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="row g-3 mt-1">
   <div class="col-12">
     <section class="bo-panel">
       <div class="bo-panel-head">

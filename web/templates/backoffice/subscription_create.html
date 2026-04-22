@@ -59,7 +59,7 @@
       <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
         <div>
           <h2 class="h4 mb-1">Клиент создан</h2>
-          <div class="text-muted">Запись уже создана в базе и отправлена в 3x-ui.</div>
+          <div class="text-muted">Запись уже создана в базе. Основной артефакт — VXcloud subscription URL.</div>
         </div>
         <div class="text-muted small">
           ID подписки: {{ created_result.subscription_id }}
@@ -73,15 +73,31 @@
             <dd class="col-sm-8">{{ created_result.display_name }}</dd>
             <dt class="col-sm-4">3x-ui name</dt>
             <dd class="col-sm-8"><code>{{ created_result.client_email }}</code></dd>
+            <dt class="col-sm-4">Нода</dt>
+            <dd class="col-sm-8">{{ created_result.current_node_label|default:"—" }}</dd>
+            <dt class="col-sm-4">Alias host</dt>
+            <dd class="col-sm-8"><code>{{ created_result.alias_fqdn|default:"—" }}</code></dd>
+            <dt class="col-sm-4">Assignment</dt>
+            <dd class="col-sm-8">{{ created_result.assignment_source|default:"legacy" }}</dd>
+            <dt class="col-sm-4">State</dt>
+            <dd class="col-sm-8">{{ created_result.assignment_state|default:"—" }}</dd>
+            <dt class="col-sm-4">Pool</dt>
+            <dd class="col-sm-8">{{ created_result.compatibility_pool|default:"—" }}</dd>
             <dt class="col-sm-4">Срок</dt>
             <dd class="col-sm-8">{{ created_result.expires_at_label }}</dd>
           </dl>
 
-          <label for="created-vless-url" class="form-label fw-semibold">VLESS ссылка</label>
-          <textarea id="created-vless-url" class="form-control font-monospace" rows="7" readonly>{{ created_result.vless_url }}</textarea>
+          <label for="created-primary-link" class="form-label fw-semibold">VXcloud subscription URL</label>
+          <textarea id="created-primary-link" class="form-control font-monospace" rows="5" readonly>{{ created_result.primary_link }}</textarea>
           <div class="d-flex flex-wrap gap-2 mt-3">
-            <button type="button" class="btn btn-dark" id="copy-vless-link" data-copy-target="created-vless-url">Скопировать ссылку</button>
-            <span class="align-self-center text-muted small" id="copy-vless-status"></span>
+            <button type="button" class="btn btn-dark" id="copy-primary-link" data-copy-target="created-primary-link">Скопировать subscription URL</button>
+            <span class="align-self-center text-muted small" id="copy-primary-status"></span>
+          </div>
+
+          <div class="mt-4">
+            <label for="created-vless-url" class="form-label fw-semibold">Raw VLESS (legacy/manual)</label>
+            <textarea id="created-vless-url" class="form-control font-monospace" rows="6" readonly>{{ created_result.raw_vless_url }}</textarea>
+            <div class="form-text">Subscription URL должен быть основным способом импорта. Raw VLESS оставлен как legacy/manual fallback.</div>
           </div>
         </div>
 
@@ -91,7 +107,7 @@
             {% if created_result.qr_image_data_url %}
               <img
                 src="{{ created_result.qr_image_data_url }}"
-                alt="QR code for created VLESS link"
+                alt="QR code for subscription link"
                 class="img-fluid rounded bg-white p-2 border mx-auto"
                 style="max-width: 320px;"
               >
@@ -109,8 +125,8 @@
 {% block extra_scripts %}
 <script>
   (() => {
-    const copyButton = document.getElementById("copy-vless-link");
-    const statusNode = document.getElementById("copy-vless-status");
+    const copyButton = document.getElementById("copy-primary-link");
+    const statusNode = document.getElementById("copy-primary-status");
     if (!copyButton) return;
 
     copyButton.addEventListener("click", async () => {

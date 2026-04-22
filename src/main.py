@@ -7,6 +7,7 @@ from telegram.ext import ApplicationBuilder
 
 from .bot import VPNBot
 from .cluster.jobs import healthcheck_tick, sync_tick
+from .cluster.rebalance import rebalance_tick
 from .cms import DirectusCMS
 from .config import load_settings
 from .db import DB
@@ -79,11 +80,22 @@ async def run() -> None:
                 logging.exception("Cluster sync loop failed")
             await asyncio.sleep(interval)
 
+    async def cluster_rebalance_loop() -> None:
+        interval = max(30, int(getattr(settings, "vpn_rebalance_workflow_tick_seconds", 60)))
+        while True:
+            try:
+                await rebalance_tick(db, settings)
+            except Exception:
+                logging.exception("Cluster rebalance loop failed")
+            await asyncio.sleep(interval)
+
     asyncio.create_task(reminder_loop())
     asyncio.create_task(single_ip_loop())
     if settings.vpn_cluster_enabled:
         asyncio.create_task(cluster_health_loop())
         asyncio.create_task(cluster_sync_loop())
+        if settings.vpn_rebalance_enabled:
+            asyncio.create_task(cluster_rebalance_loop())
 
     await app.initialize()
     await app.start()

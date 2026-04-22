@@ -3,6 +3,7 @@
 from . import views
 
 urlpatterns = [
+    path("feed/<str:feed_token>/", views.account_subscription_feed, name="account_subscription_feed"),
     path("api/state/", views.account_api_state, name="account_api_state"),
     path("api/login/", views.account_api_login, name="account_api_login"),
     path("api/signup/", views.account_api_signup, name="account_api_signup"),

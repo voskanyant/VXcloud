@@ -32,13 +32,17 @@ from telegram.ext import (
     filters,
 )
 
+from .cluster.provisioner import create_client_on_node
+from .cluster.rebalance import pick_best_node
 from .config import Settings
 from .client_naming import build_xui_client_name
 from .cms import DirectusCMS
 from .db import DB
+from .dns_alias import ensure_subscription_alias_record, generate_subscription_alias
 from .domain.subscriptions import activate_subscription
-from .vless import build_vless_url, normalize_vless_public_endpoint
-from .xui_client import XUIClient
+from .subscription_links import build_bot_feed_url, build_subscription_vless_url
+from .vless import build_vless_url
+from .xui_client import InboundRealityInfo, XUIClient
 
 
 LOGGER = logging.getLogger(__name__)
@@ -47,6 +51,21 @@ V2BOX_PLAYSTORE_URL = "https://play.google.com/store/search?q=V2Box&c=apps"
 IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 EMAIL_RE = re.compile(r"(?:email|user)[:=]\s*([^\s,\]]+)", re.IGNORECASE)
 BRACKET_RE = re.compile(r"\[([^\[\]\s]+)\]")
+
+
+def _node_reality_info(node: dict[str, object]) -> InboundRealityInfo | None:
+    public_key = str(node.get("last_reality_public_key") or "").strip()
+    short_id = str(node.get("last_reality_short_id") or "").strip()
+    sni = str(node.get("last_reality_sni") or "").strip()
+    fingerprint = str(node.get("last_reality_fingerprint") or "chrome").strip() or "chrome"
+    if not (public_key and short_id and sni):
+        return None
+    return InboundRealityInfo(
+        public_key=public_key,
+        short_id=short_id,
+        sni=sni,
+        fingerprint=fingerprint,
+    )
 
 
 def _log_payment_event(
@@ -220,6 +239,14 @@ class VPNBot:
 
     def _account_fallback_url(self) -> str:
         return f"{self._site_url().rstrip('/')}/account/"
+
+    async def _subscription_feed_url(self, subscription_id: int, feed_token: str | None = None) -> str | None:
+        token = (feed_token or "").strip()
+        if not token:
+            token = (await self.db.ensure_subscription_feed_token(int(subscription_id)) or "").strip()
+        if not token:
+            return None
+        return build_bot_feed_url(site_url=self._site_url(), feed_token=token)
 
     @staticmethod
     def _append_next_param(url: str, next_path: str | None) -> str:
@@ -949,57 +976,13 @@ class VPNBot:
         await self._send_stars_invoice_for_message(message, user_id=user_id, mode="buynew")
 
     async def _resolve_subscription_links(self, user_id: int, sub: dict[str, object]) -> tuple[str, str | None]:
-        vless_url = normalize_vless_public_endpoint(
-            str(sub["vless_url"]),
-            host=self.settings.vpn_public_host,
-            port=self.settings.vpn_public_port,
-            tag=self.settings.vpn_tag,
+        del user_id
+        vless_url = str(sub.get("vless_url") or "").strip()
+        feed_url = await self._subscription_feed_url(
+            int(sub["id"]),
+            str(sub.get("feed_token") or ""),
         )
-        cluster_mode = bool(getattr(self.settings, "vpn_cluster_enabled", False))
-        sub_id: str | None = str(sub.get("xui_sub_id") or "").strip() or None
-
-        if not cluster_mode:
-            client_uuid = str(sub["client_uuid"])
-            inbound_id = int(sub["inbound_id"])
-            try:
-                sub_id = await self.xui.get_client_sub_id(inbound_id, client_uuid)
-            except Exception:
-                LOGGER.exception(
-                    "Failed to fetch client sub id from x-ui user_id=%s inbound_id=%s client_uuid=%s",
-                    user_id,
-                    inbound_id,
-                    client_uuid,
-                )
-
-        expires_at = sub.get("expires_at")
-        is_active = bool(sub.get("is_active"))
-        is_revoked = sub.get("revoked_at") is not None
-        now = datetime.now(timezone.utc)
-        if (
-            not cluster_mode
-            and not sub_id
-            and is_active
-            and not is_revoked
-            and isinstance(expires_at, datetime)
-            and expires_at > now
-        ):
-            try:
-                restored = await self._restore_xui_profile_for_subscription(user_id, sub)
-                if restored is not None:
-                    vless_url, sub_id = restored
-            except Exception:
-                LOGGER.exception(
-                    "Failed to restore x-ui profile for subscription user_id=%s subscription_id=%s",
-                    user_id,
-                    sub.get("id"),
-                )
-
-        sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
-            if sub_id
-            else None
-        )
-        return vless_url, sub_url
+        return vless_url, feed_url
 
     def _configs_list_text(
         self,
@@ -1092,8 +1075,9 @@ class VPNBot:
         rows.append([InlineKeyboardButton(text=self._button_label("back_button", "⬅️ Назад"), callback_data="act|cfg_back|_")])
         return InlineKeyboardMarkup(rows)
 
-    async def _config_card_text(self, user_id: int, sub: dict[str, object], *, client_code: str) -> tuple[str, str, str | None]:
-        vless_url, sub_url = await self._resolve_subscription_links(user_id, sub)
+    async def _config_card_text(self, user_id: int, sub: dict[str, object], *, client_code: str) -> tuple[str, str, str]:
+        vless_url, feed_url = await self._resolve_subscription_links(user_id, sub)
+        primary_link = feed_url or vless_url
         expires_at = sub.get("expires_at")
         expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "—"
         status_text = self._subscription_status(sub, datetime.now(timezone.utc))
@@ -1102,9 +1086,14 @@ class VPNBot:
             f"ID: {client_code}\n\n"
             f"Статус: {status_text}\n"
             f"Действует до: {expires_text}\n"
-            "\nНажмите «Скопировать ссылку», затем откройте VPN-клиент и импортируйте конфиг."
+            "\nОсновной способ: импортируйте подписку VXcloud."
         )
-        return text, vless_url, sub_url
+        if feed_url:
+            text += f"\n\nПодписка: {feed_url}"
+            text += "\nПосле импорта VXcloud сможет менять ноду без ручной замены конфига."
+        if vless_url:
+            text += f"\n\nRaw VLESS: {vless_url}"
+        return text, primary_link, vless_url
 
     async def _ensure_user(self, update: Update) -> int:
         assert update.effective_user is not None
@@ -2292,11 +2281,7 @@ class VPNBot:
             provision_state="provision_ready",
         )
         last_payment_method = await self.db.get_latest_payment_method(result.user_id)
-        sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{result.xui_sub_id}"
-            if result.xui_sub_id
-            else None
-        )
+        sub_url = await self._subscription_feed_url(result.subscription_id, result.feed_token)
         if send_config:
             await self._send_config(
                 update,
@@ -2316,18 +2301,15 @@ class VPNBot:
         if not sub:
             await update.message.reply_text("Доступ не найден. Используйте «⭐ Купить новый доступ».")
             return
-        client_uuid = str(sub["client_uuid"])
-        sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
-        sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
-            if sub_id
-            else None
+        sub_url = await self._subscription_feed_url(
+            int(sub["id"]),
+            str(sub.get("feed_token") or ""),
         )
         client_code = await self.db.get_user_client_code(user_id)
         last_payment_method = await self.db.get_latest_payment_method(user_id)
         await self._send_config(
             update,
-            sub["vless_url"],
+            str(sub["vless_url"]),
             sub["expires_at"],
             sub_url,
             subscription_id=int(sub["id"]),
@@ -2338,48 +2320,100 @@ class VPNBot:
 
     async def _create_trial_for_user(self, update: Update, user_id: int, days: int) -> None:
         now = datetime.now(timezone.utc)
-        inbound = await self.xui.get_inbound(self.settings.xui_inbound_id)
-        reality = self.xui.parse_reality(inbound)
-        inbound_port = int(inbound["port"])
-
         client_uuid = str(uuid.uuid4())
         client_email = await self._build_client_email(user_id, client_uuid, prefix="trial")
         new_exp = now + timedelta(days=days)
-        await self.xui.add_client(
-            self.settings.xui_inbound_id,
-            client_uuid,
-            client_email,
-            new_exp,
-            limit_ip=self.settings.max_devices_per_sub,
-            flow=self.settings.vpn_flow,
-            comment="trial",
-        )
+        assigned_node_id: int | None = None
 
-        vless_url = build_vless_url(
-            uuid=client_uuid,
-            host=self.settings.vpn_public_host,
-            port=self.settings.vpn_public_port or inbound_port,
-            tag=self.settings.vpn_tag,
-            public_key=reality.public_key,
-            short_id=reality.short_id,
-            sni=reality.sni,
-            fingerprint=reality.fingerprint,
-            flow=self.settings.vpn_flow,
-        )
-        await self.db.create_subscription(
-            user_id=user_id,
-            inbound_id=self.settings.xui_inbound_id,
-            client_uuid=client_uuid,
-            client_email=client_email,
-            vless_url=vless_url,
-            expires_at=new_exp,
-        )
-        sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
-        sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
-            if sub_id
-            else None
-        )
+        if bool(getattr(self.settings, "vpn_cluster_enabled", False)):
+            best = await pick_best_node(self.db)
+            if not best:
+                raise RuntimeError("No eligible VPN node found for trial activation")
+            node = best.node
+            reality = _node_reality_info(node)
+            if reality is None:
+                raise RuntimeError("Selected trial node has no usable Reality metadata")
+            xui_sub_id = uuid.uuid5(uuid.NAMESPACE_URL, f"vxcloud:{client_uuid}").hex
+            alias_fqdn = generate_subscription_alias(self.settings)
+            created = await create_client_on_node(
+                node,
+                client_uuid=client_uuid,
+                client_email=client_email,
+                sub_id=xui_sub_id,
+                expires_at=new_exp,
+                limit_ip=self.settings.max_devices_per_sub,
+                flow=self.settings.vpn_flow,
+            )
+            alias_result = await ensure_subscription_alias_record(
+                settings=self.settings,
+                alias_fqdn=alias_fqdn,
+                node=node,
+                ttl=int(getattr(self.settings, "vpn_alias_default_ttl", 300)),
+            )
+            vless_url = build_subscription_vless_url(
+                settings=self.settings,
+                node=node,
+                client_uuid=client_uuid,
+                reality=reality,
+                subscription={"alias_fqdn": alias_fqdn},
+            )
+            assigned_node_id = int(node["id"])
+            await self.db.create_subscription(
+                user_id=user_id,
+                inbound_id=int(node.get("xui_inbound_id") or self.settings.xui_inbound_id),
+                client_uuid=client_uuid,
+                client_email=client_email,
+                xui_sub_id=str(created.get("xui_sub_id") or xui_sub_id),
+                vless_url=vless_url,
+                expires_at=new_exp,
+                assigned_node_id=assigned_node_id,
+                assignment_source="trial",
+                migration_state="ready",
+                alias_fqdn=alias_fqdn,
+                current_node_id=assigned_node_id,
+                desired_node_id=None,
+                assignment_state="steady",
+                ttl_seconds=alias_result.ttl,
+                dns_provider=alias_result.provider,
+                dns_record_id=alias_result.record_id,
+                last_dns_change_id=alias_result.change_id,
+                compatibility_pool=str(node.get("compatibility_pool") or "default"),
+            )
+        else:
+            inbound = await self.xui.get_inbound(self.settings.xui_inbound_id)
+            reality = self.xui.parse_reality(inbound)
+            inbound_port = int(inbound["port"])
+            await self.xui.add_client(
+                self.settings.xui_inbound_id,
+                client_uuid,
+                client_email,
+                new_exp,
+                limit_ip=self.settings.max_devices_per_sub,
+                flow=self.settings.vpn_flow,
+                comment="trial",
+            )
+
+            vless_url = build_vless_url(
+                uuid=client_uuid,
+                host=self.settings.vpn_public_host,
+                port=self.settings.vpn_public_port or inbound_port,
+                tag=self.settings.vpn_tag,
+                public_key=reality.public_key,
+                short_id=reality.short_id,
+                sni=reality.sni,
+                fingerprint=reality.fingerprint,
+                flow=self.settings.vpn_flow,
+            )
+            await self.db.create_subscription(
+                user_id=user_id,
+                inbound_id=self.settings.xui_inbound_id,
+                client_uuid=client_uuid,
+                client_email=client_email,
+                vless_url=vless_url,
+                expires_at=new_exp,
+                assignment_source="trial",
+            )
+
         sub_row = await self.db.get_active_subscription(user_id)
         subscription_id = int(sub_row["id"]) if sub_row else 0
         message = update.message or (update.callback_query.message if update.callback_query else None)
@@ -2439,12 +2473,13 @@ class VPNBot:
                 vless_url=vless_url,
                 expires_at=new_exp,
             )
-            sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
-            sub_url = (
-                f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
-                if sub_id
-                else None
-            )
+            created_sub = await self.db.get_active_subscription(user_id)
+            sub_url = None
+            if created_sub and created_sub.get("id"):
+                sub_url = await self._subscription_feed_url(
+                    int(created_sub["id"]),
+                    str(created_sub.get("feed_token") or ""),
+                )
             last_payment_method = await self.db.get_latest_payment_method(user_id)
             await self._send_config(
                 update,
@@ -2482,11 +2517,9 @@ class VPNBot:
             flow=self.settings.vpn_flow,
         )
         await self.db.extend_subscription(sub["id"], new_exp, vless_url)
-        sub_id = await self.xui.get_client_sub_id(self.settings.xui_inbound_id, client_uuid)
-        sub_url = (
-            f"https://{self.settings.vpn_public_host}:{self.settings.xui_sub_port}{self.settings.xui_sub_path}/{sub_id}"
-            if sub_id
-            else None
+        sub_url = await self._subscription_feed_url(
+            int(sub["id"]),
+            str(sub.get("feed_token") or ""),
         )
         last_payment_method = await self.db.get_latest_payment_method(user_id)
         await self._send_config(
@@ -2516,8 +2549,8 @@ class VPNBot:
         if message is None:
             return
         action_markup: InlineKeyboardMarkup | None = None
-        link_for_copy = vless_url
-        qr_payload = vless_url
+        link_for_copy = subscription_url or vless_url
+        qr_payload = link_for_copy
         qr_title = "QR доступа" if subscription_url else "QR подключения"
 
         account_url = await self._account_url(user_id)
@@ -2573,6 +2606,10 @@ class VPNBot:
             .replace("{vless_url}", vless_url)
             .replace("{user_id}", str(user_id) if user_id is not None else "")
         )
+        if subscription_url and "{subscription_url}" not in text:
+            text += f"\nПодписка VXcloud: {subscription_url}"
+        if vless_url and "{vless_url}" not in text:
+            text += f"\nRaw VLESS: {vless_url}"
         if "Способ оплаты:" not in text:
             text += f"\nСпособ оплаты: {self._format_payment_method(last_payment_method)}"
         copy_link_hint = self._content_text(

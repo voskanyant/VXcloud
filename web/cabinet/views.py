@@ -39,8 +39,18 @@ from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 
 from .forms import EmailAuthenticationForm, SignUpForm, UserProfileForm
-from .models import BotOrder, BotSubscription, BotUser, LinkedAccount, PaymentEvent, TelegramLinkToken, WebLoginToken, VPNNodeClient
+from .models import (
+    BotOrder,
+    BotSubscription,
+    BotUser,
+    LinkedAccount,
+    PaymentEvent,
+    TelegramLinkToken,
+    WebLoginToken,
+    VPNNodeClient,
+)
 from payments.providers import get_payment_provider
+from src.subscription_links import build_bot_feed_url, encode_subscription_payload
 
 
 ALLOWED_DEEPLINK_SCHEMES = ("vless://", "vmess://", "trojan://", "ss://", "hysteria2://", "tuic://")
@@ -83,6 +93,20 @@ def _vpn_public_port() -> int:
 
 def _vpn_tag() -> str:
     return str(getattr(settings, "VPN_TAG", "") or os.getenv("VPN_TAG", "VXcloud")).strip() or "VXcloud"
+
+
+def _public_site_base_url(request: HttpRequest) -> str:
+    configured = str(getattr(settings, "WORDPRESS_PUBLIC_SITE_URL", "") or "").strip()
+    if configured:
+        return configured.rstrip("/")
+    return _build_public_absolute_url(request, "").rstrip("/")
+
+
+def _subscription_feed_url(request: HttpRequest, subscription: BotSubscription) -> str:
+    token = (getattr(subscription, "feed_token", "") or "").strip()
+    if not token:
+        return ""
+    return build_bot_feed_url(site_url=_public_site_base_url(request), feed_token=token)
 
 
 def _account_embed_mode(request: HttpRequest) -> bool:
@@ -156,6 +180,18 @@ def _safe_local_redirect_url(request: HttpRequest, candidate: str | None, fallba
     ):
         return value
     return fallback
+
+
+def _telegram_auth_success_response(request: HttpRequest, *, target_url: str) -> HttpResponse:
+    target = _safe_local_redirect_url(request, target_url, _account_default_redirect_url(request))
+    return render(
+        request,
+        "registration/telegram_auth_complete.html",
+        {
+            "target_url": target,
+            **_account_template_urls(request),
+        },
+    )
 
 
 def _telegram_login_bot_username() -> str:
@@ -282,14 +318,10 @@ def _build_subscription_rows(bot_user: BotUser | None) -> tuple[list[dict[str, o
     return rows, active_configs, inactive_configs
 
 
-def _serialize_subscription_row(row: dict[str, object]) -> dict[str, object]:
+def _serialize_subscription_row(request: HttpRequest, row: dict[str, object]) -> dict[str, object]:
     subscription = row["obj"]
-    vless_url = _normalize_vless_public_endpoint(
-        getattr(subscription, "vless_url", "") or "",
-        host=_vpn_public_host(),
-        port=_vpn_public_port(),
-        tag=_vpn_tag(),
-    )
+    vless_url = str(getattr(subscription, "vless_url", "") or "").strip()
+    feed_url = _subscription_feed_url(request, subscription)
     return {
         "id": int(row["id"]),
         "display_name": str(row["display_name"]),
@@ -297,6 +329,7 @@ def _serialize_subscription_row(row: dict[str, object]) -> dict[str, object]:
         "status_text": str(row["status_text"]),
         "expires_at": _format_dt_label(row.get("expires_at")),
         "config_url": _account_frontend_url(f"config/{int(row['id'])}/"),
+        "feed_url": feed_url,
         "vless_url": vless_url,
         "can_delete": bool(row.get("can_delete")),
         "delete_url": _account_frontend_url(f"subscriptions/{int(row['id'])}/delete/"),
@@ -363,7 +396,7 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
     subscriptions_payload: list[dict[str, object]] = []
     for row in rows:
         try:
-            subscriptions_payload.append(_serialize_subscription_row(row))
+            subscriptions_payload.append(_serialize_subscription_row(request, row))
         except Exception:
             LOGGER.exception(
                 "account_dashboard_subscription_row_failed",
@@ -434,12 +467,10 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
             return None, "Конфиг не найден."
 
         sub = current_row["obj"]
-        qr_data = _normalize_vless_public_endpoint(
-            getattr(sub, "vless_url", "") or "",
-            host=_vpn_public_host(),
-            port=_vpn_public_port(),
-            tag=_vpn_tag(),
-        )
+        raw_vless_url = str(getattr(sub, "vless_url", "") or "").strip()
+        feed_url = _subscription_feed_url(request, sub)
+        primary_link = feed_url or raw_vless_url
+        qr_data = primary_link
         img = qrcode.make(qr_data)
         buff = io.BytesIO()
         img.save(buff, format="PNG")
@@ -453,7 +484,10 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
                 "is_active": bool(current_row["is_active"]),
                 "expires_at": _format_dt_label(getattr(sub, "expires_at", None)),
                 "client_code": (getattr(getattr(sub, "user", None), "client_code", "") or ""),
-                "copy_text": qr_data,
+                "copy_text": primary_link,
+                "primary_link": primary_link,
+                "feed_url": feed_url,
+                "vless_url": raw_vless_url,
                 "qr_image_data_url": f"data:image/png;base64,{qr_b64}",
                 "dashboard_url": _account_frontend_url(),
                 "can_delete": bool(current_row.get("can_delete")),
@@ -867,12 +901,9 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
         messages.error(request, "Подписка не найдена")
         return _account_redirect(request)
 
-    qr_data = _normalize_vless_public_endpoint(
-        sub.vless_url,
-        host=_vpn_public_host(),
-        port=_vpn_public_port(),
-        tag=_vpn_tag(),
-    )
+    feed_url = _subscription_feed_url(request, sub)
+    raw_vless_url = str(getattr(sub, "vless_url", "") or "").strip()
+    qr_data = feed_url or raw_vless_url
     img = qrcode.make(qr_data)
     buff = io.BytesIO()
     img.save(buff, format="PNG")
@@ -889,9 +920,33 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
             "display_name": _subscription_display_name(sub),
             "qr_b64": qr_b64,
             "copy_text": qr_data,
+            "primary_link": qr_data,
+            "feed_url": feed_url,
+            "vless_url": raw_vless_url,
             **_account_template_urls(request),
         },
     )
+
+
+def account_subscription_feed(request: HttpRequest, feed_token: str) -> HttpResponse:
+    token = str(feed_token or "").strip()
+    if not token:
+        return HttpResponse(status=404)
+
+    subscription = (
+        BotSubscription.objects.select_related("assigned_node")
+        .filter(feed_token=token)
+        .first()
+    )
+    if subscription is None:
+        return HttpResponse(status=404)
+
+    state = _subscription_state(subscription)
+    if not bool(state["is_active"]):
+        return HttpResponse("", content_type="text/plain; charset=utf-8", status=410)
+
+    payload = encode_subscription_payload([str(getattr(subscription, "vless_url", "") or "").strip()])
+    return HttpResponse(payload, content_type="text/plain; charset=utf-8")
 
 
 def _start_checkout_flow(
@@ -1476,10 +1531,10 @@ def tg_magic_login(request: HttpRequest, token: str) -> HttpResponse:
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     target_url = _safe_local_redirect_url(
         request,
-        request.GET.get("next"),
+        request.GET.get("next") or request.GET.get("return_to"),
         _account_default_redirect_url(request),
     )
-    return redirect(target_url)
+    return _telegram_auth_success_response(request, target_url=target_url)
 
 
 def _create_user_for_telegram(
@@ -1635,10 +1690,10 @@ def telegram_login(request: HttpRequest) -> HttpResponse:
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     target_url = _safe_local_redirect_url(
         request,
-        request.GET.get("next"),
+        request.GET.get("next") or request.GET.get("return_to"),
         _account_default_redirect_url(request),
     )
-    return redirect(target_url)
+    return _telegram_auth_success_response(request, target_url=target_url)
 
 
 @csrf_exempt

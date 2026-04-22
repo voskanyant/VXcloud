@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+import time
 from typing import Any
 
 from src.cluster.provisioner import create_client_on_node, delete_or_disable_client_on_node, update_client_on_node
+from src.cluster.rebalance import backfill_unassigned_subscriptions, score_node
 from src.db import DB
 from src.xui_client import InboundClientState, XUIClient
 
@@ -191,7 +193,8 @@ async def _sync_manual_clients_from_canonical(
 
 
 async def healthcheck_tick(db: DB) -> dict[str, int]:
-    nodes = await db.get_active_vpn_nodes(lb_only=False)
+    node_metrics = await db.list_node_assignment_metrics()
+    nodes = node_metrics or await db.get_active_vpn_nodes(lb_only=False)
     if not nodes:
         return {"checked": 0, "ok": 0, "failed": 0}
 
@@ -205,9 +208,13 @@ async def healthcheck_tick(db: DB) -> dict[str, int]:
         inbound_id = _node_inbound_id(node)
         xui = _node_client(node)
         try:
+            started = time.perf_counter()
             await xui.start()
             inbound = await xui.get_inbound(inbound_id)
             reality = xui.parse_reality(inbound)
+            clients = await xui.list_clients(inbound_id)
+            probe_latency_ms = int((time.perf_counter() - started) * 1000)
+            observed_enabled_clients = sum(1 for client in clients if bool(client.enabled))
             await db.mark_node_health(
                 node_id=node_id,
                 ok=True,
@@ -217,10 +224,38 @@ async def healthcheck_tick(db: DB) -> dict[str, int]:
                 reality_sni=reality.sni,
                 reality_fingerprint=reality.fingerprint,
             )
+            refreshed_node = dict(node)
+            refreshed_node["last_health_ok"] = True
+            refreshed_node["observed_enabled_clients"] = observed_enabled_clients
+            snapshot_score = score_node(refreshed_node)
+            await db.record_node_load_snapshot(
+                node_id=node_id,
+                assigned_active_subscriptions=int(node.get("active_assigned_subscriptions") or 0),
+                observed_enabled_clients=observed_enabled_clients,
+                total_traffic_bytes=int(node.get("total_traffic_bytes") or 0),
+                peak_concurrency=int(node.get("peak_concurrency") or 0) if node.get("peak_concurrency") is not None else None,
+                probe_latency_ms=probe_latency_ms,
+                health_ok=True,
+                health_error=None,
+                score=(snapshot_score.score if snapshot_score is not None else None),
+                meta={"source": "healthcheck_tick"},
+            )
             ok_count += 1
         except Exception as exc:
             failed_count += 1
             await db.mark_node_health(node_id=node_id, ok=False, error=str(exc))
+            await db.record_node_load_snapshot(
+                node_id=node_id,
+                assigned_active_subscriptions=int(node.get("active_assigned_subscriptions") or 0),
+                observed_enabled_clients=int(node.get("observed_enabled_clients") or 0),
+                total_traffic_bytes=int(node.get("total_traffic_bytes") or 0),
+                peak_concurrency=int(node.get("peak_concurrency") or 0) if node.get("peak_concurrency") is not None else None,
+                probe_latency_ms=None,
+                health_ok=False,
+                health_error=str(exc),
+                score=None,
+                meta={"source": "healthcheck_tick"},
+            )
             LOGGER.exception("Cluster healthcheck failed for node_id=%s", node_id)
         finally:
             await xui.close()
@@ -229,6 +264,8 @@ async def healthcheck_tick(db: DB) -> dict[str, int]:
 
 
 async def sync_tick(db: DB, settings: Any) -> dict[str, int]:
+    batch_size = max(1, int(getattr(settings, "vpn_cluster_sync_batch_size", 200)))
+    assignment_result = await backfill_unassigned_subscriptions(db, settings, limit=batch_size)
     nodes = await db.get_cluster_sync_nodes()
     if not nodes:
         return {
@@ -238,9 +275,8 @@ async def sync_tick(db: DB, settings: Any) -> dict[str, int]:
             "failed": 0,
             "manual_processed": 0,
             "manual_failed": 0,
+            "assignment_backfilled": int(assignment_result.get("assigned", 0)),
         }
-
-    batch_size = max(1, int(getattr(settings, "vpn_cluster_sync_batch_size", 200)))
     limit_ip = int(getattr(settings, "max_devices_per_sub", 1))
     flow = str(getattr(settings, "vpn_flow", "xtls-rprx-vision") or "")
 
@@ -353,4 +389,5 @@ async def sync_tick(db: DB, settings: Any) -> dict[str, int]:
         "failed": failed_count,
         "manual_processed": int(manual_result.get("processed", 0)),
         "manual_failed": int(manual_result.get("failed", 0)),
+        "assignment_backfilled": int(assignment_result.get("assigned", 0)),
     }
