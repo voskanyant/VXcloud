@@ -16,10 +16,7 @@
 - `VPN_PUBLIC_PORT=29940`
 - `HAPROXY_FRONTEND_PORT=29940`
 - `HAPROXY_BACKEND_SEND_PROXY=1`
-- `CMS_BASE_URL=` пусто
-- `CMS_TOKEN=` пусто
-
-Если `CMS_BASE_URL` или `CMS_TOKEN` заполнены, legacy Directus bridge всё ещё активен.
+- external legacy CMS bridge отсутствует
 
 ## 2. Deploy
 
@@ -126,7 +123,7 @@ docker compose --env-file .env ps
 
 - нет ли старых `pending` card orders старше 30 минут
 - если есть, нажмите `Очистить stale card pending`
-- `Legacy Directus` должен быть `Off`
+- лишние внешние CMS-индикаторы отсутствуют в `/ops/`
 - current main server должен быть заведён в `VPN ноды` как `node-1`
 - у `node-1` должно быть понятно, что его можно отдельно выключить из LB через `lb_enabled`, не ломая site/bot/backend
 - production path должен быть уже переведён под HAProxy:

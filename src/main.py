@@ -8,7 +8,6 @@ from telegram.ext import ApplicationBuilder
 from .bot import VPNBot
 from .cluster.jobs import healthcheck_tick, sync_tick
 from .cluster.rebalance import rebalance_tick
-from .cms import DirectusCMS
 from .config import load_settings
 from .db import DB
 from .xui_client import XUIClient
@@ -24,25 +23,12 @@ async def run() -> None:
     settings = load_settings()
     db = DB(settings.database_url)
     xui = XUIClient(settings.xui_base_url, settings.xui_username, settings.xui_password)
-    cms: DirectusCMS | None = None
-    if settings.cms_base_url and settings.cms_token:
-        logging.warning(
-            "Legacy Directus CMS bridge is enabled. Disable CMS_BASE_URL/CMS_TOKEN before launch if Directus is no longer used."
-        )
-        cms = DirectusCMS(
-            base_url=settings.cms_base_url,
-            token=settings.cms_token,
-            content_collection=settings.cms_content_collection,
-            button_collection=settings.cms_button_collection,
-        )
 
     await db.connect()
     await xui.start()
-    if cms is not None:
-        await cms.start()
 
     app = ApplicationBuilder().token(settings.telegram_bot_token).build()
-    bot = VPNBot(app=app, settings=settings, db=db, xui=xui, cms=cms)
+    bot = VPNBot(app=app, settings=settings, db=db, xui=xui)
     bot.register()
 
     async def reminder_loop() -> None:
@@ -108,8 +94,6 @@ async def run() -> None:
         await app.updater.stop()
         await app.stop()
         await app.shutdown()
-        if cms is not None:
-            await cms.close()
         await xui.close()
         await db.close()
 

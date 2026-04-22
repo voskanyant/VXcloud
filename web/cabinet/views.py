@@ -803,6 +803,7 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
                 "can_delete": bool(state["can_delete"]),
                 "status_text": str(state["status_text"]),
                 "expires_at": state["expires_at"],
+                "feed_url": _subscription_feed_url(request, item),
                 "vless_url": _normalize_vless_public_endpoint(
                     getattr(item, "vless_url", "") or "",
                     host=_vpn_public_host(),

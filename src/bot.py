@@ -36,7 +36,6 @@ from .cluster.provisioner import create_client_on_node
 from .cluster.rebalance import pick_best_node
 from .config import Settings
 from .client_naming import build_xui_client_name
-from .cms import DirectusCMS
 from .db import DB
 from .dns_alias import ensure_subscription_alias_record, generate_subscription_alias
 from .domain.subscriptions import activate_subscription
@@ -98,13 +97,11 @@ class VPNBot:
         settings: Settings,
         db: DB,
         xui: XUIClient,
-        cms: DirectusCMS | None = None,
     ) -> None:
         self.app = app
         self.settings = settings
         self.db = db
         self.xui = xui
-        self.cms = cms
         self._pending_profiles: dict[str, dict[str, str]] = {}
         self._copy_links: dict[str, str] = {}
         self._cms_content: dict[str, str] = {}
@@ -856,29 +853,21 @@ class VPNBot:
 
     async def _refresh_cms(self, force: bool = False) -> None:
         now = time.monotonic()
-        ttl = max(self.settings.cms_cache_ttl_seconds, 5)
+        ttl = 5
         if not force and (now - self._cms_loaded_at) < ttl:
             return
 
         async with self._cms_lock:
             if not force and (time.monotonic() - self._cms_loaded_at) < ttl:
                 return
-            content: dict[str, str] = {}
-            buttons: dict[str, str] = {}
-            try:
-                if self.cms is not None:
-                    content = await self.cms.fetch_content()
-                    buttons = await self.cms.fetch_buttons()
-            except Exception:
-                LOGGER.exception("Failed to refresh CMS content")
             try:
                 overrides = await self.db.fetch_bot_site_text_overrides()
             except Exception:
                 LOGGER.exception("Failed to refresh bot text overrides from DB")
                 overrides = {}
 
-            self._cms_content = dict(content)
-            self._cms_buttons = dict(buttons)
+            self._cms_content = {}
+            self._cms_buttons = {}
             for key, value in overrides.items():
                 self._cms_content[key] = value
                 self._cms_buttons[key] = value
@@ -1342,14 +1331,11 @@ class VPNBot:
         await self._show_renew_offer(message, user_id, context)
 
     async def admin_reload(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        if self.cms is None:
-            await update.message.reply_text("CMS не настроен.")
-            return
         if not update.effective_user or update.effective_user.id != self.settings.telegram_admin_id:
             await update.message.reply_text("Доступ запрещён.")
             return
         await self._refresh_cms(force=True)
-        await update.message.reply_text("Контент CMS обновлён.")
+        await update.message.reply_text("Bot content overrides обновлены из БД.")
 
     def _is_admin(self, update: Update) -> bool:
         user = update.effective_user

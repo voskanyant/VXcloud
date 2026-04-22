@@ -283,47 +283,13 @@ After WordPress starts:
 The old Django content screens remain available under `/ops/` for migration support and operational review.
 Set `WORDPRESS_CONTENT_READONLY=1` when you want to freeze legacy content editing in Django.
 
-## Legacy Directus Content Sync From Git
+## Bot Content Overrides
 
-Directus is now a legacy optional bridge for bot texts only. Leave it disabled in production unless you intentionally still depend on it.
+Bot texts and button labels are managed directly from `/ops/bot/content/`.
 
-- Seed files:
-  - `directus_seed/bot_buttons.json`
-  - `directus_seed/bot_content.json`
-- Sync tool:
-  - `scripts/sync_directus.py`
-- Deploy workflow runs sync automatically after DB migration.
-
-### Seed Format
-
-`directus_seed/bot_buttons.json`:
-
-```json
-[
-  { "key": "menu_buy", "label": "Купить VPN" },
-  { "key": "menu_mysub", "label": "Моя подписка" }
-]
-```
-
-`directus_seed/bot_content.json`:
-
-```json
-[
-  { "key": "start_message", "value": "Добро пожаловать..." },
-  { "key": "menu_buy_response", "value": "..." }
-]
-```
-
-### Manual Run (Server)
-
-```bash
-/opt/vpnbot/.venv/bin/python /opt/vpnbot/scripts/sync_directus.py \
-  --env-file /opt/vpnbot/.env \
-  --buttons-file /opt/vpnbot/directus_seed/bot_buttons.json \
-  --content-file /opt/vpnbot/directus_seed/bot_content.json
-```
-
-Use `--dry-run` to preview changes.
+- empty value removes the override and falls back to the default from code
+- changes are picked up by the bot automatically within about a minute
+- `/admin_reload` forces an immediate refresh of DB-backed overrides
 
 ## Notes
 
@@ -333,50 +299,35 @@ Use `--dry-run` to preview changes.
 - Use a secret manager or environment variables in production.
 - Rotate panel credentials before production launch.
 
-## Optional CMS (Directus)
+## Supported Bot Override Keys
 
-You can edit bot texts and button labels from Directus without redeploy.
+Main supported button keys:
+- `menu_trial`
+- `menu_buy`
+- `menu_renew`
+- `menu_mysub`
+- `menu_instructions`
+- `contact_share`
+- `contact_cancel`
 
-1. Configure `.env`:
-   - `CMS_BASE_URL` (for example `https://cms.example.com`)
-   - `CMS_TOKEN` (static token with read access to your collections)
-   - optionally collection names (`CMS_CONTENT_COLLECTION`, `CMS_BUTTON_COLLECTION`)
+Main supported content keys:
+- `start_message`
+- `buy_intro_message`
+- `menu_unknown_message`
+- `cancel_message`
+- `phone_missing_message`
+- `sending_invoice_message`
+- `share_contact_hint_message`
+- `contact_missing_message`
+- `contact_self_only_message`
+- `phone_invalid_message`
+- `phone_saved_message` (supports `{phone}` placeholder)
+- `invoice_title`
+- `invoice_description`
+- `no_subscription_message`
 
-2. Create collection for content (default `bot_content`) with fields:
-   - `key` (string, unique)
-   - `value` (text)
-
-3. Create collection for buttons (default `bot_buttons`) with fields:
-   - `key` (string, unique)
-   - `label` (string)
-
-4. Supported button keys:
-   - `menu_trial`
-   - `menu_buy`
-   - `menu_renew`
-   - `menu_mysub`
-   - `menu_instructions`
-   - `contact_share`
-   - `contact_cancel`
-
-5. Supported content keys (main):
-   - `start_message`
-   - `buy_intro_message`
-   - `menu_unknown_message`
-   - `cancel_message`
-   - `phone_missing_message`
-   - `sending_invoice_message`
-   - `share_contact_hint_message`
-   - `contact_missing_message`
-   - `contact_self_only_message`
-   - `phone_invalid_message`
-   - `phone_saved_message` (supports `{phone}` placeholder)
-   - `invoice_title`
-   - `invoice_description`
-   - `no_subscription_message`
-
-6. Force refresh from Telegram (admin only):
-   - `/admin_reload`
+Force refresh from Telegram (admin only):
+- `/admin_reload`
 
 ## Lightweight Help Site
 

@@ -69,11 +69,6 @@ class Settings:
     max_devices_per_sub: int
     price_text: str
     timezone: str
-    cms_base_url: str | None
-    cms_token: str | None
-    cms_content_collection: str
-    cms_button_collection: str
-    cms_cache_ttl_seconds: int
     magic_link_shared_secret: str | None
     magic_link_api_timeout_seconds: int
     enforce_single_ip: bool
@@ -127,11 +122,6 @@ def load_settings() -> Settings:
         max_devices_per_sub=int(_get("MAX_DEVICES_PER_SUB", "1")),
         price_text=_get("PRICE_TEXT", "Monthly plan"),
         timezone=_get("TIMEZONE", "UTC"),
-        cms_base_url=_get_optional("CMS_BASE_URL"),
-        cms_token=_get_optional("CMS_TOKEN"),
-        cms_content_collection=_get("CMS_CONTENT_COLLECTION", "bot_content"),
-        cms_button_collection=_get("CMS_BUTTON_COLLECTION", "bot_buttons"),
-        cms_cache_ttl_seconds=int(_get("CMS_CACHE_TTL_SECONDS", "60")),
         magic_link_shared_secret=_get_optional("MAGIC_LINK_SHARED_SECRET"),
         magic_link_api_timeout_seconds=int(_get("MAGIC_LINK_API_TIMEOUT_SECONDS", "5")),
         enforce_single_ip=_get("ENFORCE_SINGLE_IP", "0").strip() == "1",

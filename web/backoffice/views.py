@@ -1241,13 +1241,10 @@ class BotContentEditorView(StaffRequiredMixin, LegacyContentContextMixin, Templa
             "overridden": overridden_items,
             "defaulted": max(total_items - overridden_items, 0),
         }
-        cms_base_url = str(getattr(settings, "CMS_BASE_URL", "") or "").strip()
-        cms_token = str(getattr(settings, "CMS_TOKEN", "") or "").strip()
-        ctx["directus_enabled"] = bool(cms_base_url and cms_token)
         ctx["notes"] = [
             "Пустое поле удаляет override и возвращает штатный текст или кнопку из кода.",
             "Изменения подхватываются ботом автоматически примерно в течение минуты.",
-            "DB overrides из /ops/ имеют приоритет над legacy Directus.",
+            "DB overrides из /ops/ являются единственным источником runtime overrides для bot content.",
             "Advanced JSON поля нужны только если вы хотите полностью переопределить layout inline-кнопок.",
         ]
         return self.add_wordpress_context(ctx)
@@ -1327,11 +1324,6 @@ class DashboardView(StaffRequiredMixin, TemplateView):
                 "label": "Edge layer",
                 "value": "Configured" if metrics["edges_total"] else "Env only",
                 "meta": f"{metrics['edges_total']} total · {metrics['edges_unhealthy']} unhealthy",
-            },
-            {
-                "label": "Legacy Directus",
-                "value": "Enabled" if env_value("CMS_BASE_URL") and env_value("CMS_TOKEN") else "Off",
-                "meta": "bot text bridge",
             },
         ]
         ctx["recent_orders"] = safe_get(

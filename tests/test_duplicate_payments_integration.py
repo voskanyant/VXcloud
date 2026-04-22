@@ -87,12 +87,7 @@ class DuplicatePaymentsIntegrationTests(unittest.IsolatedAsyncioTestCase):
             max_devices_per_sub=1,
             price_text="Monthly",
             timezone="UTC",
-            cms_base_url=None,
-            cms_token=None,
-            cms_content_collection="bot_content",
-            cms_button_collection="bot_buttons",
-            cms_cache_ttl_seconds=60,
-            magic_link_shared_secret=None,
+        magic_link_shared_secret=None,
             magic_link_api_timeout_seconds=5,
             enforce_single_ip=False,
             single_ip_check_interval_seconds=20,
@@ -110,7 +105,7 @@ class DuplicatePaymentsIntegrationTests(unittest.IsolatedAsyncioTestCase):
         db.get_user_client_code.return_value = None
         db.is_charge_processed.return_value = True
 
-        bot = VPNBot(app=SimpleNamespace(), settings=settings, db=db, xui=AsyncMock(), cms=None)
+        bot = VPNBot(app=SimpleNamespace(), settings=settings, db=db, xui=AsyncMock())
         bot.mysub = AsyncMock()
 
         payment = SimpleNamespace(
