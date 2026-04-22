@@ -12,116 +12,90 @@
 {% cms_text "cabinet.empty_configs" "Пока нет активных доступов. Оформите первый доступ, чтобы он появился здесь." as cabinet_empty_configs %}
 {% cms_text "cabinet.error_loading" "Не удалось загрузить данные аккаунта. Попробуйте обновить страницу." as cabinet_error_loading %}
 
-<div class="cabinet-page account-site-shell">
-  <section class="account-site-hero">
-    <div class="account-site-hero-grid">
-      <aside class="account-site-sidebar">
-        <div class="account-site-sidebar-block">
-          <div class="account-site-kicker">VXcloud account</div>
-          <h1 class="account-site-title">{{ cabinet_heading }}</h1>
-          <p class="account-site-copy">Управляйте доступами, subscription URL и устройствами в том же аккуратном кабинете, что и остальной сайт.</p>
-        </div>
+<div class="account-page-shell">
+  <section class="account-hero">
+    <div class="account-hero-copy">
+      <div class="account-eyebrow">VXcloud account</div>
+      <h1 class="account-title">{{ cabinet_heading }}</h1>
+      <p class="account-intro">Прямые subscription URL, понятные статусы устройств и быстрые действия без отдельного админского интерфейса.</p>
+    </div>
 
-        <div class="account-site-sidebar-block">
-          <div class="account-site-section-label">Аккаунт</div>
-          <div class="account-site-identity">
-            <strong>{{ request.user.username }}</strong>
-            {% if bot_user and bot_user.client_code %}
-              <span class="account-site-token">{{ bot_user.client_code }}</span>
-            {% else %}
-              <span class="account-site-token account-site-token-muted">client pending</span>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="account-site-sidebar-block">
-          <div class="account-site-section-label">Действия</div>
-          <div class="account-site-actions">
-            <a class="account-site-action account-site-action-primary" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>
-              <span>{{ cabinet_buy_new_action }}</span>
-              <strong>{{ card_price_label }}</strong>
-            </a>
-            <a class="account-site-action" href="{{ backend_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>
-              <span>{{ cabinet_renew_action_short }}</span>
-              <strong>{{ card_price_label }}</strong>
-            </a>
-            <a class="account-site-action" href="{{ support_url }}"{% if embed_mode %} target="_top"{% endif %}>
-              <span>{{ cabinet_support_action }}</span>
-              <strong>24/7</strong>
-            </a>
-          </div>
-        </div>
-      </aside>
-
-      <div class="account-site-main">
-        <div class="account-site-headline">
-          <div>
-            <div class="account-site-kicker">Personal workspace</div>
-            <h2 class="account-site-heading">{{ cabinet_heading }}</h2>
-            <p class="account-site-lead">Основная информация, доступы и конфиги собраны в одном месте без лишнего отдельного интерфейса.</p>
-          </div>
-          <div class="account-site-pill">{{ subscription_rows|length }} доступов</div>
-        </div>
-
-        {% if not bot_user %}
-          <div class="account-site-panel">
-            <div class="alert alert-danger mb-0">{{ cabinet_error_loading }}</div>
-          </div>
-        {% else %}
-          <section class="account-site-stats">
-            <article class="account-site-stat">
-              <div class="account-site-section-label">Пользователь</div>
-              <div class="account-site-stat-value">{{ request.user.username }}</div>
-            </article>
-            <article class="account-site-stat">
-              <div class="account-site-section-label">ID клиента</div>
-              <div class="account-site-stat-value">
-                {% if bot_user.client_code %}
-                  <span class="account-site-token">{{ bot_user.client_code }}</span>
-                {% else %}
-                  -
-                {% endif %}
-              </div>
-            </article>
-            <article class="account-site-stat">
-              <div class="account-site-section-label">Активные подключения</div>
-              <div class="account-site-stat-value">{{ active_configs }}</div>
-            </article>
-            <article class="account-site-stat">
-              <div class="account-site-section-label">Telegram</div>
-              <div class="account-site-stat-stack">
-                {% if linked %}
-                  <span class="vx-pill vx-pill-success status-pill">Привязан</span>
-                  <span class="account-site-muted">{{ linked.telegram_id }}</span>
-                {% else %}
-                  <span class="vx-pill vx-pill-warning status-pill">Не привязан</span>
-                  <a class="account-site-inline-link" href="{{ backend_link_url }}">Привязать аккаунт</a>
-                {% endif %}
-              </div>
-            </article>
-          </section>
-        {% endif %}
-      </div>
+    <div class="account-hero-actions">
+      <a class="account-button account-button-primary" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>
+        <span>{{ cabinet_buy_new_action }}</span>
+        <strong>{{ card_price_label }}</strong>
+      </a>
+      <a class="account-button" href="{{ backend_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>
+        <span>{{ cabinet_renew_action_short }}</span>
+        <strong>{{ card_price_label }}</strong>
+      </a>
+      <a class="account-button" href="{{ support_url }}"{% if embed_mode %} target="_top"{% endif %}>
+        <span>{{ cabinet_support_action }}</span>
+        <strong>24/7</strong>
+      </a>
     </div>
   </section>
 
-  <section class="account-site-panel account-site-panel-devices">
-    <div class="account-site-panel-head">
+  {% if not bot_user %}
+    <section class="account-section">
+      <div class="account-message account-message-error">{{ cabinet_error_loading }}</div>
+    </section>
+  {% else %}
+    <section class="account-summary">
+      <article class="account-summary-card account-summary-card-wide">
+        <div class="account-summary-label">Аккаунт</div>
+        <div class="account-summary-main">
+          <strong>{{ request.user.username }}</strong>
+          {% if bot_user and bot_user.client_code %}
+            <span class="account-token">{{ bot_user.client_code }}</span>
+          {% else %}
+            <span class="account-token account-token-muted">client pending</span>
+          {% endif %}
+        </div>
+      </article>
+
+      <article class="account-summary-card">
+        <div class="account-summary-label">Активные подключения</div>
+        <div class="account-summary-value">{{ active_configs }}</div>
+      </article>
+
+      <article class="account-summary-card">
+        <div class="account-summary-label">Всего доступов</div>
+        <div class="account-summary-value">{{ subscription_rows|length }}</div>
+      </article>
+
+      <article class="account-summary-card">
+        <div class="account-summary-label">Telegram</div>
+        <div class="account-summary-stack">
+          {% if linked %}
+            <span class="vx-pill vx-pill-success status-pill">Привязан</span>
+            <span class="account-subtle">{{ linked.telegram_id }}</span>
+          {% else %}
+            <span class="vx-pill vx-pill-warning status-pill">Не привязан</span>
+            <a class="account-inline-link" href="{{ backend_link_url }}">Привязать аккаунт</a>
+          {% endif %}
+        </div>
+      </article>
+    </section>
+  {% endif %}
+
+  <section class="account-section">
+    <div class="account-section-head">
       <div>
-        <div class="account-site-kicker">Devices</div>
-        <h2 class="account-site-panel-title">Ваши доступы</h2>
+        <div class="account-eyebrow">Devices</div>
+        <h2 class="account-section-title">Ваши доступы</h2>
       </div>
-      <div class="account-site-panel-meta">Активных: {{ active_configs }} · Неактивных: {{ inactive_configs }}</div>
+      <div class="account-section-meta">Активных: {{ active_configs }} · Неактивных: {{ inactive_configs }}</div>
     </div>
 
     {% if subscription_rows %}
-      <div class="account-site-device-grid">
+      <div class="account-device-grid">
         {% for row in subscription_rows %}
-          <article class="account-site-device-card">
-            <div class="account-site-device-head">
+          <article class="account-device-card">
+            <div class="account-device-top">
               <div>
-                <div class="account-site-device-name">{{ row.display_name }}</div>
-                <div class="account-site-device-subline">
+                <div class="account-device-name">{{ row.display_name }}</div>
+                <div class="account-subtle">
                   {% if row.expires_at %}
                     действует до {{ row.expires_at|date:'d.m.Y H:i' }}
                   {% else %}
@@ -136,43 +110,44 @@
               {% endif %}
             </div>
 
-            <form method="post" action="{{ backend_rename_prefix }}{{ row.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="vx-inline-action-form account-site-rename-form">
+            <form method="post" action="{{ backend_rename_prefix }}{{ row.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="account-inline-form">
               {% csrf_token %}
               <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-              <input type="text" class="form-control form-control-sm vx-rename-input" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Имя устройства" aria-label="Имя устройства" />
-              <button type="submit" class="btn btn-sm btn-outline-secondary js-rename-icon vx-icon-button" title="Переименовать" aria-label="Переименовать">
+              <input type="text" class="account-input" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Имя устройства" aria-label="Имя устройства" />
+              <button type="submit" class="account-icon-button js-rename-icon" title="Переименовать" aria-label="Переименовать">
                 <i class="bi bi-pencil"></i>
               </button>
             </form>
 
-            <div class="account-site-device-meta">
-              <div class="account-site-meta-card">
+            <div class="account-device-meta">
+              <div class="account-meta-box">
                 <span>ID</span>
                 <strong>{{ row.id }}</strong>
               </div>
-              <div class="account-site-meta-card">
+              <div class="account-meta-box">
                 <span>Режим</span>
                 <strong>{% if row.is_active %}online{% else %}paused{% endif %}</strong>
               </div>
-              <div class="account-site-meta-card account-site-meta-card-wide">
-                <span>Subscription URL</span>
-                <div class="vx-link-input-wrap">
-                  <input type="text" class="form-control form-control-sm config-link-field" value="{{ row.feed_url|default:row.vless_url|default:'' }}" readonly>
-                  <button type="button" class="btn btn-sm btn-outline-secondary js-copy-config js-copy-icon vx-icon-button" data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
-                    <i class="bi bi-copy"></i>
-                  </button>
-                </div>
+            </div>
+
+            <div class="account-link-block">
+              <label class="account-link-label">Subscription URL</label>
+              <div class="account-link-row">
+                <input type="text" class="account-input account-link-input" value="{{ row.feed_url|default:row.vless_url|default:'' }}" readonly>
+                <button type="button" class="account-icon-button js-copy-config" data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+                  <i class="bi bi-copy"></i>
+                </button>
               </div>
             </div>
 
-            <div class="account-site-device-actions">
-              <a class="btn btn-sm btn-outline-secondary" href="{{ backend_config_prefix }}{{ row.id }}/#qr">QR</a>
-              <a class="btn btn-sm btn-dark" href="{{ backend_config_prefix }}{{ row.id }}/">{% if row.is_active %}Открыть{% else %}Детали{% endif %}</a>
+            <div class="account-device-actions">
+              <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/#qr">QR</a>
+              <a class="account-primary-button" href="{{ backend_config_prefix }}{{ row.id }}/">{% if row.is_active %}Открыть{% else %}Детали{% endif %}</a>
               {% if row.can_delete %}
                 <form method="post" action="/account/subscriptions/{{ row.id }}/delete/">
                   {% csrf_token %}
                   <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-                  <button type="submit" class="btn btn-sm btn-outline-danger">Удалить</button>
+                  <button type="submit" class="account-danger-button">Удалить</button>
                 </form>
               {% endif %}
             </div>
@@ -180,9 +155,7 @@
         {% endfor %}
       </div>
     {% else %}
-      <div class="p-4">
-        <div class="alert alert-info mb-0">{{ cabinet_empty_configs }}</div>
-      </div>
+      <div class="account-message">{{ cabinet_empty_configs }}</div>
     {% endif %}
   </section>
 </div>
@@ -196,12 +169,9 @@
         await navigator.clipboard.writeText(text);
         const icon = btn.querySelector('i');
         const previousClass = icon ? icon.className : '';
-        const previousTitle = btn.getAttribute('title') || '';
         if (icon) icon.className = 'bi bi-check2';
-        btn.setAttribute('title', 'Скопировано');
         setTimeout(() => {
           if (icon) icon.className = previousClass;
-          btn.setAttribute('title', previousTitle || 'Скопировать ссылку');
         }, 1200);
       } catch (e) {
         console.debug('copy failed', e);
