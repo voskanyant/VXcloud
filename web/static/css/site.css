@@ -1138,6 +1138,8 @@ textarea,
   gap: 10px;
   min-height: 100%;
   justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
 }
 
 .cabinet-stats {
@@ -1149,6 +1151,9 @@ textarea,
 
 .cabinet-stats > * {
   min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  flex: 1 1 auto;
 }
 
 .stat-label {

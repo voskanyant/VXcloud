@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% load cms %}
+
+{% cms_text "auth.telegram.complete_title" "Вход через Telegram - VXcloud" as page_title %}
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<section class="surface-card auth-shell">
+  {% cms_text "auth.telegram.complete_heading" "Вход подтверждён" as heading %}
+  {% cms_text "auth.telegram.complete_description" "Сейчас откроем личный кабинет. Если страница не переключится автоматически, используйте кнопку ниже." as description %}
+  {% cms_text "auth.telegram.complete_action" "Открыть кабинет" as action_label %}
+
+  <h1 class="display-6 fw-bold mb-3">{{ heading }}</h1>
+  <p class="text-secondary mb-4">{{ description }}</p>
+  <a class="btn btn-primary" href="{{ target_url }}">{{ action_label }}</a>
+</section>
+
+<script>
+  (function () {
+    const targetUrl = "{{ target_url|escapejs }}";
+    try {
+      if (window.opener && !window.opener.closed) {
+        window.opener.location.replace(targetUrl);
+        window.close();
+        return;
+      }
+    } catch (error) {
+      // Fall back to redirecting the current window when opener access is blocked.
+    }
+
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.replace(targetUrl);
+        return;
+      }
+    } catch (error) {
+      // Ignore cross-origin frame access issues and redirect current window instead.
+    }
+
+    window.location.replace(targetUrl);
+  })();
+</script>
+{% endblock %}

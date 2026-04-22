@@ -182,6 +182,18 @@ def _safe_local_redirect_url(request: HttpRequest, candidate: str | None, fallba
     return fallback
 
 
+def _telegram_auth_success_response(request: HttpRequest, *, target_url: str) -> HttpResponse:
+    target = _safe_local_redirect_url(request, target_url, _account_default_redirect_url(request))
+    return render(
+        request,
+        "registration/telegram_auth_complete.html",
+        {
+            "target_url": target,
+            **_account_template_urls(request),
+        },
+    )
+
+
 def _telegram_login_bot_username() -> str:
     return os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
 
@@ -1519,10 +1531,10 @@ def tg_magic_login(request: HttpRequest, token: str) -> HttpResponse:
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     target_url = _safe_local_redirect_url(
         request,
-        request.GET.get("next"),
+        request.GET.get("next") or request.GET.get("return_to"),
         _account_default_redirect_url(request),
     )
-    return redirect(target_url)
+    return _telegram_auth_success_response(request, target_url=target_url)
 
 
 def _create_user_for_telegram(
@@ -1678,10 +1690,10 @@ def telegram_login(request: HttpRequest) -> HttpResponse:
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     target_url = _safe_local_redirect_url(
         request,
-        request.GET.get("next"),
+        request.GET.get("next") or request.GET.get("return_to"),
         _account_default_redirect_url(request),
     )
-    return redirect(target_url)
+    return _telegram_auth_success_response(request, target_url=target_url)
 
 
 @csrf_exempt
