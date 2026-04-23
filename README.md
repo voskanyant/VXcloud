@@ -141,11 +141,13 @@ Detailed operator runbook with exact commands:
 
 - [guide/add_vpn_node_runbook.md](guide/add_vpn_node_runbook.md)
 - [guide/main_server_dr_plan.md](guide/main_server_dr_plan.md)
+- [guide/multinode_dns_rebalance_runbook.md](guide/multinode_dns_rebalance_runbook.md)
 
 ### Single-Node Compatibility
 
 - Default mode remains single-node: `VPN_CLUSTER_ENABLED=0`.
 - Cluster mode is opt-in: `VPN_CLUSTER_ENABLED=1`.
+- Weekly DNS rebalance is a separate switch: `VPN_REBALANCE_ENABLED=1`.
 - In cluster mode, bot link resolution uses `subscriptions.xui_sub_id` from DB to avoid dependence on one backend panel.
 - You can bootstrap gradually by adding your current node into `vpn_nodes` first, then enabling cluster mode later.
 

@@ -1430,6 +1430,7 @@ def _delete_subscription_everywhere(subscription: BotSubscription) -> tuple[bool
     try:
         from backoffice.views import (  # type: ignore
             _active_vpn_nodes_snapshot,
+            _delete_subscription_alias_from_dns,
             _delete_subscription_from_xui,
             _run_async_from_sync,
             bool_env,
@@ -1439,6 +1440,12 @@ def _delete_subscription_everywhere(subscription: BotSubscription) -> tuple[bool
         xui_errors = _run_async_from_sync(_delete_subscription_from_xui(subscription, cluster_nodes=cluster_nodes))
         if xui_errors:
             return False, "Не удалось удалить конфиг в 3x-ui. Попробуйте ещё раз или проверьте клиента вручную."
+        dns_error = _run_async_from_sync(_delete_subscription_alias_from_dns(subscription))
+        if dns_error:
+            LOGGER.warning(
+                "account_subscription_delete_dns_alias_failed",
+                extra={"subscription_id": int(subscription.id), "alias_fqdn": str(subscription.alias_fqdn or "")},
+            )
     except Exception:
         LOGGER.exception(
             "account_subscription_delete_xui_failed",

@@ -74,6 +74,8 @@ class BackofficeSubscriptionDeleteUnitTests(unittest.TestCase):
             is_active=False,
             expires_at=now - timedelta(days=1),
             revoked_at=None,
+            alias_fqdn="u-expired.connect.vxcloud.ru",
+            dns_record_id="cf-record-6",
             delete=MagicMock(),
         )
         node_clients_qs = MagicMock()
@@ -81,6 +83,7 @@ class BackofficeSubscriptionDeleteUnitTests(unittest.TestCase):
         with (
             patch.object(BotSubscriptionDeleteView, "get_object", return_value=subscription),
             patch("backoffice.views._delete_subscription_from_xui", new=AsyncMock(return_value=[])),
+            patch("backoffice.views._delete_subscription_alias_from_dns", new=AsyncMock(return_value=None)) as dns_delete,
             patch("backoffice.views.VPNNodeClient.objects.filter", return_value=node_clients_qs) as filter_mock,
         ):
             response = BotSubscriptionDeleteView.as_view()(self._build_request(), pk=6)
@@ -89,6 +92,7 @@ class BackofficeSubscriptionDeleteUnitTests(unittest.TestCase):
         filter_mock.assert_called_with(subscription_id=6)
         node_clients_qs.delete.assert_called_once()
         subscription.delete.assert_called_once()
+        dns_delete.assert_awaited_once_with(subscription)
 
     def test_delete_does_not_500_when_xui_delete_raises(self):
         now = timezone.now()

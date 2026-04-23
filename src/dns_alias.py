@@ -29,6 +29,15 @@ class AliasRecordResult:
     change_id: str | None = None
 
 
+@dataclass(frozen=True)
+class AliasDeleteResult:
+    fqdn: str
+    provider: str
+    deleted: bool
+    record_id: str | None = None
+    change_id: str | None = None
+
+
 def normalize_alias_fqdn(value: str, settings: Settings) -> str:
     raw = str(value or "").strip().strip(".").lower()
     namespace = str(settings.vpn_alias_namespace or "").strip().strip(".").lower()
@@ -65,6 +74,9 @@ class DNSAliasManager:
     async def ensure_a_record(self, *, fqdn: str, target_ip: str, ttl: int, record_id: str | None = None) -> AliasRecordResult:
         raise NotImplementedError
 
+    async def delete_a_record(self, *, fqdn: str, record_id: str | None = None) -> AliasDeleteResult:
+        raise NotImplementedError
+
 
 class NoopDNSAliasManager(DNSAliasManager):
     async def ensure_a_record(self, *, fqdn: str, target_ip: str, ttl: int, record_id: str | None = None) -> AliasRecordResult:
@@ -75,6 +87,15 @@ class NoopDNSAliasManager(DNSAliasManager):
             provider="noop",
             record_id=record_id,
             change_id=f"noop:{fqdn}:{target_ip}:{ttl}",
+        )
+
+    async def delete_a_record(self, *, fqdn: str, record_id: str | None = None) -> AliasDeleteResult:
+        return AliasDeleteResult(
+            fqdn=fqdn,
+            provider="noop",
+            deleted=bool(record_id or fqdn),
+            record_id=record_id,
+            change_id=f"noop:delete:{fqdn}:{record_id or ''}",
         )
 
 
@@ -151,6 +172,35 @@ class CloudflareDNSAliasManager(DNSAliasManager):
             change_id=str(result.get("modified_on") or result.get("id") or ""),
         )
 
+    async def delete_a_record(self, *, fqdn: str, record_id: str | None = None) -> AliasDeleteResult:
+        target_record_id = str(record_id or "").strip()
+        if not target_record_id:
+            body = await self._request(
+                "GET",
+                f"/zones/{self._zone_id}/dns_records",
+                params={"type": "A", "name": fqdn, "per_page": 100},
+            )
+            records = list(body.get("result") or [])
+            if not records:
+                return AliasDeleteResult(
+                    fqdn=fqdn,
+                    provider="cloudflare",
+                    deleted=False,
+                    record_id=None,
+                    change_id=f"not-found:{fqdn}",
+                )
+            target_record_id = str(dict(records[0]).get("id") or "").strip()
+
+        body = await self._request("DELETE", f"/zones/{self._zone_id}/dns_records/{target_record_id}")
+        result = dict(body.get("result") or {})
+        return AliasDeleteResult(
+            fqdn=fqdn,
+            provider="cloudflare",
+            deleted=bool(result.get("id") or target_record_id),
+            record_id=str(result.get("id") or target_record_id),
+            change_id=str(result.get("id") or target_record_id),
+        )
+
 
 def build_dns_alias_manager(settings: Settings) -> DNSAliasManager:
     provider = str(settings.vpn_alias_provider or "").strip().lower()
@@ -176,6 +226,19 @@ async def ensure_subscription_alias_record(
         fqdn=normalize_alias_fqdn(alias_fqdn, settings),
         target_ip=target_ip,
         ttl=ttl,
+        record_id=record_id,
+    )
+
+
+async def delete_subscription_alias_record(
+    *,
+    settings: Settings,
+    alias_fqdn: str,
+    record_id: str | None = None,
+) -> AliasDeleteResult:
+    manager = build_dns_alias_manager(settings)
+    return await manager.delete_a_record(
+        fqdn=normalize_alias_fqdn(alias_fqdn, settings),
         record_id=record_id,
     )
 

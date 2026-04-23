@@ -55,7 +55,7 @@ if str(REPO_ROOT) not in sys.path:
 from src.xui_client import XUIClient
 import qrcode
 from src.cluster.provisioner import create_client_on_node
-from src.dns_alias import ensure_subscription_alias_record, generate_subscription_alias
+from src.dns_alias import delete_subscription_alias_record, ensure_subscription_alias_record, generate_subscription_alias
 from src.cluster.rebalance import node_ineligibility_reason, preview_rebalance_plan, score_node
 from src.client_naming import build_xui_client_name
 from src.config import load_settings
@@ -1139,6 +1139,25 @@ async def _delete_subscription_from_xui(
     return errors
 
 
+async def _delete_subscription_alias_from_dns(subscription: BotSubscription) -> str | None:
+    alias_fqdn = str(getattr(subscription, "alias_fqdn", "") or "").strip()
+    if not alias_fqdn:
+        return None
+    try:
+        await delete_subscription_alias_record(
+            settings=load_settings(),
+            alias_fqdn=alias_fqdn,
+            record_id=str(getattr(subscription, "dns_record_id", "") or "").strip() or None,
+        )
+    except Exception as exc:
+        LOGGER.exception(
+            "subscription_dns_alias_delete_failed",
+            extra={"subscription_id": int(getattr(subscription, "id", 0) or 0), "alias_fqdn": alias_fqdn},
+        )
+        return str(exc)
+    return None
+
+
 def send_telegram_text(telegram_id: int, text: str) -> None:
     token = (
         env_value("TELEGRAM_WEBAPP_BOT_TOKEN")
@@ -1732,6 +1751,15 @@ class BotUserDeleteView(LegacyContentContextMixin, StaffRequiredMixin, DeleteVie
             )
             return self.render_to_response(self.get_context_data())
 
+        dns_errors = [
+            error
+            for subscription in subscriptions
+            for error in [_run_async_from_sync(_delete_subscription_alias_from_dns(subscription))]
+            if error
+        ]
+        if dns_errors:
+            messages.warning(request, "Пользователь удаляется, но часть DNS aliases нужно проверить в Cloudflare.")
+
         with transaction.atomic():
             LinkedAccount.objects.filter(telegram_id=telegram_id).delete()
             SupportMessage.objects.filter(sender_user_id=self.object.id).update(sender_user_id=None)
@@ -2238,6 +2266,10 @@ class BotSubscriptionDeleteView(LegacyContentContextMixin, StaffRequiredMixin, D
                 "Не удалось удалить клиента в 3x-ui. Подписка не удалена: " + "; ".join(xui_errors[:3]),
             )
             return self.render_to_response(self.get_context_data())
+
+        dns_error = _run_async_from_sync(_delete_subscription_alias_from_dns(self.object))
+        if dns_error:
+            messages.warning(request, "Подписка удаляется, но DNS alias нужно проверить в Cloudflare.")
 
         with transaction.atomic():
             VPNNodeClient.objects.filter(subscription_id=self.object.id).delete()

@@ -3,7 +3,7 @@ import sys
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = PROJECT_ROOT / "web"
@@ -80,6 +80,8 @@ class AccountSubscriptionDeleteUnitTests(unittest.TestCase):
             client_email="user@example.com",
             expires_at=timezone.now(),
             xui_sub_id="sub-1",
+            alias_fqdn="u-test.connect.vxcloud.ru",
+            dns_record_id="cf-record-1",
             delete=MagicMock(),
         )
         node_clients_qs = MagicMock()
@@ -90,6 +92,7 @@ class AccountSubscriptionDeleteUnitTests(unittest.TestCase):
             patch("backoffice.views.bool_env", return_value=True),
             patch("backoffice.views._active_vpn_nodes_snapshot", return_value=cluster_nodes),
             patch("backoffice.views._delete_subscription_from_xui", return_value=[]),
+            patch("backoffice.views._delete_subscription_alias_from_dns", new=AsyncMock(return_value=None)) as dns_delete,
             patch("cabinet.views.VPNNodeClient.objects.filter", return_value=node_clients_qs) as filter_mock,
         ):
             deleted, error_message = _delete_subscription_everywhere(subscription)
@@ -99,6 +102,7 @@ class AccountSubscriptionDeleteUnitTests(unittest.TestCase):
         filter_mock.assert_called_once_with(subscription_id=55)
         node_clients_qs.delete.assert_called_once()
         subscription.delete.assert_called_once()
+        dns_delete.assert_awaited_once_with(subscription)
 
     def test_delete_everywhere_aborts_when_xui_cleanup_reports_errors(self):
         subscription = SimpleNamespace(

@@ -37,7 +37,7 @@ from .cluster.rebalance import pick_best_node
 from .config import Settings
 from .client_naming import build_xui_client_name
 from .db import DB
-from .dns_alias import ensure_subscription_alias_record, generate_subscription_alias
+from .dns_alias import delete_subscription_alias_record, ensure_subscription_alias_record, generate_subscription_alias
 from .domain.subscriptions import activate_subscription
 from .subscription_links import build_bot_feed_url, build_subscription_vless_url
 from .vless import build_vless_url
@@ -1918,6 +1918,17 @@ class VPNBot:
                     LOGGER.exception("Failed to delete config in x-ui subscription_id=%s", subscription_id)
                     await query.answer("Не удалось удалить конфиг в 3x-ui", show_alert=True)
                     return
+
+                alias_fqdn = str(sub.get("alias_fqdn") or "").strip()
+                if alias_fqdn:
+                    try:
+                        await delete_subscription_alias_record(
+                            settings=self.settings,
+                            alias_fqdn=alias_fqdn,
+                            record_id=str(sub.get("dns_record_id") or "").strip() or None,
+                        )
+                    except Exception:
+                        LOGGER.exception("Failed to delete DNS alias for subscription_id=%s", subscription_id)
 
                 deleted = await self.db.delete_subscription(user_id, subscription_id)
                 await query.answer("Конфиг удален" if deleted else "Не удалось удалить конфиг")
