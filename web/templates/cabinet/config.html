@@ -6,34 +6,15 @@
 
 {% block content %}
 {% cms_text "cabinet.config.heading" "Конфиг и QR" as cabinet_config_heading %}
-{% cms_text "cabinet.config.copy_action" "Скопировать ссылку" as cabinet_config_copy_action %}
 {% cms_text "cabinet.config.back_action" "Назад в кабинет" as cabinet_config_back_action %}
 
 <div class="account-page-shell account-page-shell-config">
-  <section class="account-hero account-hero-compact">
-    <div class="account-hero-copy">
-      <div class="account-eyebrow">Configuration</div>
-      <h1 class="account-title account-title-compact">{{ display_name }}</h1>
-      <p class="account-intro">Один QR и один subscription URL. VXcloud обновляет назначенную ноду за этой ссылкой, не заставляя вас пересобирать конфиг вручную.</p>
-    </div>
-
-    <div class="account-hero-actions account-hero-actions-compact">
-      <button class="account-button account-button-primary" type="button" id="copy-config-button">
-        <span>{{ cabinet_config_copy_action }}</span>
-      </button>
-      <a class="account-button" href="{{ backend_dashboard_url }}">{{ cabinet_config_back_action }}</a>
-      {% if not has_active %}
-        <form method="post" action="/account/subscriptions/{{ subscription.id }}/delete/">
-          {% csrf_token %}
-          <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-          <button class="account-button account-danger-button" type="submit">Удалить</button>
-        </form>
-      {% endif %}
-    </div>
-  </section>
-
   <section class="account-config-layout">
     <article class="account-section account-section-qr">
+      <div class="auth-actions">
+        <a class="account-secondary-button" href="{{ backend_dashboard_url }}">{{ cabinet_config_back_action }}</a>
+      </div>
+
       <div class="account-section-head">
         <div>
           <div class="account-eyebrow">QR import</div>
@@ -149,9 +130,7 @@
     }
   }
 
-  const copyButton = document.getElementById('copy-config-button');
   const copyIconButton = document.getElementById('copy-config-icon');
-  if (copyButton) copyButton.addEventListener('click', copyCfg);
   if (copyIconButton) copyIconButton.addEventListener('click', copyCfg);
 </script>
 {% endblock %}
