@@ -9,8 +9,8 @@
 {% cms_text "instructions.hero_description" "Пошаговые гайды по подключению и использованию VXcloud на разных устройствах." as instructions_hero_description %}
 
 <section class="surface-card mb-4">
-  <h1 class="display-6 fw-bold mb-2">{{ instructions_hero_title }}</h1>
-  <p class="text-secondary mb-0">{{ instructions_hero_description }}</p>
+  <h1 class="post-page-title mb-2">{{ instructions_hero_title }}</h1>
+  <p class="hero-copy mb-0">{{ instructions_hero_description }}</p>
 
 </section>
 
@@ -18,17 +18,17 @@
   {% for post in posts %}
     <div class="col-12 col-lg-6">
       <article class="surface-card h-100 post-preview">
-        <h2 class="h4 mb-2"><a class="link-dark text-decoration-none" href="{% url 'blog_post_detail' slug=post.slug %}">{{ post.title }}</a></h2>
+        <h2 class="post-preview-title mb-2"><a class="post-preview-link" href="{% url 'blog_post_detail' slug=post.slug %}">{{ post.title }}</a></h2>
         {% with excerpt=post.summary|default:post.rendered_content|striptags %}
           {% if excerpt %}
-            <p class="text-secondary mb-3">
+            <p class="post-preview-copy mb-3">
               {{ excerpt|truncatechars:190 }}{% if excerpt|length > 190 %}...{% endif %}
-              <a href="{% url 'blog_post_detail' slug=post.slug %}" class="ms-1">read more</a>
+              <a href="{% url 'blog_post_detail' slug=post.slug %}" class="post-inline-link ms-1">read more</a>
             </p>
           {% endif %}
         {% endwith %}
-        <div class="small text-secondary d-flex align-items-center gap-2">
-          <i class="bi bi-clock"></i>
+        <div class="post-page-date">
+          <span class="site-inline-symbol" aria-hidden="true">•</span>
           <span>{{ post.published_at|date:'d.m.Y H:i' }}</span>
         </div>
       </article>
@@ -38,8 +38,8 @@
       <article class="surface-card">
         {% cms_text "instructions.empty_title" "Пока нет публикаций" as instructions_empty_title %}
         {% cms_text "instructions.empty_body" "Добавьте первый пост в админке: /admin." as instructions_empty_body %}
-        <h2 class="h4">{{ instructions_empty_title }}</h2>
-        <p class="mb-0 text-secondary">{{ instructions_empty_body }}</p>
+        <h2 class="post-preview-title">{{ instructions_empty_title }}</h2>
+        <p class="mb-0 post-preview-copy">{{ instructions_empty_body }}</p>
       </article>
     </div>
   {% endfor %}

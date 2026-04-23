@@ -1,7 +1,7 @@
 {% load cms %}
 {% if telegram_login_enabled and telegram_login_bot_username and telegram_login_auth_url %}
   {% cms_text "auth.telegram.heading" "Быстрый вход и регистрация через Telegram" as auth_telegram_heading %}
-  {% cms_text "auth.telegram.description" "Telegram подтвердит ваш аккаунт и сразу откроет личный кабинет. Если аккаунта еще нет, он создастся автоматически." as auth_telegram_description %}
+  {% cms_text "auth.telegram.description" "Telegram подтвердит ваш аккаунт и сразу откроет личный кабинет. Если аккаунта ещё нет, он создастся автоматически." as auth_telegram_description %}
   {% cms_text "auth.telegram.divider" "или используйте email" as auth_telegram_divider %}
 
   <section class="auth-widget-shell">

@@ -108,7 +108,7 @@
         <div class="account-link-row">
           <input id="cfg" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
           <button type="button" class="account-icon-button" id="copy-config-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
-            <i class="bi bi-copy"></i>
+            <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
           </button>
         </div>
         <p class="account-subtle account-subtle-block">Импортируйте эту ссылку один раз. После этого VXcloud сможет менять назначенную ноду за этим endpoint без ручной замены конфига.</p>
@@ -121,7 +121,7 @@
           <input type="hidden" name="next" value="{{ request.get_full_path }}" />
           <input id="cfg-rename" type="text" class="account-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Имя устройства" />
           <button type="submit" class="account-icon-button" title="Переименовать" aria-label="Переименовать">
-            <i class="bi bi-pencil"></i>
+            <span class="account-icon-glyph" aria-hidden="true">&#9998;</span>
           </button>
         </form>
       </article>
@@ -137,11 +137,11 @@
     try {
       await navigator.clipboard.writeText(box.value);
       if (iconBtn) {
-        const icon = iconBtn.querySelector('i');
-        const oldClass = icon ? icon.className : '';
-        if (icon) icon.className = 'bi bi-check2';
+        const icon = iconBtn.querySelector('.account-icon-glyph');
+        const oldHtml = icon ? icon.innerHTML : '';
+        if (icon) icon.innerHTML = '&#10003;';
         setTimeout(() => {
-          if (icon) icon.className = oldClass;
+          if (icon) icon.innerHTML = oldHtml;
         }, 1200);
       }
     } catch (e) {

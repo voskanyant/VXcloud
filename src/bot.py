@@ -1080,8 +1080,8 @@ class VPNBot:
         if feed_url:
             text += f"\n\nПодписка: {feed_url}"
             text += "\nПосле импорта VXcloud сможет менять ноду без ручной замены конфига."
-        if vless_url:
-            text += f"\n\nRaw VLESS: {vless_url}"
+        elif vless_url:
+            text += f"\n\nConnection link: {vless_url}"
         return text, primary_link, vless_url
 
     async def _ensure_user(self, update: Update) -> int:
@@ -2594,8 +2594,8 @@ class VPNBot:
         )
         if subscription_url and "{subscription_url}" not in text:
             text += f"\nПодписка VXcloud: {subscription_url}"
-        if vless_url and "{vless_url}" not in text:
-            text += f"\nRaw VLESS: {vless_url}"
+        elif vless_url and "{vless_url}" not in text:
+            text += f"\nConnection link: {vless_url}"
         if "Способ оплаты:" not in text:
             text += f"\nСпособ оплаты: {self._format_payment_method(last_payment_method)}"
         copy_link_hint = self._content_text(

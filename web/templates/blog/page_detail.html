@@ -4,9 +4,9 @@
 
 {% block content %}
 <section class="surface-card mb-4">
-  <h1 class="display-6 fw-bold mb-2">{{ page.title }}</h1>
+  <h1 class="post-page-title mb-2">{{ page.title }}</h1>
   {% if page.summary %}
-    <p class="lead text-secondary mb-0">{{ page.summary }}</p>
+    <p class="hero-copy mb-0">{{ page.summary }}</p>
   {% endif %}
 </section>
 
@@ -14,21 +14,21 @@
 
 {% if page_posts %}
   <section class="mt-4">
-    <h2 class="h3 fw-bold mb-3">{{ page.posts_title|default:"Публикации" }}</h2>
+    <h2 class="feature-card-title mb-3">{{ page.posts_title|default:"Публикации" }}</h2>
     <div class="row g-3">
       {% for post in page_posts %}
         <div class="col-12 col-lg-6">
           <article class="surface-card h-100">
-            <h3 class="h5 mb-2"><a href="{% url 'blog_post_detail' slug=post.slug %}" class="link-dark text-decoration-none">{{ post.title }}</a></h3>
+            <h3 class="post-preview-title mb-2"><a href="{% url 'blog_post_detail' slug=post.slug %}" class="post-preview-link">{{ post.title }}</a></h3>
             {% with excerpt=post.summary|default:post.rendered_content|striptags %}
               {% if excerpt %}
-                <p class="text-secondary mb-3">
+                <p class="post-preview-copy mb-3">
                   {{ excerpt|truncatechars:190 }}{% if excerpt|length > 190 %}...{% endif %}
-                  <a href="{% url 'blog_post_detail' slug=post.slug %}" class="ms-1">read more</a>
+                  <a href="{% url 'blog_post_detail' slug=post.slug %}" class="post-inline-link ms-1">read more</a>
                 </p>
               {% endif %}
             {% endwith %}
-            <div class="small text-secondary">{{ post.published_at|date:'d.m.Y H:i' }}</div>
+            <div class="post-page-date">{{ post.published_at|date:'d.m.Y H:i' }}</div>
           </article>
         </div>
       {% endfor %}

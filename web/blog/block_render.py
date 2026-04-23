@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 from html import escape
@@ -22,12 +22,12 @@ def _safe_url(value: Any) -> str:
 def _render_buttons(items: list[dict[str, Any]]) -> str:
     if not items:
         return ""
-    parts: list[str] = ['<div class="btn-group" role="group" aria-label="Button group">']
+    parts: list[str] = ['<div class="site-button-row" aria-label="Button group">']
     for item in items:
         label = _safe_text(item.get("label"))
         href = _safe_url(item.get("url"))
         style = str(item.get("style") or "primary").strip().lower()
-        css = "btn btn-primary" if style != "secondary" else "btn btn-secondary"
+        css = "site-button site-button-primary" if style != "secondary" else "site-button site-button-secondary"
         parts.append(f'<a class="{css}" href="{href}">{label}</a>')
     parts.append("</div>")
     return "".join(parts)
@@ -40,17 +40,16 @@ def _safe_variant(value: Any, *, default: str = "primary") -> str:
 
 
 def _render_bs_alert(block: dict[str, Any]) -> str:
-    variant = _safe_variant(block.get("variant"), default="info")
     title = _safe_text(block.get("title"))
     text = _safe_text(block.get("text"))
     if not title and not text:
         return ""
-    parts = [f'<div class="alert alert-{variant}" role="alert">']
+    parts = ['<aside class="block-notice" role="alert">']
     if title:
-        parts.append(f'<h5 class="alert-heading mb-2">{title}</h5>')
+        parts.append(f"<strong>{title}</strong>")
     if text:
-        parts.append(f"<p class='mb-0'>{text}</p>")
-    parts.append("</div>")
+        parts.append(f"<p>{text}</p>")
+    parts.append("</aside>")
     return "".join(parts)
 
 
@@ -58,9 +57,7 @@ def _render_bs_badge(block: dict[str, Any]) -> str:
     text = _safe_text(block.get("text"))
     if not text:
         return ""
-    variant = _safe_variant(block.get("variant"), default="primary")
-    pill = " rounded-pill" if bool(block.get("pill", True)) else ""
-    return f'<span class="badge text-bg-{variant}{pill}">{text}</span>'
+    return f'<span class="site-chip">{text}</span>'
 
 
 def _render_bs_card(block: dict[str, Any]) -> str:
@@ -72,16 +69,17 @@ def _render_bs_card(block: dict[str, Any]) -> str:
     button_variant = _safe_variant(block.get("button_style"), default="primary")
     if not title and not text and (not image or image == "#"):
         return ""
-    parts = ['<article class="card shadow-sm border-0">']
+    parts = ['<article class="surface-card block-card block-card-static">']
     if image and image != "#":
-        parts.append(f'<img src="{image}" class="card-img-top" alt="{title or "Card image"}" loading="lazy" />')
-    parts.append('<div class="card-body">')
+        parts.append(f'<img src="{image}" class="block-card-image" alt="{title or "Card image"}" loading="lazy" />')
+    parts.append('<div class="block-card-body">')
     if title:
-        parts.append(f'<h5 class="card-title">{title}</h5>')
+        parts.append(f'<h3 class="feature-card-title">{title}</h3>')
     if text:
-        parts.append(f'<p class="card-text">{text}</p>')
+        parts.append(f'<p class="feature-card-copy">{text}</p>')
     if button_label and button_url and button_url != "#":
-        parts.append(f'<a href="{button_url}" class="btn btn-{button_variant}">{button_label}</a>')
+        button_cls = "site-button site-button-primary" if button_variant != "secondary" else "site-button site-button-secondary"
+        parts.append(f'<a href="{button_url}" class="{button_cls}">{button_label}</a>')
     parts.append("</div></article>")
     return "".join(parts)
 
@@ -90,9 +88,7 @@ def _render_bs_accordion(block: dict[str, Any]) -> str:
     items = block.get("items")
     if not isinstance(items, list) or not items:
         return ""
-    acc_id = f"acc-{uuid4().hex[:8]}"
-    flush = " accordion-flush" if bool(block.get("flush")) else ""
-    parts = [f'<div class="accordion{flush}" id="{acc_id}">']
+    parts = ['<div class="block-accordion">']
     for idx, row in enumerate(items):
         if not isinstance(row, dict):
             continue
@@ -100,22 +96,12 @@ def _render_bs_accordion(block: dict[str, Any]) -> str:
         text = _safe_text(row.get("text"))
         if not title and not text:
             continue
-        item_id = f"{acc_id}-{idx}"
-        is_open = idx == 0
-        btn_cls = "accordion-button" + ("" if is_open else " collapsed")
-        collapse_cls = "accordion-collapse collapse" + (" show" if is_open else "")
-        parts.append('<div class="accordion-item">')
-        parts.append(
-            f'<h2 class="accordion-header" id="head-{item_id}">'
-            f'<button class="{btn_cls}" type="button" data-bs-toggle="collapse" '
-            f'data-bs-target="#{item_id}" aria-expanded="{str(is_open).lower()}" '
-            f'aria-controls="{item_id}">{title or f"Item {idx + 1}"}</button></h2>'
-        )
-        parts.append(
-            f'<div id="{item_id}" class="{collapse_cls}" aria-labelledby="head-{item_id}" '
-            f'data-bs-parent="#{acc_id}"><div class="accordion-body">{text}</div></div>'
-        )
-        parts.append("</div>")
+        open_attr = " open" if idx == 0 else ""
+        parts.append(f'<details class="block-accordion-item"{open_attr}>')
+        parts.append(f'<summary>{title or f"Item {idx + 1}"}</summary>')
+        if text:
+            parts.append(f"<p>{text}</p>")
+        parts.append("</details>")
     parts.append("</div>")
     return "".join(parts)
 
@@ -124,29 +110,20 @@ def _render_bs_tabs(block: dict[str, Any]) -> str:
     items = block.get("items")
     if not isinstance(items, list) or not items:
         return ""
-    tabs_id = f"tabs-{uuid4().hex[:8]}"
-    style = str(block.get("style") or "tabs").strip().lower()
-    nav_cls = "nav nav-pills mb-3" if style == "pills" else "nav nav-tabs mb-3"
-    parts = [f'<div class="block-bs-tabs" id="{tabs_id}">', f'<ul class="{nav_cls}" role="tablist">']
-    panes: list[str] = []
+    parts = ['<div class="block-tab-panels">']
     for idx, row in enumerate(items):
         if not isinstance(row, dict):
             continue
         title = _safe_text(row.get("title"))
         text = _safe_text(row.get("text"))
-        tab_id = f"{tabs_id}-tab-{idx}"
-        pane_id = f"{tabs_id}-pane-{idx}"
-        is_active = idx == 0
-        btn_cls = "nav-link" + (" active" if is_active else "")
-        pane_cls = "tab-pane fade" + (" show active" if is_active else "")
-        parts.append(
-            f'<li class="nav-item" role="presentation"><button class="{btn_cls}" id="{tab_id}" '
-            f'data-bs-toggle="tab" data-bs-target="#{pane_id}" type="button" role="tab" '
-            f'aria-controls="{pane_id}" aria-selected="{str(is_active).lower()}">{title or f"Tab {idx + 1}"}</button></li>'
-        )
-        panes.append(f'<div class="{pane_cls}" id="{pane_id}" role="tabpanel" aria-labelledby="{tab_id}"><p class="mb-0">{text}</p></div>')
-    parts.append("</ul>")
-    parts.append(f'<div class="tab-content border border-top-0 rounded-bottom p-3">{"".join(panes)}</div></div>')
+        if not title and not text:
+            continue
+        parts.append('<section class="block-tab-panel">')
+        parts.append(f'<h3>{title or f"Section {idx + 1}"}</h3>')
+        if text:
+            parts.append(f"<p>{text}</p>")
+        parts.append("</section>")
+    parts.append("</div>")
     return "".join(parts)
 
 
@@ -335,7 +312,7 @@ def _render_bs_input_group(block: dict[str, Any]) -> str:
     if suffix:
         parts.append(f'<span class="input-group-text">{suffix}</span>')
     if button_text:
-        parts.append(f'<button class="btn btn-outline-secondary" type="button">{button_text}</button>')
+        parts.append(f'<button class="site-button site-button-secondary" type="button">{button_text}</button>')
     parts.append("</div></div>")
     return "".join(parts)
 
@@ -378,15 +355,10 @@ def _render_bs_list_group(block: dict[str, Any]) -> str:
     if not isinstance(items, list) or not items:
         return ""
     numbered = bool(block.get("numbered"))
-    flush = bool(block.get("flush"))
-    classes = ["list-group"]
-    if numbered:
-        classes.append("list-group-numbered")
-    if flush:
-        classes.append("list-group-flush")
-    parts = [f'<ul class="{" ".join(classes)}">']
+    classes = "block-number-list" if numbered else "block-bullet-list"
+    parts = [f'<ul class="{classes}">']
     for item in items:
-        parts.append(f'<li class="list-group-item">{_safe_text(item)}</li>')
+        parts.append(f"<li>{_safe_text(item)}</li>")
     parts.append("</ul>")
     return "".join(parts)
 
@@ -438,12 +410,10 @@ def _render_bs_pagination(block: dict[str, Any]) -> str:
     if not isinstance(items, list) or not items:
         return ""
 
-    size = str(block.get("size") or "").strip().lower()
-    size_class = " pagination-sm" if size == "sm" else " pagination-lg" if size == "lg" else ""
     align = str(block.get("align") or "start").strip().lower()
-    align_class = " justify-content-center" if align == "center" else " justify-content-end" if align == "end" else ""
+    align_class = " is-center" if align == "center" else " is-end" if align == "end" else ""
 
-    parts = [f'<nav aria-label="Pagination"><ul class="pagination{size_class}{align_class}">']
+    parts = [f'<nav class="block-pagination{align_class}" aria-label="Pagination">']
     for item in items:
         if not isinstance(item, dict):
             continue
@@ -453,17 +423,17 @@ def _render_bs_pagination(block: dict[str, Any]) -> str:
         href = _safe_url(item.get("url"))
         is_active = bool(item.get("active"))
         is_disabled = bool(item.get("disabled"))
-        li_classes = []
+        link_classes = ["block-pagination-item"]
         if is_active:
-            li_classes.append("active")
+            link_classes.append("is-active")
         if is_disabled:
-            li_classes.append("disabled")
-        li_cls = f' class="page-item {" ".join(li_classes)}"' if li_classes else ' class="page-item"'
+            link_classes.append("is-disabled")
+        cls_attr = " ".join(link_classes)
         if is_active or is_disabled or not href or href == "#":
-            parts.append(f"<li{li_cls}><span class=\"page-link\">{label}</span></li>")
+            parts.append(f'<span class="{cls_attr}">{label}</span>')
         else:
-            parts.append(f"<li{li_cls}><a class=\"page-link\" href=\"{href}\">{label}</a></li>")
-    parts.append("</ul></nav>")
+            parts.append(f'<a class="{cls_attr}" href="{href}">{label}</a>')
+    parts.append("</nav>")
     return "".join(parts)
 
 
@@ -472,17 +442,9 @@ def _render_bs_collapse(block: dict[str, Any]) -> str:
     text = _safe_text(block.get("text"))
     if not text:
         return ""
-    collapse_id = f"collapse-{uuid4().hex[:8]}"
-    variant = _safe_variant(block.get("variant"), default="primary")
     is_open = bool(block.get("open"))
-    btn_cls = f"btn btn-{variant}"
-    aria_expanded = "true" if is_open else "false"
-    collapse_cls = "collapse show" if is_open else "collapse"
-    return (
-        f'<p><button class="{btn_cls}" type="button" data-bs-toggle="collapse" '
-        f'data-bs-target="#{collapse_id}" aria-expanded="{aria_expanded}" aria-controls="{collapse_id}">{button_text}</button></p>'
-        f'<div class="{collapse_cls}" id="{collapse_id}"><div class="card card-body">{text}</div></div>'
-    )
+    open_attr = " open" if is_open else ""
+    return f'<details class="block-disclosure"{open_attr}><summary>{button_text}</summary><p>{text}</p></details>'
 
 
 def _render_bs_spinner(block: dict[str, Any]) -> str:
@@ -524,48 +486,18 @@ def _render_bs_carousel(block: dict[str, Any]) -> str:
     if not normalized:
         return ""
 
-    carousel_id = f"carousel-{uuid4().hex[:8]}"
-    show_controls = bool(block.get("controls", True))
-    show_indicators = bool(block.get("indicators", True))
-    fade = bool(block.get("fade"))
-    ride = bool(block.get("auto", False))
-    carousel_cls = "carousel slide" + (" carousel-fade" if fade else "")
-    ride_attr = ' data-bs-ride="carousel"' if ride else ""
-
-    parts = [f'<div id="{carousel_id}" class="{carousel_cls}"{ride_attr}>']
-    if show_indicators:
-        parts.append('<div class="carousel-indicators">')
-        for idx, _ in enumerate(normalized):
-            active = ' class="active"' if idx == 0 else ""
-            current = ' aria-current="true"' if idx == 0 else ""
-            parts.append(
-                f'<button type="button" data-bs-target="#{carousel_id}" data-bs-slide-to="{idx}"'
-                f'{active}{current} aria-label="Slide {idx + 1}"></button>'
-            )
-        parts.append("</div>")
-    parts.append('<div class="carousel-inner rounded-3 overflow-hidden">')
-    for idx, item in enumerate(normalized):
-        active = " active" if idx == 0 else ""
-        parts.append(f'<div class="carousel-item{active}">')
-        parts.append(f'<img src="{item["image"]}" class="d-block w-100" alt="{item["alt"]}" loading="lazy" />')
+    parts = ['<div class="block-gallery" role="list">']
+    for item in normalized:
+        parts.append('<figure class="block-gallery-item" role="listitem">')
+        parts.append(f'<img src="{item["image"]}" alt="{item["alt"]}" loading="lazy" />')
         if item["title"] or item["caption"]:
-            parts.append('<div class="carousel-caption d-none d-md-block">')
+            parts.append("<figcaption>")
             if item["title"]:
-                parts.append(f'<h5>{item["title"]}</h5>')
+                parts.append(f'<strong>{item["title"]}</strong>')
             if item["caption"]:
                 parts.append(f'<p>{item["caption"]}</p>')
-            parts.append("</div>")
-        parts.append("</div>")
-    parts.append("</div>")
-    if show_controls:
-        parts.append(
-            f'<button class="carousel-control-prev" type="button" data-bs-target="#{carousel_id}" data-bs-slide="prev">'
-            '<span class="carousel-control-prev-icon" aria-hidden="true"></span><span class="visually-hidden">Previous</span></button>'
-        )
-        parts.append(
-            f'<button class="carousel-control-next" type="button" data-bs-target="#{carousel_id}" data-bs-slide="next">'
-            '<span class="carousel-control-next-icon" aria-hidden="true"></span><span class="visually-hidden">Next</span></button>'
-        )
+            parts.append("</figcaption>")
+        parts.append("</figure>")
     parts.append("</div>")
     return "".join(parts)
 
@@ -606,32 +538,12 @@ def _render_bs_modal(block: dict[str, Any]) -> str:
     text = _safe_text(block.get("text"))
     if not text:
         return ""
-    button_variant = _safe_variant(block.get("button_variant"), default="primary")
-    size = str(block.get("size") or "").strip().lower()
-    size_cls = " modal-sm" if size == "sm" else " modal-lg" if size == "lg" else " modal-xl" if size == "xl" else ""
-    dialog_classes = []
-    if bool(block.get("scrollable")):
-        dialog_classes.append("modal-dialog-scrollable")
-    if bool(block.get("centered")):
-        dialog_classes.append("modal-dialog-centered")
-    if bool(block.get("fullscreen")):
-        dialog_classes.append("modal-fullscreen")
-    modal_id = f"modal-{uuid4().hex[:8]}"
-    dialog = f'modal-dialog{size_cls} {" ".join(dialog_classes)}'.strip()
-    secondary = _safe_text(block.get("footer_secondary_text")) or "Close"
-    primary = _safe_text(block.get("footer_primary_text")) or "Got it"
-
     return (
-        f'<div class="block-bs-modal"><button type="button" class="btn btn-{button_variant}" '
-        f'data-bs-toggle="modal" data-bs-target="#{modal_id}">{button_text}</button>'
-        f'<div class="modal fade" id="{modal_id}" tabindex="-1" aria-hidden="true">'
-        f'<div class="{dialog}"><div class="modal-content">'
-        f'<div class="modal-header"><h5 class="modal-title">{title}</h5>'
-        f'<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>'
-        f'<div class="modal-body"><p class="mb-0">{text}</p></div>'
-        f'<div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{secondary}</button>'
-        f'<button type="button" class="btn btn-{button_variant}" data-bs-dismiss="modal">{primary}</button></div>'
-        "</div></div></div></div>"
+        '<section class="block-callout">'
+        f'<p class="block-callout-eyebrow">{button_text}</p>'
+        f'<h3>{title}</h3>'
+        f'<p>{text}</p>'
+        "</section>"
     )
 
 
@@ -640,22 +552,7 @@ def _render_bs_toast(block: dict[str, Any]) -> str:
     text = _safe_text(block.get("text"))
     if not text:
         return ""
-    delay = int(block.get("delay") or 5000)
-    delay = 1000 if delay < 1000 else 20000 if delay > 20000 else delay
-    autohide = "true" if bool(block.get("autohide", True)) else "false"
-    variant = _safe_variant(block.get("variant"), default="primary")
-    toast_id = f"toast-{uuid4().hex[:8]}"
-
-    return (
-        f'<div class="block-bs-toast toast align-items-center border-0 text-bg-{variant}" id="{toast_id}" role="alert" '
-        f'aria-live="assertive" aria-atomic="true" data-bs-autohide="{autohide}" data-bs-delay="{delay}">'
-        f'<div class="d-flex"><div class="toast-body"><strong class="d-block">{title}</strong>{text}</div>'
-        '<button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>'
-        "</div></div>"
-        '<script>document.addEventListener("DOMContentLoaded",function(){try{var el=document.getElementById("'
-        f'{toast_id}'
-        '");if(el&&window.bootstrap&&window.bootstrap.Toast){new window.bootstrap.Toast(el).show();}}catch(e){}});</script>'
-    )
+    return f'<aside class="block-notice" role="status"><strong>{title}</strong><p>{text}</p></aside>'
 
 
 def _render_bs_offcanvas(block: dict[str, Any]) -> str:
@@ -664,19 +561,7 @@ def _render_bs_offcanvas(block: dict[str, Any]) -> str:
     text = _safe_text(block.get("text"))
     if not text:
         return ""
-    button_variant = _safe_variant(block.get("button_variant"), default="primary")
-    placement = str(block.get("placement") or "end").strip().lower()
-    if placement not in {"start", "end", "top", "bottom"}:
-        placement = "end"
-    panel_id = f"offcanvas-{uuid4().hex[:8]}"
-    return (
-        f'<div class="block-bs-offcanvas"><button class="btn btn-{button_variant}" type="button" data-bs-toggle="offcanvas" '
-        f'data-bs-target="#{panel_id}" aria-controls="{panel_id}">{button_text}</button>'
-        f'<div class="offcanvas offcanvas-{placement}" tabindex="-1" id="{panel_id}" aria-labelledby="{panel_id}-label">'
-        f'<div class="offcanvas-header"><h5 class="offcanvas-title" id="{panel_id}-label">{title}</h5>'
-        '<button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button></div>'
-        f'<div class="offcanvas-body"><p class="mb-0">{text}</p></div></div></div>'
-    )
+    return f'<details class="block-disclosure"><summary>{button_text}</summary><h3>{title}</h3><p>{text}</p></details>'
 
 
 def _render_bs_close_button(block: dict[str, Any]) -> str:
@@ -690,14 +575,7 @@ def _render_bs_tooltip(block: dict[str, Any]) -> str:
     title = _safe_text(block.get("title"))
     if not title:
         return ""
-    placement = str(block.get("placement") or "top").strip().lower()
-    if placement not in {"top", "right", "bottom", "left"}:
-        placement = "top"
-    variant = _safe_variant(block.get("variant"), default="primary")
-    return (
-        f'<button type="button" class="btn btn-{variant}" data-bs-toggle="tooltip" '
-        f'data-bs-placement="{placement}" title="{title}">{text}</button>'
-    )
+    return f'<span class="block-inline-help"><strong>{text}</strong><small>{title}</small></span>'
 
 
 def _render_bs_popover(block: dict[str, Any]) -> str:
@@ -706,30 +584,19 @@ def _render_bs_popover(block: dict[str, Any]) -> str:
     if not content:
         return ""
     title = _safe_text(block.get("title"))
-    placement = str(block.get("placement") or "right").strip().lower()
-    if placement not in {"top", "right", "bottom", "left"}:
-        placement = "right"
-    trigger = str(block.get("trigger") or "focus").strip().lower()
-    variant = _safe_variant(block.get("variant"), default="primary")
-    return (
-        f'<button type="button" class="btn btn-{variant}" data-bs-toggle="popover" '
-        f'data-bs-placement="{placement}" data-bs-trigger="{escape(trigger, quote=True)}" '
-        f'title="{title}" data-bs-content="{content}">{button_text}</button>'
-    )
+    return f'<details class="block-disclosure"><summary>{button_text}</summary><h3>{title}</h3><p>{content}</p></details>'
 
 
 def _render_bs_scrollspy(block: dict[str, Any]) -> str:
     items = block.get("items")
     if not isinstance(items, list) or not items:
         return ""
-    nav_style = str(block.get("nav_style") or "pills").strip().lower()
     scroll_height = int(block.get("height") or 260)
     scroll_height = 180 if scroll_height < 180 else 600 if scroll_height > 600 else scroll_height
     spy_id = f"scrollspy-{uuid4().hex[:8]}"
     nav_id = f"{spy_id}-nav"
-    nav_cls = "list-group" if nav_style == "list-group" else "nav nav-pills flex-column gap-2"
-    parts = ['<div class="row g-3 block-bs-scrollspy">']
-    parts.append('<div class="col-lg-4"><nav id="{}" class="{}">'.format(nav_id, nav_cls))
+    parts = ['<div class="block-anchor-layout">']
+    parts.append('<nav id="{}" class="block-anchor-nav" aria-label="Section navigation">'.format(nav_id))
     section_parts: list[str] = []
     for idx, item in enumerate(items):
         if not isinstance(item, dict):
@@ -738,19 +605,15 @@ def _render_bs_scrollspy(block: dict[str, Any]) -> str:
         title = _safe_text(item.get("title")) or label
         text = _safe_text(item.get("text"))
         section_id = f"{spy_id}-section-{idx}"
-        if nav_style == "list-group":
-            parts.append(f'<a class="list-group-item list-group-item-action{" active" if idx == 0 else ""}" href="#{section_id}">{label}</a>')
-        else:
-            parts.append(f'<a class="nav-link{" active" if idx == 0 else ""}" href="#{section_id}">{label}</a>')
+        parts.append(f'<a href="#{section_id}">{label}</a>')
         section_parts.append(
-            f'<section id="{section_id}" class="mb-4">'
-            f'<h4 class="h6">{title}</h4><p class="mb-0">{text}</p></section>'
+            f'<section id="{section_id}" class="block-anchor-section">'
+            f'<h3>{title}</h3><p>{text}</p></section>'
         )
-    parts.append("</nav></div>")
+    parts.append("</nav>")
     parts.append(
-        f'<div class="col-lg-8"><div data-bs-spy="scroll" data-bs-target="#{nav_id}" '
-        f'data-bs-smooth-scroll="true" class="scrollspy-example border rounded-3 p-3" '
-        f'tabindex="0" style="max-height:{scroll_height}px;overflow:auto;">{"".join(section_parts)}</div></div>'
+        f'<div class="block-anchor-content" tabindex="0" style="max-height:{scroll_height}px;overflow:auto;">'
+        f'{"".join(section_parts)}</div>'
     )
     parts.append("</div>")
     return "".join(parts)
@@ -825,36 +688,34 @@ def _render_bs_pricing_table(block: dict[str, Any]) -> str:
     section_subtitle = _safe_text(block.get("subtitle"))
     parts = ['<section class="block-bs-pricing">']
     if section_title:
-        parts.append(f'<h3 class="mb-2">{section_title}</h3>')
+        parts.append(f'<h3 class="feature-card-title">{section_title}</h3>')
     if section_subtitle:
-        parts.append(f'<p class="text-muted mb-3">{section_subtitle}</p>')
-    parts.append('<div class="row g-3">')
+        parts.append(f'<p class="feature-card-copy">{section_subtitle}</p>')
+    parts.append('<div class="block-pricing-grid">')
     for plan in normalized:
-        card_cls = "card h-100 shadow-sm"
+        card_cls = "surface-card block-card block-card-static"
         if plan["recommended"]:
-            card_cls += " border-primary"
-        parts.append('<div class="col-12 col-md-6 col-xl-4">')
-        parts.append(f'<article class="{card_cls}"><div class="card-body d-flex flex-column">')
+            card_cls += " is-recommended"
+        parts.append(f'<article class="{card_cls}"><div class="block-card-body">')
         if plan["recommended"]:
-            parts.append('<span class="badge text-bg-primary mb-2 align-self-start">Popular</span>')
+            parts.append('<span class="site-chip">Popular</span>')
         if plan["title"]:
-            parts.append(f'<h4 class="h5 card-title">{plan["title"]}</h4>')
+            parts.append(f'<h4 class="feature-card-title">{plan["title"]}</h4>')
         if plan["price"]:
-            parts.append(f'<p class="display-6 fw-bold mb-1">{plan["price"]}</p>')
+            parts.append(f'<p class="block-pricing-price">{plan["price"]}</p>')
         if plan["period"]:
-            parts.append(f'<p class="text-muted mb-3">{plan["period"]}</p>')
+            parts.append(f'<p class="feature-card-copy">{plan["period"]}</p>')
         if plan["features"]:
-            parts.append('<ul class="list-unstyled small mb-4">')
+            parts.append('<ul class="block-bullet-list">')
             for feature in plan["features"]:
-                parts.append(f'<li class="mb-2">• {feature}</li>')
+                parts.append(f'<li>{feature}</li>')
             parts.append("</ul>")
         btn_url = plan["button_url"]
-        btn_variant = "primary" if plan["recommended"] else "outline-primary"
-        parts.append(
-            f'<a class="btn btn-{btn_variant} mt-auto" href="{btn_url if btn_url and btn_url != "#" else "#"}">{plan["button_label"]}</a>'
-        )
-        parts.append("</div></article></div>")
-    parts.append("</div></section>")
+        btn_href = btn_url if btn_url and btn_url != "#" else "#"
+        btn_cls = "site-button site-button-primary" if plan["recommended"] else "site-button site-button-secondary"
+        parts.append(f'<a class="{btn_cls}" href="{btn_href}">{plan["button_label"]}</a>')
+        parts.append('</div></article>')
+    parts.append('</div></section>')
     return "".join(parts)
 
 
@@ -921,9 +782,6 @@ def _render_bs_container(block: dict[str, Any]) -> str:
 
 def _render_bs_dropdown(block: dict[str, Any]) -> str:
     button_label = _safe_text(block.get("button_text") or block.get("button_label")) or "Open menu"
-    button_variant = _safe_variant(block.get("button_variant"), default="primary")
-    align = str(block.get("align") or "start").strip().lower()
-    align_cls = " dropdown-menu-end" if align == "end" else ""
     items = block.get("items")
     if not isinstance(items, list):
         return ""
@@ -936,30 +794,24 @@ def _render_bs_dropdown(block: dict[str, Any]) -> str:
         if not label:
             continue
         if bool(item.get("divider_before")):
-            menu_items.append("<li><hr class=\"dropdown-divider\"></li>")
-        menu_items.append(f'<li><a class="dropdown-item" href="{href}">{label}</a></li>')
+            menu_items.append('<li class="block-menu-separator" aria-hidden="true"></li>')
+        menu_items.append(f'<li><a href="{href}">{label}</a></li>')
     if not menu_items:
         return ""
-    dd_id = f"dd-{uuid4().hex[:8]}"
     return (
-        f'<div class="dropdown">'
-        f'<button class="btn btn-{button_variant} dropdown-toggle" type="button" id="{dd_id}" '
-        f'data-bs-toggle="dropdown" aria-expanded="false">{button_label}</button>'
-        f'<ul class="dropdown-menu{align_cls}" aria-labelledby="{dd_id}">{"".join(menu_items)}</ul>'
-        f"</div>"
+        '<details class="block-menu">'
+        f'<summary>{button_label}</summary>'
+        f'<ul>{"".join(menu_items)}</ul>'
+        "</details>"
     )
 
 
 def _render_bs_navbar(block: dict[str, Any]) -> str:
     brand = _safe_text(block.get("brand")) or "VXcloud"
     brand_url = _safe_url(block.get("brand_url"))
-    expand = str(block.get("expand") or "lg").strip().lower()
-    variant = str(block.get("theme") or block.get("variant") or "dark").strip().lower()
-    bg = str(block.get("bg") or "dark").strip().lower()
     items = block.get("items")
     if not isinstance(items, list):
         items = []
-    nav_id = f"nav-{uuid4().hex[:8]}"
     nav_items: list[str] = []
     for item in items:
         if not isinstance(item, dict):
@@ -969,16 +821,12 @@ def _render_bs_navbar(block: dict[str, Any]) -> str:
         active = " active" if bool(item.get("active")) else ""
         if not label:
             continue
-        nav_items.append(f'<li class="nav-item"><a class="nav-link{active}" href="{href}">{label}</a></li>')
+        nav_items.append(f'<li><a class="site-nav-link{active}" href="{href}">{label}</a></li>')
     return (
-        f'<nav class="navbar {"navbar-expand-" + expand if expand else ""} navbar-{variant} bg-{bg} rounded-3 mb-3">'
-        f'<div class="container-fluid">'
-        f'<a class="navbar-brand" href="{brand_url if brand_url and brand_url != "#" else "#"}">{brand}</a>'
-        f'<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#{nav_id}" '
-        f'aria-controls="{nav_id}" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>'
-        f'<div class="collapse navbar-collapse" id="{nav_id}">'
-        f'<ul class="navbar-nav me-auto mb-2 mb-lg-0">{"".join(nav_items)}</ul>'
-        f"</div></div></nav>"
+        '<nav class="block-inline-nav">'
+        f'<a class="block-inline-nav-brand" href="{brand_url if brand_url and brand_url != "#" else "#"}">{brand}</a>'
+        f'<ul class="block-inline-nav-links">{"".join(nav_items)}</ul>'
+        "</nav>"
     )
 
 
@@ -1024,10 +872,9 @@ def _render_bs_placeholder(block: dict[str, Any]) -> str:
 def _render_bs_icon_link(block: dict[str, Any]) -> str:
     label = _safe_text(block.get("label"))
     href = _safe_url(block.get("url"))
-    icon = _safe_text(block.get("icon") or "arrow-right")
     if not label:
         return ""
-    return f'<a class="icon-link" href="{href}">{label}<i class="bi bi-{icon}" aria-hidden="true"></i></a>'
+    return f'<a class="icon-link" href="{href}">{label}<span aria-hidden="true">→</span></a>'
 
 
 def _render_bs_stretched_link(block: dict[str, Any]) -> str:
@@ -1038,9 +885,9 @@ def _render_bs_stretched_link(block: dict[str, Any]) -> str:
     if not title and not text:
         return ""
     return (
-        '<article class="card position-relative shadow-sm border-0 block-bs-stretched-link"><div class="card-body">'
-        f'<h5 class="card-title">{title}</h5><p class="card-text">{text}</p>'
-        f'<a class="stretched-link text-decoration-none" href="{href}">{label}</a>'
+        '<article class="surface-card block-card block-card-static block-bs-stretched-link"><div class="block-card-body">'
+        f'<h5 class="feature-card-title">{title}</h5><p class="feature-card-copy">{text}</p>'
+        f'<a class="post-inline-link" href="{href}">{label}</a>'
         "</div></article>"
     )
 
@@ -1257,7 +1104,7 @@ def render_content_blocks(blocks: Any, legacy_html: str = ""):
             label = _safe_text(block.get("label"))
             href = _safe_url(block.get("url"))
             style = str(block.get("style") or "primary").strip().lower()
-            css = "btn btn-primary" if style != "secondary" else "btn btn-secondary"
+            css = "site-button site-button-primary" if style != "secondary" else "site-button site-button-secondary"
             if label:
                 output.append(f'<div class="block-buttons"><a class="{css}" href="{href}">{label}</a></div>')
         elif block_type in {"buttons", "bs_button_group"}:

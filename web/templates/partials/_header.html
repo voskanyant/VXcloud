@@ -1,92 +1,78 @@
 {% load cms %}
-<header class="site-header sticky-top">
-  <nav class="navbar navbar-expand-lg border-bottom bg-white">
-    <div class="container-xxl">
+<header class="site-header">
+  <div class="container-xxl">
+    <div class="site-header-inner">
       {% with wp_shell=wordpress_shell %}
       {% cms_text "nav.logo" "VXCLOUD" as nav_logo %}
       {% cms_text "nav.home" "Главная" as nav_home %}
       {% cms_text "nav.instructions" "Инструкции" as nav_instructions %}
       {% cms_text "nav.blog" "Блог" as nav_blog %}
       {% cms_text "nav.account" "Личный кабинет" as nav_account %}
-      {% cms_text "nav.buy_cta" "💳 Купить доступ" as nav_buy_cta %}
+      {% cms_text "nav.buy_cta" "Купить доступ" as nav_buy_cta %}
       {% cms_text "nav.price_fallback" "249 RUB" as nav_price_fallback %}
 
-      <a class="navbar-brand site-brand" href="{% if wp_shell %}{{ wp_shell.brand.url }}{% else %}/{% endif %}">
-        {% if wp_shell %}{{ wp_shell.brand.label|upper }}{% else %}{{ nav_logo|upper }}{% endif %}
-      </a>
+      <div class="site-header-top">
+        <a class="site-brand" href="{% if wp_shell %}{{ wp_shell.brand.url }}{% else %}/{% endif %}">
+          {% if wp_shell %}{{ wp_shell.brand.label|upper }}{% else %}{{ nav_logo|upper }}{% endif %}
+        </a>
 
-      <div class="d-none d-lg-flex align-items-center ms-auto gap-2">
-        <ul class="navbar-nav align-items-lg-center gap-1 me-2">
+        <nav class="site-nav site-nav-desktop" aria-label="Основное меню">
           {% with path=request.path %}
             {% if wp_shell and wp_shell.header_menu %}
               {% for item in wp_shell.header_menu %}
-                <li class="nav-item">
-                  <a href="{{ item.url }}" class="nav-link vx-nav-link {% if item.active %}active{% endif %}">{{ item.label }}</a>
-                </li>
+                <a href="{{ item.url }}" class="site-nav-link {% if item.active %}is-active{% endif %}">{{ item.label }}</a>
               {% endfor %}
             {% elif nav_pages %}
               {% for nav_page in nav_pages %}
-                <li class="nav-item">
-                  <a href="{{ nav_page.path }}" class="nav-link vx-nav-link {% if path == nav_page.path %}active{% endif %}">{{ nav_page.nav_label }}</a>
-                </li>
+                <a href="{{ nav_page.path }}" class="site-nav-link {% if path == nav_page.path %}is-active{% endif %}">{{ nav_page.nav_label }}</a>
               {% endfor %}
             {% else %}
-              <li class="nav-item"><a href="/" class="nav-link vx-nav-link {% if path == '/' %}active{% endif %}">{{ nav_home }}</a></li>
-              <li class="nav-item"><a href="/instructions/" class="nav-link vx-nav-link {% if path|slice:':14' == '/instructions/' %}active{% endif %}">{{ nav_instructions }}</a></li>
-              <li class="nav-item"><a href="/blog/" class="nav-link vx-nav-link {% if path|slice:':6' == '/blog/' %}active{% endif %}">{{ nav_blog }}</a></li>
-              <li class="nav-item"><a href="/account/" class="nav-link vx-nav-link {% if path|slice:':9' == '/account/' or path|slice:':10' == '/accounts/' %}active{% endif %}">{{ nav_account }}</a></li>
+              <a href="/" class="site-nav-link {% if path == '/' %}is-active{% endif %}">{{ nav_home }}</a>
+              <a href="/instructions/" class="site-nav-link {% if path|slice:':14' == '/instructions/' %}is-active{% endif %}">{{ nav_instructions }}</a>
+              <a href="/blog/" class="site-nav-link {% if path|slice:':6' == '/blog/' %}is-active{% endif %}">{{ nav_blog }}</a>
+              <a href="/account/" class="site-nav-link {% if path|slice:':9' == '/account/' or path|slice:':10' == '/accounts/' %}is-active{% endif %}">{{ nav_account }}</a>
             {% endif %}
           {% endwith %}
-        </ul>
-        <a class="btn btn-primary px-4" href="{% if wp_shell %}{{ wp_shell.cta.buy_url }}{% else %}/account/buy/{% endif %}">
+        </nav>
+
+        <a class="site-cta site-button site-button-primary site-cta-desktop" href="{% if wp_shell %}{{ wp_shell.cta.buy_url }}{% else %}/account/buy/{% endif %}">
+          {% if wp_shell %}{{ wp_shell.cta.label }}{% else %}{{ nav_buy_cta }}{% endif %}
+          <span class="site-cta-price">{% if wp_shell %}{{ wp_shell.cta.price_label|default:nav_price_fallback }}{% else %}{{ card_price_label|default:nav_price_fallback }}{% endif %}</span>
+        </a>
+
+        <button class="site-menu-toggle" type="button" aria-expanded="false" aria-controls="vx-site-menu" aria-label="Открыть меню" data-site-menu-toggle>
+          <span class="site-menu-toggle-line"></span>
+          <span class="site-menu-toggle-line"></span>
+          <span class="site-menu-toggle-line"></span>
+        </button>
+      </div>
+
+      <div class="site-mobile-panel" id="vx-site-menu" data-site-menu-panel hidden>
+        <nav class="site-nav site-nav-mobile" aria-label="Мобильное меню">
+          {% with path=request.path %}
+            {% if wp_shell and wp_shell.header_menu %}
+              {% for item in wp_shell.header_menu %}
+                <a href="{{ item.url }}" class="site-nav-link {% if item.active %}is-active{% endif %}">{{ item.label }}</a>
+              {% endfor %}
+            {% elif nav_pages %}
+              {% for nav_page in nav_pages %}
+                <a href="{{ nav_page.path }}" class="site-nav-link {% if path == nav_page.path %}is-active{% endif %}">{{ nav_page.nav_label }}</a>
+              {% endfor %}
+            {% else %}
+              <a href="/" class="site-nav-link {% if path == '/' %}is-active{% endif %}">{{ nav_home }}</a>
+              <a href="/instructions/" class="site-nav-link {% if path|slice:':14' == '/instructions/' %}is-active{% endif %}">{{ nav_instructions }}</a>
+              <a href="/blog/" class="site-nav-link {% if path|slice:':6' == '/blog/' %}is-active{% endif %}">{{ nav_blog }}</a>
+              <a href="/account/" class="site-nav-link {% if path|slice:':9' == '/account/' or path|slice:':10' == '/accounts/' %}is-active{% endif %}">{{ nav_account }}</a>
+            {% endif %}
+          {% endwith %}
+        </nav>
+
+        <a class="site-cta site-button site-button-primary w-100" href="{% if wp_shell %}{{ wp_shell.cta.buy_url }}{% else %}/account/buy/{% endif %}">
           {% if wp_shell %}{{ wp_shell.cta.label }}{% else %}{{ nav_buy_cta }}{% endif %}
           <span class="site-cta-price">{% if wp_shell %}{{ wp_shell.cta.price_label|default:nav_price_fallback }}{% else %}{{ card_price_label|default:nav_price_fallback }}{% endif %}</span>
         </a>
       </div>
-
-      <button class="navbar-toggler border-0 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#vxNavbarMobile" aria-controls="vxNavbarMobile" aria-expanded="false" aria-label="Открыть меню">
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="offcanvas offcanvas-end d-lg-none vx-navbar-offcanvas" tabindex="-1" id="vxNavbarMobile" aria-labelledby="vxNavbarMobileLabel">
-        <div class="offcanvas-header border-bottom">
-          <h5 class="offcanvas-title site-brand mb-0" id="vxNavbarMobileLabel">{% if wp_shell %}{{ wp_shell.brand.label|upper }}{% else %}{{ nav_logo|upper }}{% endif %}</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Закрыть"></button>
-        </div>
-
-        <div class="offcanvas-body">
-          <ul class="navbar-nav gap-2 my-1">
-            {% with path=request.path %}
-              {% if wp_shell and wp_shell.header_menu %}
-                {% for item in wp_shell.header_menu %}
-                  <li class="nav-item">
-                    <a href="{{ item.url }}" class="nav-link vx-nav-link {% if item.active %}active{% endif %}">{{ item.label }}</a>
-                  </li>
-                {% endfor %}
-              {% elif nav_pages %}
-                {% for nav_page in nav_pages %}
-                  <li class="nav-item">
-                    <a href="{{ nav_page.path }}" class="nav-link vx-nav-link {% if path == nav_page.path %}active{% endif %}">{{ nav_page.nav_label }}</a>
-                  </li>
-                {% endfor %}
-              {% else %}
-                <li class="nav-item"><a href="/" class="nav-link vx-nav-link {% if path == '/' %}active{% endif %}">{{ nav_home }}</a></li>
-                <li class="nav-item"><a href="/instructions/" class="nav-link vx-nav-link {% if path|slice:':14' == '/instructions/' %}active{% endif %}">{{ nav_instructions }}</a></li>
-                <li class="nav-item"><a href="/blog/" class="nav-link vx-nav-link {% if path|slice:':6' == '/blog/' %}active{% endif %}">{{ nav_blog }}</a></li>
-                <li class="nav-item"><a href="/account/" class="nav-link vx-nav-link {% if path|slice:':9' == '/account/' or path|slice:':10' == '/accounts/' %}active{% endif %}">{{ nav_account }}</a></li>
-              {% endif %}
-            {% endwith %}
-          </ul>
-
-          <div class="d-grid mt-3">
-            <a class="btn btn-primary px-4" href="{% if wp_shell %}{{ wp_shell.cta.buy_url }}{% else %}/account/buy/{% endif %}">
-              {% if wp_shell %}{{ wp_shell.cta.label }}{% else %}{{ nav_buy_cta }}{% endif %}
-              <span class="site-cta-price">{% if wp_shell %}{{ wp_shell.cta.price_label|default:nav_price_fallback }}{% else %}{{ card_price_label|default:nav_price_fallback }}{% endif %}</span>
-            </a>
-          </div>
-        </div>
-      </div>
       {% endwith %}
     </div>
-  </nav>
+  </div>
 </header>

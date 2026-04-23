@@ -21,20 +21,20 @@
 {% block content %}
 <article class="surface-card post-page">
   {% cms_text "post.back_to_list" "← Все статьи" as post_back_text %}
-  <a href="/instructions/" class="btn btn-outline-secondary btn-sm mb-3">{{ post_back_text }}</a>
+  <a href="/instructions/" class="post-back-link mb-3">{{ post_back_text }}</a>
 
-  <h1 class="display-6 fw-bold mb-2">{{ post.title }}</h1>
+  <h1 class="post-page-title mb-2">{{ post.title }}</h1>
 
   {% if post.categories.all %}
-    <p class="small text-secondary mb-2">
+    <p class="post-page-meta mb-2">
       {% for category in post.categories.all %}
-        <a href="{% url 'blog_category_detail' slug=category.slug %}" class="text-secondary">{{ category.title }}</a>{% if not forloop.last %}, {% endif %}
+        <a href="{% url 'blog_category_detail' slug=category.slug %}">{{ category.title }}</a>{% if not forloop.last %}, {% endif %}
       {% endfor %}
     </p>
   {% endif %}
 
-  <div class="small text-secondary d-flex align-items-center gap-2 mb-4">
-    <i class="bi bi-clock"></i>
+  <div class="post-page-date mb-4">
+    <span class="site-inline-symbol" aria-hidden="true">•</span>
     <span>{{ post.published_at|date:'d.m.Y H:i' }}</span>
   </div>
 
