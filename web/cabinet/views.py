@@ -217,6 +217,25 @@ def _telegram_login_bot_username() -> str:
     return os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
 
 
+def _is_configured_secret(value: str | None) -> bool:
+    normalized = (value or "").strip()
+    if not normalized:
+        return False
+    return normalized.lower() not in {"replace_me", "your_token", "your_bot_token", "changeme", "change_me"}
+
+
+def _telegram_login_bot_token() -> str:
+    for candidate in (
+        os.getenv("TELEGRAM_LOGIN_BOT_TOKEN", ""),
+        os.getenv("TELEGRAM_BOT_TOKEN", ""),
+        settings.TELEGRAM_LOGIN_BOT_TOKEN,
+        settings.TELEGRAM_WEBAPP_BOT_TOKEN,
+    ):
+        if _is_configured_secret(candidate):
+            return str(candidate).strip()
+    return ""
+
+
 def _build_public_absolute_url(request: HttpRequest, path: str) -> str:
     suffix = path if str(path).startswith("/") else f"/{path}"
     forwarded_proto = (request.headers.get("X-Forwarded-Proto") or "").split(",")[0].strip().lower()
@@ -1640,7 +1659,7 @@ def _get_or_create_user_for_telegram(
 
 
 def _verify_telegram_login_payload(payload: dict[str, str]) -> tuple[dict[str, object] | None, str | None]:
-    bot_token = settings.TELEGRAM_WEBAPP_BOT_TOKEN.strip()
+    bot_token = _telegram_login_bot_token()
     if not bot_token:
         return None, "server_not_configured"
 
@@ -1699,6 +1718,7 @@ def telegram_login(request: HttpRequest) -> HttpResponse:
 
     verified_data, _error_code = _verify_telegram_login_payload(dict(request.GET.items()))
     if verified_data is None:
+        LOGGER.warning("Telegram site login rejected: %s", _error_code or "unknown_error")
         messages.error(request, "Не удалось выполнить вход через Telegram. Попробуйте снова.")
         fallback = _safe_local_redirect_url(request, request.GET.get("return_to"), "/accounts/login/")
         return redirect(fallback)

@@ -66,6 +66,7 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
 
         with override_settings(
             TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_LOGIN_BOT_TOKEN=bot_token,
             TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
             ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
         ):
@@ -78,6 +79,63 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
         self.assertEqual(verified_data["telegram_username"], "vxcloud_user")
         self.assertEqual(verified_data["first_name"], "VX")
         self.assertEqual(verified_data["last_name"], "Cloud")
+
+    def test_verify_telegram_login_payload_prefers_login_bot_token(self):
+        payload = {
+            "id": "777000",
+            "first_name": "VX",
+            "auth_date": "1712430000",
+        }
+        signed_payload = dict(payload)
+        signed_payload["hash"] = _sign_telegram_login_payload(payload, "site-login-bot-token")
+
+        with patch.dict(
+            os.environ,
+            {
+                "TELEGRAM_LOGIN_BOT_TOKEN": "",
+                "TELEGRAM_BOT_TOKEN": "site-login-bot-token",
+            },
+        ):
+            with override_settings(
+                TELEGRAM_WEBAPP_BOT_TOKEN="different-webapp-bot-token",
+                TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
+                ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
+            ):
+                verified_data, error_code = _verify_telegram_login_payload(signed_payload)
+
+        self.assertIsNone(error_code)
+        self.assertIsNotNone(verified_data)
+        assert verified_data is not None
+        self.assertEqual(verified_data["telegram_id"], 777000)
+
+    def test_verify_telegram_login_payload_ignores_placeholder_bot_token(self):
+        payload = {
+            "id": "777000",
+            "first_name": "VX",
+            "auth_date": "1712430000",
+        }
+        signed_payload = dict(payload)
+        signed_payload["hash"] = _sign_telegram_login_payload(payload, "real-login-bot-token")
+
+        with patch.dict(
+            os.environ,
+            {
+                "TELEGRAM_LOGIN_BOT_TOKEN": "",
+                "TELEGRAM_BOT_TOKEN": "replace_me",
+            },
+        ):
+            with override_settings(
+                TELEGRAM_WEBAPP_BOT_TOKEN="real-login-bot-token",
+                TELEGRAM_LOGIN_BOT_TOKEN="replace_me",
+                TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
+                ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
+            ):
+                verified_data, error_code = _verify_telegram_login_payload(signed_payload)
+
+        self.assertIsNone(error_code)
+        self.assertIsNotNone(verified_data)
+        assert verified_data is not None
+        self.assertEqual(verified_data["telegram_id"], 777000)
 
     def test_telegram_login_redirects_to_next_url_after_success(self):
         payload = {
@@ -97,6 +155,7 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
 
         with override_settings(
             TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_LOGIN_BOT_TOKEN=bot_token,
             TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
             ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
         ):
@@ -137,6 +196,7 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
 
         with override_settings(
             TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_LOGIN_BOT_TOKEN=bot_token,
             TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
             ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
         ):
@@ -167,6 +227,7 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
 
         with override_settings(
             TELEGRAM_WEBAPP_BOT_TOKEN="telegram-bot-token",
+            TELEGRAM_LOGIN_BOT_TOKEN="telegram-bot-token",
             TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
             ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
         ):
@@ -197,6 +258,7 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
 
         with override_settings(
             TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_LOGIN_BOT_TOKEN=bot_token,
             TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
             ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
         ):
