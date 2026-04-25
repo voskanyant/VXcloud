@@ -49,13 +49,12 @@ Current intended model:
 - this should leave site, bot, `/ops/` and payments alive on the same machine
 - this is not a substitute for full standby control plane
 
-### Current production port split
+### Current production routing model
 
-- `29940` is now the public HAProxy frontend
-- local Xray backend now listens on `29941`
-- `30940` was introduced only as a temporary HAProxy test frontend
-- node on/off behavior in `/ops/` has already been proven on `30940`
-- node on/off behavior is now also wired into the real production path on `29940` through runtime config auto-render and container self-reload
+- user-facing configs should use stable per-subscription DNS aliases under `connect.vxcloud.ru`
+- the VXcloud subscription URL is the primary artifact shown to users
+- raw VLESS is retained internally for Xray/3x-ui compatibility and manual fallback only
+- HAProxy remains emergency/fallback infrastructure, not the normal steady-state endpoint for new subscriptions
 
 ### PROXY protocol must stay aligned between HAProxy and Xray
 
@@ -67,8 +66,9 @@ Current intended model:
 
 ## 2. Practical rules
 
-- new configs must use public port `29940`
-- bot copy action must copy `vless://...`
+- new configs must use a subscription URL first; decoded VLESS should point to `u-*.connect.vxcloud.ru`
+- bot copy action must copy the VXcloud subscription URL when a feed token exists
+- raw `vless://...` output is legacy/manual fallback, not the primary customer-facing artifact
 - card checkout from bot must open checkout directly, not just account dashboard
 - stale card pending older than 30 minutes should not be treated as active checkout
 
@@ -82,11 +82,11 @@ Current intended model:
 - do not do incident response by editing random production rows without understanding source of truth
 - after changing node flags in `/ops/`, confirm that the runtime HAProxy config was re-rendered if Django showed a warning
 - do not change the main 3x-ui inbound port during HAProxy tests unless the goal is an intentional production cutover
-- keep current production cutover consistent:
-  - Xray inbound `29941`
-  - public HAProxy `29940`
-  - 3x-ui `Proxy Protocol = on`
-  - `.env` `HAPROXY_BACKEND_SEND_PROXY=1`
+- keep node compatibility pools consistent before enabling DNS rebalance:
+  - same VLESS transport and port behavior
+  - same Reality public key/short ID strategy
+  - same SNI and fingerprint expectations
+  - `lb_enabled=true`, healthy, and not marked for backfill
 
 ## 4. When returning to this project later
 

@@ -32,13 +32,21 @@ jobs:
               chmod 600 .env
             fi
 
-            docker compose --env-file .env build wordpress web
+            docker compose --env-file .env build wordpress web bot
             docker compose --env-file .env up -d db wpdb
+            docker compose --env-file .env run --rm --no-deps web python /app/web/manage.py makemigrations --check --dry-run
+
             docker compose --env-file .env up -d wordpress web
-            docker compose --env-file .env stop haproxy bot || true
+            docker compose --env-file .env stop haproxy || true
+            docker compose --env-file .env --profile bot up -d bot
             docker compose --env-file .env up -d --force-recreate proxy
 
-            docker compose --env-file .env exec -T web python /app/web/manage.py makemigrations --check --dry-run
+            if [[ "$(docker inspect -f '{{.State.Running}}' vxcloud-bot 2>/dev/null || true)" != "true" ]]; then
+              echo "ERROR: bot container is not running"
+              docker compose --env-file .env --profile bot ps
+              docker compose --env-file .env --profile bot logs --tail=100 bot
+              exit 1
+            fi
 
             max_attempts=45
             healthy=0
@@ -53,8 +61,8 @@ jobs:
             if [[ "$healthy" -ne 1 ]]; then
               echo "ERROR: local proxy healthcheck failed"
               docker compose --env-file .env ps
-              docker compose --env-file .env logs --tail=100 web proxy
+              docker compose --env-file .env --profile bot logs --tail=100 web bot proxy
               exit 1
             fi
 
-            docker compose --env-file .env ps
+            docker compose --env-file .env --profile bot ps

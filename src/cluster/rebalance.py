@@ -669,3 +669,31 @@ async def rebalance_tick(db: DB, settings: Settings) -> dict[str, int]:
         "cutover": cutover,
         "cleaned": cleaned,
     }
+
+
+async def manual_rebalance_tick(db: DB, settings: Settings) -> dict[str, int]:
+    """Run the rebalance workflow immediately for an operator-triggered cutover."""
+    bootstrapped_aliases = await bootstrap_aliasless_subscriptions(
+        db,
+        settings,
+        limit=max(1, int(getattr(settings, "vpn_cluster_sync_batch_size", 200))),
+    )
+    assignment_result = await backfill_unassigned_subscriptions(
+        db,
+        settings,
+        limit=max(1, int(getattr(settings, "vpn_cluster_sync_batch_size", 200))),
+    )
+    presynced_existing = await _presync_planned_moves(db, settings)
+    cutover_existing = await _cutover_presynced_moves(db, settings)
+    cleaned = await _cleanup_cutover_moves(db, settings)
+    planned = await _plan_weekly_moves(db, settings)
+    presynced_new = await _presync_planned_moves(db, settings)
+    cutover_new = await _cutover_presynced_moves(db, settings)
+    return {
+        "bootstrapped_aliases": bootstrapped_aliases,
+        "assigned": int(assignment_result.get("assigned", 0)),
+        "planned": planned,
+        "presynced": presynced_existing + presynced_new,
+        "cutover": cutover_existing + cutover_new,
+        "cleaned": cleaned,
+    }

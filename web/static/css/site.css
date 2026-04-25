@@ -3268,6 +3268,32 @@ body.vx-account-shell #footer {
   text-transform: uppercase;
 }
 
+body.wp-theme-flatsome.vx-account-shell,
+body.theme-flatsome.vx-account-shell {
+  background: #ffffff !important;
+  color: var(--account-ink) !important;
+}
+
+body.wp-theme-flatsome.vx-account-shell #main.vx-shell-main,
+body.theme-flatsome.vx-account-shell #main.vx-shell-main,
+body.wp-theme-flatsome.vx-account-shell .vx-shell-page,
+body.theme-flatsome.vx-account-shell .vx-shell-page {
+  background: #ffffff !important;
+}
+
+body.wp-theme-flatsome.vx-account-shell .surface-card,
+body.theme-flatsome.vx-account-shell .surface-card,
+body.wp-theme-flatsome.vx-account-shell .surface-panel,
+body.theme-flatsome.vx-account-shell .surface-panel,
+body.wp-theme-flatsome.vx-account-shell .stat-card,
+body.theme-flatsome.vx-account-shell .stat-card {
+  border-radius: 0 !important;
+  border-color: var(--account-hairline) !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
 @media (max-width: 1180px) {
   .account-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));

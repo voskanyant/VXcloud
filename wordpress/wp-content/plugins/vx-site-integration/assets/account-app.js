@@ -294,6 +294,7 @@
     const cardsHtml = subscriptions.length
       ? subscriptions
           .map(function (sub) {
+            const primaryLink = sub.feed_url || sub.subscription_url || sub.vless_url || "";
             return [
               '<article class="vx-config-card">',
               '<div class="vx-config-card__head">',
@@ -318,10 +319,10 @@
               '<div class="vx-config-card__meta vx-config-card__meta--single">',
               '<div class="vx-config-meta"><span>\u0414\u043e</span><strong>' + escapeHtml(sub.expires_at || "\u2014") + "</strong></div>",
               "</div>",
-              '<div class="vx-config-card__field"><label>\u0421\u0441\u044b\u043b\u043a\u0430</label><div class="vx-copy-row"><input type="text" readonly value="' +
-                escapeHtml(sub.vless_url || "") +
+              '<div class="vx-config-card__field"><label>Subscription URL</label><div class="vx-copy-row"><input type="text" readonly value="' +
+                escapeHtml(primaryLink) +
                 '"><button type="button" class="vx-icon-button" data-copy-text="' +
-                escapeHtml(sub.vless_url || "") +
+                escapeHtml(primaryLink) +
                 '" aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443">' +
                 iconSvg("copy") +
                 "</button></div></div>",

@@ -232,6 +232,14 @@
         <div><span>Compatible pools</span><strong>{{ rebalance_preview_summary.compatible_pools }}</strong></div>
         <div><span>Planned moves</span><strong>{{ rebalance_preview_summary.planned_moves }}</strong></div>
       </div>
+      <form method="post" class="mt-3">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="manual_rebalance">
+        <button type="submit" class="btn btn-dark w-100">Start manual rebalance now</button>
+      </form>
+      <p class="text-muted small mt-2 mb-0">
+        Runs the same guarded workflow immediately: plan, presync, DNS cutover, and due cleanup.
+      </p>
     </section>
   </div>
 

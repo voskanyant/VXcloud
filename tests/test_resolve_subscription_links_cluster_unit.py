@@ -30,7 +30,7 @@ def _settings(*, cluster_enabled: bool) -> Settings:
         vpn_rebalance_move_fraction=0.20,
         vpn_rebalance_cooldown_hours=168,
         vpn_rebalance_min_score_gap=2.5,
-        vpn_alias_namespace="vpn.vxcloud.ru",
+        vpn_alias_namespace="connect.vxcloud.ru",
         vpn_alias_provider="cloudflare",
         vpn_alias_default_ttl=300,
         vpn_alias_cutover_ttl=60,

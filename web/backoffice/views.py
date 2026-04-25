@@ -56,7 +56,7 @@ from src.xui_client import XUIClient
 import qrcode
 from src.cluster.provisioner import create_client_on_node
 from src.dns_alias import delete_subscription_alias_record, ensure_subscription_alias_record, generate_subscription_alias
-from src.cluster.rebalance import node_ineligibility_reason, preview_rebalance_plan, score_node
+from src.cluster.rebalance import manual_rebalance_tick, node_ineligibility_reason, preview_rebalance_plan, score_node
 from src.client_naming import build_xui_client_name
 from src.config import load_settings
 from src.db import DB
@@ -499,7 +499,7 @@ def _cluster_runtime_settings() -> Any:
         "ClusterRuntimeSettings",
         (),
         {
-            "vpn_alias_namespace": env_value("VPN_ALIAS_NAMESPACE", "vpn.vxcloud.ru"),
+            "vpn_alias_namespace": env_value("VPN_ALIAS_NAMESPACE", "connect.vxcloud.ru"),
             "vpn_alias_provider": env_value("VPN_ALIAS_PROVIDER", "cloudflare"),
             "vpn_alias_default_ttl": int_env("VPN_ALIAS_DEFAULT_TTL", 300),
             "vpn_alias_cutover_ttl": int_env("VPN_ALIAS_CUTOVER_TTL", 60),
@@ -1059,6 +1059,16 @@ async def _build_rebalance_preview(settings_obj: Any) -> dict[str, Any]:
     try:
         await db.connect()
         return await preview_rebalance_plan(db, settings_obj)
+    finally:
+        await db.close()
+
+
+async def _run_manual_rebalance(settings_obj: Any) -> dict[str, int]:
+    app_settings = load_settings()
+    db = DB(app_settings.database_url)
+    try:
+        await db.connect()
+        return await manual_rebalance_tick(db, settings_obj)
     finally:
         await db.close()
 
@@ -2888,6 +2898,31 @@ class VPNNodeClientListView(BaseListView):
 
 class SystemOverviewView(StaffRequiredMixin, TemplateView):
     template_name = "backoffice/system.html"
+
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        action = str(request.POST.get("action") or "").strip()
+        if action != "manual_rebalance":
+            messages.error(request, "Неизвестная операция.")
+            return redirect("backoffice:system_overview")
+        if not bool_env("VPN_CLUSTER_ENABLED", False):
+            messages.error(request, "Cluster mode выключен. Включите VPN_CLUSTER_ENABLED=1 перед ручным rebalance.")
+            return redirect("backoffice:system_overview")
+        runtime_settings = _cluster_runtime_settings()
+        try:
+            result = _run_async_from_sync(_run_manual_rebalance(runtime_settings))
+        except Exception as exc:
+            LOGGER.exception("Manual rebalance failed")
+            messages.error(request, f"Manual rebalance failed: {exc}")
+            return redirect("backoffice:system_overview")
+        messages.success(
+            request,
+            "Manual rebalance started: "
+            f"planned={int(result.get('planned', 0))}, "
+            f"presynced={int(result.get('presynced', 0))}, "
+            f"cutover={int(result.get('cutover', 0))}, "
+            f"cleaned={int(result.get('cleaned', 0))}.",
+        )
+        return redirect("backoffice:system_overview")
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)

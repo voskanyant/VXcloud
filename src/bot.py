@@ -1065,8 +1065,8 @@ class VPNBot:
         return InlineKeyboardMarkup(rows)
 
     async def _config_card_text(self, user_id: int, sub: dict[str, object], *, client_code: str) -> tuple[str, str, str]:
-        vless_url, feed_url = await self._resolve_subscription_links(user_id, sub)
-        primary_link = feed_url or vless_url
+        raw_vless_url, feed_url = await self._resolve_subscription_links(user_id, sub)
+        primary_link = feed_url or raw_vless_url
         expires_at = sub.get("expires_at")
         expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "—"
         status_text = self._subscription_status(sub, datetime.now(timezone.utc))
@@ -1080,9 +1080,9 @@ class VPNBot:
         if feed_url:
             text += f"\n\nПодписка: {feed_url}"
             text += "\nПосле импорта VXcloud сможет менять ноду без ручной замены конфига."
-        elif vless_url:
-            text += f"\n\nConnection link: {vless_url}"
-        return text, primary_link, vless_url
+        elif raw_vless_url:
+            text += f"\n\nConnection link: {raw_vless_url}"
+        return text, primary_link, raw_vless_url
 
     async def _ensure_user(self, update: Update) -> int:
         assert update.effective_user is not None
@@ -1780,14 +1780,14 @@ class VPNBot:
                     return
                 context.user_data["selected_subscription_id"] = subscription_id
                 client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
-                text, vless_url, sub_url = await self._config_card_text(user_id, sub, client_code=client_code)
+                text, primary_link, _raw_vless_url = await self._config_card_text(user_id, sub, client_code=client_code)
                 await query.answer()
                 await query.edit_message_text(
                     text=text,
                     reply_markup=await self._config_card_markup(
                         user_id,
                         subscription_id,
-                        vless_url,
+                        primary_link,
                         can_delete=self._subscription_can_delete(sub),
                     ),
                 )
@@ -1804,7 +1804,7 @@ class VPNBot:
                     await query.answer("Устройство не найдено", show_alert=True)
                     return
                 client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
-                text, vless_url, _ = await self._config_card_text(
+                text, primary_link, _ = await self._config_card_text(
                     user_id,
                     sub,
                     client_code=client_code,
@@ -1816,7 +1816,7 @@ class VPNBot:
                         reply_markup=await self._config_card_markup(
                             user_id,
                             subscription_id,
-                            vless_url,
+                            primary_link,
                             can_delete=self._subscription_can_delete(sub),
                         ),
                     )
@@ -1832,12 +1832,12 @@ class VPNBot:
                 if not sub:
                     await query.answer("Устройство не найдено", show_alert=True)
                     return
-                text, vless_url, sub_url = await self._config_card_text(
+                text, primary_link, _raw_vless_url = await self._config_card_text(
                     user_id,
                     sub,
                     client_code=(await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"),
                 )
-                qr_payload = vless_url
+                qr_payload = primary_link
                 qr_img = self._build_styled_qr(qr_payload, "QR доступа")
                 qr_buff = io.BytesIO()
                 qr_img.save(qr_buff, format="PNG")
@@ -1859,7 +1859,7 @@ class VPNBot:
                     return
                 context.user_data["selected_subscription_id"] = subscription_id
                 client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
-                text, vless_url, _ = await self._config_card_text(
+                text, primary_link, _ = await self._config_card_text(
                     user_id,
                     sub,
                     client_code=client_code,
@@ -1871,7 +1871,7 @@ class VPNBot:
                         reply_markup=await self._config_card_markup(
                             user_id,
                             subscription_id,
-                            vless_url,
+                            primary_link,
                             can_delete=self._subscription_can_delete(sub),
                         ),
                     )

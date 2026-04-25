@@ -5,7 +5,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   {% cms_text "base.default_title" "VXcloud" as base_default_title %}
-  {% cms_text "base.default_description.clean" "VXcloud: ??????? ? ???????? VPN/?????? ??? ????????????? ?????????????." as base_default_description_clean %}
+  {% cms_text "base.default_description.clean" "VXcloud: быстрый и понятный VPN/прокси для повседневного использования." as base_default_description_clean %}
   {% cms_text "base.default_description" "VXcloud: быстрый и понятный VPN/прокси для повседневного использования." as base_default_description %}
   <title>{% block title %}{% if page %}{% if page.seo_title %}{{ page.seo_title }}{% else %}{{ page.title }}{% endif %}{% else %}{{ base_default_title }}{% endif %}{% endblock %}</title>
   <meta name="description" content="{% block meta_description %}{% if page and page.search_description %}{{ page.search_description }}{% else %}{{ base_default_description_clean }}{% endif %}{% endblock %}">

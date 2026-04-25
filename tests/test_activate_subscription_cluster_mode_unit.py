@@ -30,7 +30,7 @@ def _settings(*, cluster_enabled: bool) -> Settings:
         vpn_rebalance_move_fraction=0.20,
         vpn_rebalance_cooldown_hours=168,
         vpn_rebalance_min_score_gap=2.5,
-        vpn_alias_namespace="vpn.vxcloud.ru",
+        vpn_alias_namespace="connect.vxcloud.ru",
         vpn_alias_provider="cloudflare",
         vpn_alias_default_ttl=300,
         vpn_alias_cutover_ttl=60,
@@ -182,7 +182,7 @@ class ActivateSubscriptionClusterModeUnitTests(unittest.IsolatedAsyncioTestCase)
         self.assertEqual(create_kwargs["assignment_source"], "new")
         self.assertEqual(create_kwargs["migration_state"], "ready")
         self.assertEqual(create_kwargs["assignment_state"], "steady")
-        self.assertTrue(str(create_kwargs["alias_fqdn"]).endswith(".vpn.vxcloud.ru"))
+        self.assertTrue(str(create_kwargs["alias_fqdn"]).endswith(".connect.vxcloud.ru"))
         self.assertIn(f"@{create_kwargs['alias_fqdn']}:443", create_kwargs["vless_url"])
         self.assertEqual(result.vless_url, create_kwargs["vless_url"])
         self.assertEqual(result.feed_token, "feed-token-9001")

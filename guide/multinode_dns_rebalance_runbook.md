@@ -62,6 +62,27 @@ With the default tick of `300` seconds:
 
 The planner ignores inactive, unhealthy, disabled, backfill-pending, Reality-missing, or incompatible-pool nodes.
 
+## Manual rebalance
+
+If a node is overloaded and you do not want to wait for the Sunday workflow, use:
+
+```text
+/ops/infra/system/
+```
+
+In the `Rebalance dry-run` panel, review planned moves, then press `Start manual rebalance now`.
+
+The button runs the same guarded workflow immediately:
+
+- bootstrap missing aliases
+- backfill unassigned active subscriptions
+- plan eligible moves using the normal score/cooldown/max-move rules
+- presync destination credentials
+- cut over Cloudflare alias A records
+- clean up any moves whose overlap window has already expired
+
+It does not bypass planner safety. It still ignores unhealthy, disabled, backfill-pending, incompatible, cooldown-blocked, or low-benefit moves.
+
 ## Delete behavior
 
 When a config is deleted, VXcloud now attempts to remove:

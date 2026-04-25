@@ -34,8 +34,8 @@
     <div class="card-body">
       <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
         <div>
-          <h2 class="h4 mb-1">Текущий конфиг</h2>
-          <div class="text-muted">Эти данные можно открыть в любой момент с этой страницы.</div>
+          <h2 class="h4 mb-1">Текущая подписка</h2>
+          <div class="text-muted">Основной артефакт для клиента — стабильный VXcloud subscription URL.</div>
         </div>
         <div class="text-muted small">ID подписки: {{ subscription_result.subscription_id }}</div>
       </div>
@@ -45,17 +45,44 @@
           <dl class="row mb-3">
             <dt class="col-sm-4">Имя подписки</dt>
             <dd class="col-sm-8">{{ subscription_result.display_name }}</dd>
+
             <dt class="col-sm-4">3x-ui name</dt>
             <dd class="col-sm-8"><code>{{ subscription_result.client_email }}</code></dd>
+
+            <dt class="col-sm-4">Нода</dt>
+            <dd class="col-sm-8">{{ subscription_result.current_node_label|default:"—" }}</dd>
+
+            <dt class="col-sm-4">Alias host</dt>
+            <dd class="col-sm-8"><code>{{ subscription_result.alias_fqdn|default:"—" }}</code></dd>
+
+            <dt class="col-sm-4">Assignment</dt>
+            <dd class="col-sm-8">{{ subscription_result.assignment_source|default:"—" }}</dd>
+
+            <dt class="col-sm-4">State</dt>
+            <dd class="col-sm-8">{{ subscription_result.assignment_state|default:"—" }}</dd>
+
+            <dt class="col-sm-4">Pool</dt>
+            <dd class="col-sm-8">{{ subscription_result.compatibility_pool|default:"—" }}</dd>
+
+            {% if subscription_result.desired_node_label %}
+              <dt class="col-sm-4">Desired node</dt>
+              <dd class="col-sm-8">{{ subscription_result.desired_node_label }}</dd>
+            {% endif %}
+
+            {% if subscription_result.overlap_until_label %}
+              <dt class="col-sm-4">Overlap until</dt>
+              <dd class="col-sm-8">{{ subscription_result.overlap_until_label }}</dd>
+            {% endif %}
+
             <dt class="col-sm-4">Срок</dt>
             <dd class="col-sm-8">{{ subscription_result.expires_at_label }}</dd>
           </dl>
 
-          <label for="current-vless-url" class="form-label fw-semibold">VLESS ссылка</label>
-          <textarea id="current-vless-url" class="form-control font-monospace" rows="7" readonly>{{ subscription_result.vless_url }}</textarea>
+          <label for="current-primary-link" class="form-label fw-semibold">VXcloud subscription URL</label>
+          <textarea id="current-primary-link" class="form-control font-monospace" rows="5" readonly>{{ subscription_result.primary_link }}</textarea>
           <div class="d-flex flex-wrap gap-2 mt-3">
-            <button type="button" class="btn btn-dark" id="copy-vless-link" data-copy-target="current-vless-url">Скопировать ссылку</button>
-            <span class="align-self-center text-muted small" id="copy-vless-status"></span>
+            <button type="button" class="btn btn-dark" id="copy-primary-link" data-copy-target="current-primary-link">Скопировать subscription URL</button>
+            <span class="align-self-center text-muted small" id="copy-primary-status"></span>
           </div>
         </div>
 
@@ -65,7 +92,7 @@
             {% if subscription_result.qr_image_data_url %}
               <img
                 src="{{ subscription_result.qr_image_data_url }}"
-                alt="QR code for current VLESS link"
+                alt="QR code for subscription URL"
                 class="img-fluid rounded bg-white p-2 border mx-auto"
                 style="max-width: 320px;"
               >
@@ -83,8 +110,8 @@
 {% block extra_scripts %}
 <script>
   (() => {
-    const copyButton = document.getElementById("copy-vless-link");
-    const statusNode = document.getElementById("copy-vless-status");
+    const copyButton = document.getElementById("copy-primary-link");
+    const statusNode = document.getElementById("copy-primary-status");
     if (!copyButton) return;
 
     copyButton.addEventListener("click", async () => {

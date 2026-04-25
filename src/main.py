@@ -25,7 +25,12 @@ async def run() -> None:
     xui = XUIClient(settings.xui_base_url, settings.xui_username, settings.xui_password)
 
     await db.connect()
-    await xui.start()
+    try:
+        await xui.start()
+    except Exception:
+        logging.exception(
+            "Primary x-ui login failed at startup; Telegram bot will continue and retry x-ui calls when needed"
+        )
 
     app = ApplicationBuilder().token(settings.telegram_bot_token).build()
     bot = VPNBot(app=app, settings=settings, db=db, xui=xui)

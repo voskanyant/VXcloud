@@ -200,7 +200,7 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         self.assertEqual(saved.assignment_source, "backoffice_alias")
         self.assertEqual(saved.migration_state, "ready")
         self.assertEqual(saved.assignment_state, "steady")
-        self.assertTrue(saved.alias_fqdn.endswith(".vpn.vxcloud.ru"))
+        self.assertTrue(saved.alias_fqdn.endswith(".connect.vxcloud.ru"))
         self.assertIn(f"@{saved.alias_fqdn}:443", saved.vless_url)
         self.assertTrue(saved.feed_token)
 

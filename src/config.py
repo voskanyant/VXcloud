@@ -106,7 +106,7 @@ def load_settings() -> Settings:
         vpn_rebalance_move_fraction=float(_get("VPN_REBALANCE_MOVE_FRACTION", "0.20")),
         vpn_rebalance_cooldown_hours=int(_get("VPN_REBALANCE_COOLDOWN_HOURS", "168")),
         vpn_rebalance_min_score_gap=float(_get("VPN_REBALANCE_MIN_SCORE_GAP", "2.5")),
-        vpn_alias_namespace=_get("VPN_ALIAS_NAMESPACE", "vpn.vxcloud.ru").strip().strip("."),
+        vpn_alias_namespace=_get("VPN_ALIAS_NAMESPACE", "connect.vxcloud.ru").strip().strip("."),
         vpn_alias_provider=_get_optional("VPN_ALIAS_PROVIDER"),
         vpn_alias_default_ttl=int(_get("VPN_ALIAS_DEFAULT_TTL", "300")),
         vpn_alias_cutover_ttl=int(_get("VPN_ALIAS_CUTOVER_TTL", "60")),
