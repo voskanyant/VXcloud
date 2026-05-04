@@ -12,6 +12,7 @@ urlpatterns = [
     path("tickets/", views.SupportTicketListView.as_view(), name="ticket_list"),
     path("tickets/<int:pk>/", views.SupportTicketDetailView.as_view(), name="ticket_detail"),
     path("infra/nodes/", views.VPNNodeListView.as_view(), name="vpn_node_list"),
+    path("infra/node-stats/", views.VPNNodeStatsView.as_view(), name="vpn_node_stats"),
     path("infra/nodes/new/", views.VPNNodeCreateView.as_view(), name="vpn_node_create"),
     path("infra/nodes/<int:pk>/edit/", views.VPNNodeUpdateView.as_view(), name="vpn_node_update"),
     path("infra/nodes/<int:pk>/delete/", views.VPNNodeDeleteView.as_view(), name="vpn_node_delete"),

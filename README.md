@@ -15,6 +15,12 @@ MVP bot for selling VXcloud access:
 - PostgreSQL
 - 3x-ui API
 
+## For Coding Agents
+
+Before making changes, read [AGENTS.md](AGENTS.md). It contains the compact
+current architecture, safety rules, verification commands, and links to the
+newer ASCII runbooks that are easiest for agents to use.
+
 ## Quick Start
 
 1. Create DB schema:

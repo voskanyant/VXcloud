@@ -23,7 +23,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Avg, Count, Max, Q, QuerySet
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -278,6 +278,39 @@ def format_cell(value: Any) -> Any:
             pass
         return value.strftime("%d.%m.%Y %H:%M")
     return value
+
+
+def format_number(value: Any, digits: int = 1, empty: str = "-") -> str:
+    if value is None:
+        return empty
+    try:
+        return f"{float(value):.{digits}f}"
+    except (TypeError, ValueError):
+        return empty
+
+
+def format_percent(value: Any, digits: int = 0, empty: str = "-") -> str:
+    if value is None:
+        return empty
+    try:
+        return f"{float(value):.{digits}f}%"
+    except (TypeError, ValueError):
+        return empty
+
+
+def format_bytes(value: Any, empty: str = "-") -> str:
+    try:
+        size = float(value or 0)
+    except (TypeError, ValueError):
+        return empty
+    units = ["B", "KB", "MB", "GB", "TB", "PB"]
+    for unit in units:
+        if abs(size) < 1024 or unit == units[-1]:
+            if unit == "B":
+                return f"{int(size)} {unit}"
+            return f"{size:.2f} {unit}"
+        size /= 1024
+    return empty
 
 
 def is_no_expiry(value: Any) -> bool:
@@ -2655,6 +2688,167 @@ class VPNNodeListView(BaseListView):
                 }
             )
         return rows
+
+
+class VPNNodeStatsView(LegacyContentContextMixin, StaffRequiredMixin, TemplateView):
+    template_name = "backoffice/node_stats.html"
+    title = "Node statistics"
+    subtitle = "Current node load, 7-day averages, health samples, capacity and telemetry gaps."
+
+    def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
+        ctx = super().get_context_data(**kwargs)
+        ctx["title"] = self.title
+        ctx["subtitle"] = self.subtitle
+
+        since = timezone.now() - timedelta(days=7)
+        nodes = safe_list(lambda: VPNNode.objects.order_by("name", "id"))
+        node_ids = [int(node.id) for node in nodes]
+        latest_snapshots = _latest_node_snapshots(node_ids)
+        active_assignments = _active_assignment_counts(node_ids)
+
+        desired_client_counts = {
+            int(row["node_id"]): int(row["total"])
+            for row in safe_list(
+                lambda: VPNNodeClient.objects.filter(node_id__in=node_ids, desired_enabled=True)
+                .values("node_id")
+                .annotate(total=Count("id"))
+            )
+            if row.get("node_id")
+        }
+
+        snapshot_stats = {
+            int(row["node_id"]): row
+            for row in safe_list(
+                lambda: VPNNodeLoadSnapshot.objects.filter(node_id__in=node_ids, created_at__gte=since)
+                .values("node_id")
+                .annotate(
+                    sample_count=Count("id"),
+                    healthy_samples=Count("id", filter=Q(health_ok=True)),
+                    failed_samples=Count("id", filter=Q(health_ok=False)),
+                    avg_assigned=Avg("assigned_active_subscriptions"),
+                    max_assigned=Max("assigned_active_subscriptions"),
+                    avg_observed=Avg("observed_enabled_clients"),
+                    max_observed=Max("observed_enabled_clients"),
+                    avg_peak_concurrency=Avg("peak_concurrency"),
+                    max_peak_concurrency=Max("peak_concurrency"),
+                    avg_probe_latency_ms=Avg("probe_latency_ms"),
+                    max_probe_latency_ms=Max("probe_latency_ms"),
+                    avg_score_hint=Avg("score_hint"),
+                    max_total_traffic_bytes=Max("total_traffic_bytes"),
+                )
+            )
+            if row.get("node_id")
+        }
+
+        rows = []
+        total_active_assignments = 0
+        total_desired_clients = 0
+        healthy_nodes = 0
+        eligible_nodes = 0
+        sample_total = 0
+
+        for node in nodes:
+            node_id = int(node.id)
+            latest = latest_snapshots.get(node_id)
+            stats = snapshot_stats.get(node_id, {})
+            assigned_now = int(active_assignments.get(node_id, 0))
+            desired_clients = int(desired_client_counts.get(node_id, 0))
+            capacity = int(getattr(node, "connection_capacity", 0) or 0)
+            load_pct = (assigned_now / capacity * 100.0) if capacity > 0 else None
+            sample_count = int(stats.get("sample_count") or 0)
+            healthy_sample_count = int(stats.get("healthy_samples") or 0)
+            failed_sample_count = int(stats.get("failed_samples") or 0)
+            health_pct = (healthy_sample_count / sample_count * 100.0) if sample_count > 0 else None
+
+            latest_payload = {
+                "id": node_id,
+                "name": node.name,
+                "is_active": bool(node.is_active),
+                "lb_enabled": bool(node.lb_enabled),
+                "needs_backfill": bool(node.needs_backfill),
+                "last_health_ok": node.last_health_ok,
+                "compatibility_pool": str(node.compatibility_pool or "default"),
+                "last_reality_public_key": node.last_reality_public_key,
+                "last_reality_short_id": node.last_reality_short_id,
+                "last_reality_sni": node.last_reality_sni,
+                "last_reality_fingerprint": node.last_reality_fingerprint,
+                "backend_weight": int(node.backend_weight or 100),
+                "bandwidth_capacity_mbps": int(node.bandwidth_capacity_mbps or 0),
+                "connection_capacity": capacity,
+                "active_assigned_subscriptions": assigned_now,
+                "observed_enabled_clients": int(getattr(latest, "observed_enabled_clients", 0) or 0),
+                "weekly_traffic_bytes": int(getattr(latest, "total_traffic_bytes", 0) or 0),
+                "peak_concurrency": int(getattr(latest, "peak_concurrency", 0) or 0),
+                "probe_latency_ms": int(getattr(latest, "probe_latency_ms", 0) or 0),
+                "moves_in_week": 0,
+            }
+            issue = node_ineligibility_reason(latest_payload, compatibility_pool=str(node.compatibility_pool or "default"))
+            scored = score_node(latest_payload, compatibility_pool=str(node.compatibility_pool or "default")) if issue is None else None
+
+            total_active_assignments += assigned_now
+            total_desired_clients += desired_clients
+            sample_total += sample_count
+            if node.last_health_ok is True:
+                healthy_nodes += 1
+            if issue is None:
+                eligible_nodes += 1
+
+            rows.append(
+                {
+                    "node": node,
+                    "endpoint": f"{node.backend_host}:{node.backend_port}",
+                    "public_endpoint": " / ".join(part for part in [node.node_fqdn, node.public_ip] if part) or "-",
+                    "pool": str(node.compatibility_pool or "default"),
+                    "health": health_badge(node),
+                    "eligibility": status_badge("eligible", "success") if issue is None else status_badge(issue, "secondary"),
+                    "lb": boolean_badge(bool(node.lb_enabled), "enabled", "off"),
+                    "backfill": sync_state_badge("needed" if node.needs_backfill else "ok"),
+                    "assigned_now": assigned_now,
+                    "assigned_avg": format_number(stats.get("avg_assigned")),
+                    "assigned_max": int(stats.get("max_assigned") or 0),
+                    "desired_clients": desired_clients,
+                    "observed_now": int(getattr(latest, "observed_enabled_clients", 0) or 0),
+                    "observed_avg": format_number(stats.get("avg_observed")),
+                    "observed_max": int(stats.get("max_observed") or 0),
+                    "peak_now": int(getattr(latest, "peak_concurrency", 0) or 0),
+                    "peak_avg": format_number(stats.get("avg_peak_concurrency")),
+                    "peak_max": int(stats.get("max_peak_concurrency") or 0),
+                    "traffic_latest": format_bytes(getattr(latest, "total_traffic_bytes", None)),
+                    "traffic_max_7d": format_bytes(stats.get("max_total_traffic_bytes")),
+                    "latency_now": "-" if getattr(latest, "probe_latency_ms", None) is None else f"{int(getattr(latest, 'probe_latency_ms') or 0)} ms",
+                    "latency_avg": "-" if stats.get("avg_probe_latency_ms") is None else f"{format_number(stats.get('avg_probe_latency_ms'), 0)} ms",
+                    "latency_max": "-" if stats.get("max_probe_latency_ms") is None else f"{int(stats.get('max_probe_latency_ms') or 0)} ms",
+                    "capacity": f"{capacity} conn" if capacity else "-",
+                    "capacity_pct": format_percent(load_pct, 1),
+                    "bandwidth": f"{int(node.bandwidth_capacity_mbps or 0)} Mbps" if node.bandwidth_capacity_mbps else "-",
+                    "score_now": "-" if scored is None else f"{float(scored.score):.2f}",
+                    "score_avg": format_number(stats.get("avg_score_hint")),
+                    "score_reasons": ", ".join(f"{key}={float(value):.2f}" for key, value in sorted((getattr(scored, "reasons", None) or {}).items())) if scored else "",
+                    "samples": sample_count,
+                    "healthy_samples": healthy_sample_count,
+                    "failed_samples": failed_sample_count,
+                    "health_pct": format_percent(health_pct, 0),
+                    "cpu_avg": "not collected",
+                    "system_load_avg": "not collected",
+                    "latest_snapshot_at": format_cell(getattr(latest, "created_at", None)),
+                }
+            )
+
+        ctx["summary_cards"] = [
+            {"label": "Nodes", "value": len(nodes), "hint": f"{healthy_nodes} healthy"},
+            {"label": "Eligible for LB", "value": eligible_nodes, "hint": "healthy, compatible, backfilled"},
+            {"label": "Active users", "value": total_active_assignments, "hint": "currently assigned"},
+            {"label": "Provisioned clients", "value": total_desired_clients, "hint": "desired on nodes"},
+            {"label": "7d samples", "value": sample_total, "hint": "load snapshots"},
+        ]
+        ctx["rows"] = rows
+        ctx["window_label"] = f"since {format_cell(since)}"
+        ctx["telemetry_notes"] = [
+            "CPU load and system load are not stored in VXcloud yet. Add node exporter or Xray metrics ingestion before using CPU in balancing decisions.",
+            "Current balancing uses active assigned subscriptions, observed Xray clients, traffic, peak concurrency, probe latency, health, capacity, cooldowns and compatibility pool.",
+            "Traffic values are snapshot counters from the node sync pipeline; use deltas in the metrics collector if you need precise per-period bandwidth charts.",
+        ]
+        return self.add_wordpress_context(ctx)
 
 
 class VPNNodeCreateView(LegacyContentMutationGuardMixin, StaffRequiredMixin, CreateView):

@@ -1,0 +1,123 @@
+{% extends "backoffice/base.html" %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+  {% for card in summary_cards %}
+    <div class="col-12 col-sm-6 col-xl">
+      <section class="bo-stat-chip h-100">
+        <div class="bo-stat-label">{{ card.label }}</div>
+        <div class="bo-stat-value">{{ card.value }}</div>
+        <div class="text-muted small">{{ card.hint }}</div>
+      </section>
+    </div>
+  {% endfor %}
+</div>
+
+<section class="bo-panel mb-4">
+  <div class="bo-panel-head">
+    <h3>Telemetry coverage</h3>
+    <span class="text-muted small">{{ window_label }}</span>
+  </div>
+  <ul class="bo-note-list">
+    {% for note in telemetry_notes %}
+      <li>{{ note }}</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="bo-panel">
+  <div class="bo-panel-head">
+    <h3>Node load summary</h3>
+    <a href="{% url 'backoffice:vpn_node_list' %}">Open nodes</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table bo-table align-middle bo-node-stats-table">
+      <thead>
+        <tr>
+          <th>Node</th>
+          <th>State</th>
+          <th>Users</th>
+          <th>Clients</th>
+          <th>Concurrency</th>
+          <th>Traffic</th>
+          <th>Latency</th>
+          <th>Capacity</th>
+          <th>CPU / load</th>
+          <th>Score</th>
+          <th>Samples</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>
+              <div class="fw-semibold">{{ row.node.name }}</div>
+              <code class="small">{{ row.endpoint }}</code>
+              <div class="text-muted small">{{ row.public_endpoint }}</div>
+              <div class="text-muted small">pool: {{ row.pool }}</div>
+            </td>
+            <td>
+              <div class="d-flex flex-wrap gap-1">
+                {{ row.health }}
+                {{ row.lb }}
+                {{ row.backfill }}
+                {{ row.eligibility }}
+              </div>
+            </td>
+            <td>
+              <strong>{{ row.assigned_now }}</strong>
+              <div class="text-muted small">7d avg {{ row.assigned_avg }}</div>
+              <div class="text-muted small">7d max {{ row.assigned_max }}</div>
+            </td>
+            <td>
+              <strong>{{ row.observed_now }}</strong>
+              <div class="text-muted small">desired {{ row.desired_clients }}</div>
+              <div class="text-muted small">7d avg {{ row.observed_avg }} / max {{ row.observed_max }}</div>
+            </td>
+            <td>
+              <strong>{{ row.peak_now }}</strong>
+              <div class="text-muted small">7d avg {{ row.peak_avg }}</div>
+              <div class="text-muted small">7d max {{ row.peak_max }}</div>
+            </td>
+            <td>
+              <strong>{{ row.traffic_latest }}</strong>
+              <div class="text-muted small">7d max {{ row.traffic_max_7d }}</div>
+            </td>
+            <td>
+              <strong>{{ row.latency_now }}</strong>
+              <div class="text-muted small">7d avg {{ row.latency_avg }}</div>
+              <div class="text-muted small">7d max {{ row.latency_max }}</div>
+            </td>
+            <td>
+              <strong>{{ row.capacity_pct }}</strong>
+              <div class="text-muted small">{{ row.capacity }}</div>
+              <div class="text-muted small">{{ row.bandwidth }}</div>
+            </td>
+            <td>
+              <span class="text-muted">{{ row.cpu_avg }}</span>
+              <div class="text-muted small">system {{ row.system_load_avg }}</div>
+            </td>
+            <td>
+              <strong>{{ row.score_now }}</strong>
+              <div class="text-muted small">7d avg {{ row.score_avg }}</div>
+              {% if row.score_reasons %}
+                <div class="text-muted small">{{ row.score_reasons }}</div>
+              {% endif %}
+            </td>
+            <td>
+              <strong>{{ row.samples }}</strong>
+              <div class="text-muted small">{{ row.health_pct }} healthy</div>
+              <div class="text-muted small">{{ row.failed_samples }} failed</div>
+              <div class="text-muted small">{{ row.latest_snapshot_at|default:"no snapshots" }}</div>
+            </td>
+          </tr>
+        {% empty %}
+          <tr>
+            <td colspan="11" class="text-muted">No VPN nodes found.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
