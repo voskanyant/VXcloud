@@ -1193,6 +1193,8 @@ class DB:
         planned_at: datetime | None = None,
         presynced_at: datetime | None = None,
         cutover_at: datetime | None = None,
+        clear_desired_node: bool = False,
+        clear_overlap: bool = False,
     ) -> None:
         assert self.pool is not None
         try:
@@ -1207,10 +1209,10 @@ class DB:
                     migration_state = $5,
                     alias_fqdn = COALESCE($7, alias_fqdn),
                     current_node_id = COALESCE($8, current_node_id),
-                    desired_node_id = COALESCE($9, desired_node_id),
+                    desired_node_id = CASE WHEN $20 THEN NULL ELSE COALESCE($9, desired_node_id) END,
                     assignment_state = COALESCE($10, assignment_state),
                     ttl_seconds = COALESCE($11, ttl_seconds),
-                    overlap_until = COALESCE($12, overlap_until),
+                    overlap_until = CASE WHEN $21 THEN NULL ELSE COALESCE($12, overlap_until) END,
                     dns_provider = COALESCE($13, dns_provider),
                     dns_record_id = COALESCE($14, dns_record_id),
                     last_dns_change_id = COALESCE($15, last_dns_change_id),
@@ -1240,6 +1242,8 @@ class DB:
                 planned_at,
                 presynced_at,
                 cutover_at,
+                bool(clear_desired_node),
+                bool(clear_overlap),
             )
         except asyncpg.UndefinedColumnError:
             await self.pool.execute(

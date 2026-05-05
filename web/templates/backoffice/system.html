@@ -215,6 +215,13 @@
                       <input type="hidden" name="node_id" value="{{ row.id }}">
                       <button type="submit" class="btn btn-danger btn-sm">Failover now</button>
                     </form>
+                  {% elif row.can_force_failover %}
+                    <form method="post" class="m-0" onsubmit="return confirm('Force failover all active subscriptions away from {{ row.name }}? Use this only when the node is blocked but health is still green.');">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="force_failover">
+                      <input type="hidden" name="node_id" value="{{ row.id }}">
+                      <button type="submit" class="btn btn-warning btn-sm">Force failover</button>
+                    </form>
                   {% else %}
                     <span class="text-muted">—</span>
                   {% endif %}

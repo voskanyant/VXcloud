@@ -1141,12 +1141,22 @@ async def _run_manual_rebalance(settings_obj: Any) -> dict[str, int]:
         await db.close()
 
 
-async def _run_emergency_failover(settings_obj: Any, source_node_id: int) -> dict[str, int]:
+async def _run_emergency_failover(
+    settings_obj: Any,
+    source_node_id: int,
+    *,
+    allow_healthy_source: bool = False,
+) -> dict[str, int]:
     app_settings = load_settings()
     db = DB(app_settings.database_url)
     try:
         await db.connect()
-        return await emergency_failover_node(db, settings_obj, source_node_id)
+        return await emergency_failover_node(
+            db,
+            settings_obj,
+            source_node_id,
+            allow_healthy_source=allow_healthy_source,
+        )
     finally:
         await db.close()
 
@@ -3236,14 +3246,14 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
 
     def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
         action = str(request.POST.get("action") or "").strip()
-        if action not in {"manual_rebalance", "emergency_failover"}:
+        if action not in {"manual_rebalance", "emergency_failover", "force_failover"}:
             messages.error(request, "Неизвестная операция.")
             return redirect("backoffice:system_overview")
         if not bool_env("VPN_CLUSTER_ENABLED", False):
             messages.error(request, "Cluster mode выключен. Включите VPN_CLUSTER_ENABLED=1 перед ручным rebalance.")
             return redirect("backoffice:system_overview")
         runtime_settings = _cluster_runtime_settings()
-        if action == "emergency_failover":
+        if action in {"emergency_failover", "force_failover"}:
             try:
                 source_node_id = int(request.POST.get("node_id") or 0)
             except (TypeError, ValueError):
@@ -3251,8 +3261,15 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
             if source_node_id <= 0:
                 messages.error(request, "Choose a source node for emergency failover.")
                 return redirect("backoffice:system_overview")
+            allow_healthy_source = action == "force_failover"
             try:
-                result = _run_async_from_sync(_run_emergency_failover(runtime_settings, source_node_id))
+                result = _run_async_from_sync(
+                    _run_emergency_failover(
+                        runtime_settings,
+                        source_node_id,
+                        allow_healthy_source=allow_healthy_source,
+                    )
+                )
             except Exception as exc:
                 LOGGER.exception("Emergency failover failed")
                 messages.error(request, f"Emergency failover failed: {exc}")
@@ -3260,9 +3277,11 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
             if int(result.get("source_node_healthy", 0)):
                 messages.warning(request, "Emergency failover skipped: source node is still healthy.")
             else:
+                failover_label = "Force failover finished: " if allow_healthy_source else "Emergency failover finished: "
                 messages.success(
                     request,
-                    "Emergency failover finished: "
+                    failover_label
+                    +
                     f"processed={int(result.get('processed', 0))}, "
                     f"moved={int(result.get('moved', 0))}, "
                     f"skipped={int(result.get('skipped', 0))}, "
@@ -3442,6 +3461,8 @@ class SystemOverviewView(StaffRequiredMixin, TemplateView):
                 "id": int(node.id),
                 "assigned": int(node_assignment_counts.get(int(node.id), 0)),
                 "can_emergency_failover": bool(getattr(node, "last_health_ok", None) is False)
+                and int(node_assignment_counts.get(int(node.id), 0)) > 0,
+                "can_force_failover": bool(getattr(node, "last_health_ok", None) is not False)
                 and int(node_assignment_counts.get(int(node.id), 0)) > 0,
                 "health": health_badge(node),
                 "last_health_at": format_cell(node.last_health_at),

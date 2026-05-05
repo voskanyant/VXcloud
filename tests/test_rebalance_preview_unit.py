@@ -212,3 +212,41 @@ class RebalancePreviewUnitTests(IsolatedAsyncioTestCase):
         self.assertTrue(update_kwargs["clear_desired_node"])
         self.assertTrue(update_kwargs["clear_overlap"])
         db.record_rebalance_decision.assert_awaited()
+
+    async def test_force_failover_allows_healthy_source_node(self):
+        db = AsyncMock()
+        source = _node(1, active_assigned=1, last_health_ok=True)
+        destination = _node(2, active_assigned=0)
+        db.get_vpn_node.return_value = source
+        db.list_active_subscriptions_for_node.return_value = [
+            {
+                "id": 301,
+                "client_uuid": "client-uuid",
+                "client_email": "client@example.com",
+                "xui_sub_id": "sub-id",
+                "expires_at": "expiry",
+                "alias_fqdn": "u-client.connect.vxcloud.ru",
+                "dns_record_id": "record-id",
+                "compatibility_pool": "default",
+            }
+        ]
+        db.list_node_assignment_metrics.return_value = [source, destination]
+
+        alias_result = AliasRecordResult(
+            fqdn="u-client.connect.vxcloud.ru",
+            target_ip="203.0.113.2",
+            ttl=60,
+            provider="cloudflare",
+            record_id="record-id",
+            change_id="change-id",
+        )
+
+        with (
+            patch("src.cluster.rebalance.create_client_on_node", new=AsyncMock(return_value={"xui_sub_id": "sub-id"})),
+            patch("src.cluster.rebalance.ensure_subscription_alias_record", new=AsyncMock(return_value=alias_result)),
+        ):
+            result = await emergency_failover_node(db, _settings(), 1, allow_healthy_source=True)
+
+        self.assertEqual(result["processed"], 1)
+        self.assertEqual(result["moved"], 1)
+        self.assertEqual(db.update_subscription_assignment.await_args.kwargs["assigned_node_id"], 2)
