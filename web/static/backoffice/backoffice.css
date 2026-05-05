@@ -995,11 +995,192 @@ code {
   }
 
   .bo-client-table {
-    min-width: 760px;
+    min-width: 0;
+    border-collapse: separate;
+    border-spacing: 0 12px;
   }
 
   .bo-subscriptions-table {
-    min-width: 760px;
+    min-width: 0;
+  }
+
+  .bo-client-responsive {
+    overflow-x: visible;
+  }
+
+  .bo-client-table,
+  .bo-client-table > tbody,
+  .bo-client-table > tbody > tr,
+  .bo-client-table > tbody > tr > td,
+  .bo-subscriptions-table,
+  .bo-subscriptions-table > tbody,
+  .bo-subscriptions-table > tbody > tr,
+  .bo-subscriptions-table > tbody > tr > td {
+    display: block;
+    width: 100%;
+  }
+
+  .bo-client-table > thead,
+  .bo-subscriptions-table > thead {
+    display: none;
+  }
+
+  .bo-client-table > tbody {
+    display: grid;
+    gap: 12px;
+  }
+
+  .bo-client-table > tbody > tr.d-none {
+    display: none !important;
+  }
+
+  .bo-client-row {
+    border: 1px solid var(--bo-line);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+    padding: 14px;
+  }
+
+  .bo-client-row > td {
+    border: 0;
+    padding: 0;
+  }
+
+  .bo-client-row > td + td {
+    margin-top: 10px;
+  }
+
+  .bo-client-row > td:not(:first-child):not(:last-child) {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    color: var(--bo-text);
+  }
+
+  .bo-client-row > td:nth-child(2)::before {
+    content: "Contact";
+  }
+
+  .bo-client-row > td:nth-child(3)::before {
+    content: "Source";
+  }
+
+  .bo-client-row > td:nth-child(4)::before {
+    content: "Subs";
+  }
+
+  .bo-client-row > td:nth-child(5)::before {
+    content: "Created";
+  }
+
+  .bo-client-row > td:not(:first-child):not(:last-child)::before,
+  .bo-subscriptions-table td::before {
+    color: var(--bo-muted);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .bo-client-row > td.text-end {
+    text-align: left !important;
+    padding-top: 12px;
+    border-top: 1px solid var(--bo-line);
+  }
+
+  .bo-client-row > td.text-end .d-inline-flex {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .bo-client-row > td.text-end .btn,
+  .bo-subscriptions-table td.text-end .btn {
+    width: 100%;
+  }
+
+  .bo-client-name-toggle {
+    grid-template-columns: minmax(0, 1fr) 34px;
+    gap: 14px;
+  }
+
+  .bo-client-title {
+    font-size: 1.15rem;
+    line-height: 1.2;
+  }
+
+  .bo-client-name-icon {
+    width: 34px;
+    height: 34px;
+    background: #eef4ff;
+  }
+
+  .bo-subscriptions-row {
+    margin-top: -8px;
+  }
+
+  .bo-subscriptions-row > td {
+    padding: 0 4px;
+    border: 0;
+    background: transparent;
+  }
+
+  .bo-subscriptions-panel {
+    border-radius: 18px;
+    padding: 14px;
+    box-shadow: 0 14px 34px rgba(15, 23, 42, 0.06);
+  }
+
+  .bo-subscriptions-title {
+    font-size: 1rem;
+  }
+
+  .bo-subscriptions-table > tbody {
+    display: grid;
+    gap: 10px;
+  }
+
+  .bo-subscriptions-table > tbody > tr {
+    border: 1px solid var(--bo-line);
+    border-radius: 14px;
+    background: #f8fbff;
+    padding: 12px;
+  }
+
+  .bo-subscriptions-table td {
+    border: 0;
+    padding: 6px 0;
+  }
+
+  .bo-subscriptions-table td:not(:first-child) {
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .bo-subscriptions-table td:first-child {
+    padding-bottom: 10px;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--bo-line);
+  }
+
+  .bo-subscriptions-table td::before {
+    content: attr(data-label);
+  }
+
+  .bo-subscriptions-table td:first-child::before {
+    content: "";
+    display: none;
+  }
+
+  .bo-subscriptions-table td.text-end {
+    text-align: left !important;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding-top: 10px;
   }
 
   .bo-node-stats-table {

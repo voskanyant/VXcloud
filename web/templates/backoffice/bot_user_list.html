@@ -20,7 +20,7 @@
         </div>
       </div>
 
-      <div class="table-responsive">
+      <div class="table-responsive bo-client-responsive">
         <table class="table table-hover align-middle mb-0 bo-table bo-client-table">
           <thead>
             <tr>
@@ -104,28 +104,28 @@
                           <tbody>
                             {% for subscription in row.subscriptions %}
                               <tr>
-                                <td>
+                                <td data-label="Subscription">
                                   <div class="fw-semibold">{{ subscription.display_name }}</div>
                                   <div class="bo-client-meta">#{{ subscription.id }} / updated {{ subscription.updated_at }}</div>
                                 </td>
-                                <td><code>{{ subscription.client_email|default:"-" }}</code></td>
-                                <td>
+                                <td data-label="3x-ui"><code>{{ subscription.client_email|default:"-" }}</code></td>
+                                <td data-label="Alias">
                                   {% if subscription.alias_fqdn %}
                                     <code>{{ subscription.alias_fqdn }}</code>
                                   {% else %}
                                     <span class="text-muted">-</span>
                                   {% endif %}
                                 </td>
-                                <td>{{ subscription.status_badge }}</td>
-                                <td>{{ subscription.expires_at }}</td>
-                                <td>
+                                <td data-label="Status">{{ subscription.status_badge }}</td>
+                                <td data-label="Expires">{{ subscription.expires_at }}</td>
+                                <td data-label="Node">
                                   {{ subscription.node_label }}
                                   {% if subscription.desired_node_label %}
                                     <div class="bo-client-meta">desired {{ subscription.desired_node_label }}</div>
                                   {% endif %}
                                 </td>
-                                <td>{{ subscription.assignment_state|default:"-" }}</td>
-                                <td class="text-end">
+                                <td data-label="State">{{ subscription.assignment_state|default:"-" }}</td>
+                                <td class="text-end" data-label="Actions">
                                   <a href="{{ subscription.edit_url }}" class="btn btn-sm btn-outline-primary">Edit</a>
                                   <a href="{{ subscription.delete_url }}" class="btn btn-sm btn-outline-danger">Delete</a>
                                 </td>
