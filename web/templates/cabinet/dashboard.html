@@ -23,10 +23,17 @@
           <span>{{ cabinet_buy_new_action }}</span>
           <strong>{{ card_price_label }}</strong>
         </a>
-        <a class="account-button" href="{{ backend_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>
-          <span>{{ cabinet_renew_action_short }}</span>
-          <strong>{{ card_price_label }}</strong>
-        </a>
+        {% if renewable_configs == 1 and single_renew_url %}
+          <a class="account-button" href="{{ single_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>
+            <span>{{ cabinet_renew_action_short }}</span>
+            <strong>{{ card_price_label }}</strong>
+          </a>
+        {% elif renewable_configs > 1 %}
+          <a class="account-button" href="#account-subscriptions">
+            <span>Выбрать доступ</span>
+            <strong>{{ cabinet_renew_action_short }}</strong>
+          </a>
+        {% endif %}
         <a class="account-button" href="{{ support_url }}"{% if embed_mode %} target="_top"{% endif %}>
           <span>{{ cabinet_support_action }}</span>
           <strong>24/7</strong>
@@ -91,7 +98,7 @@
     </section>
   {% endif %}
 
-  <section class="account-section">
+  <section class="account-section" id="account-subscriptions">
     <div class="account-section-head">
       <div>
         <div class="account-eyebrow">Devices</div>
@@ -149,8 +156,11 @@
             </div>
 
             <div class="account-device-actions">
+              {% if row.can_renew %}
+                <a class="account-primary-button" href="{{ row.renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+              {% endif %}
               <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/#qr">QR</a>
-              <a class="account-primary-button" href="{{ backend_config_prefix }}{{ row.id }}/">{% if row.is_active %}Открыть{% else %}Детали{% endif %}</a>
+              <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">{% if row.is_active %}Открыть{% else %}Детали{% endif %}</a>
               {% if row.can_delete %}
                 <form method="post" action="/account/subscriptions/{{ row.id }}/delete/">
                   {% csrf_token %}

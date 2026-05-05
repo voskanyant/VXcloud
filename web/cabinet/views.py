@@ -133,6 +133,14 @@ def _account_backend_url(request: HttpRequest, path: str = "") -> str:
     return url
 
 
+def _account_renew_url(request: HttpRequest, subscription_id: int) -> str:
+    return _account_backend_url(request, f"renew/?subscription_id={int(subscription_id)}")
+
+
+def _account_frontend_renew_url(subscription_id: int) -> str:
+    return _account_frontend_url(f"renew/?subscription_id={int(subscription_id)}")
+
+
 def _normalize_vless_public_endpoint(vless_url: str, *, host: str, port: int, tag: str | None = None) -> str:
     raw = str(vless_url or "").strip()
     if not raw.lower().startswith("vless://"):
@@ -354,6 +362,7 @@ def _build_subscription_rows(bot_user: BotUser | None) -> tuple[list[dict[str, o
                 "display_name": _subscription_display_name(item),
                 "is_active": bool(state["is_active"]),
                 "can_delete": bool(state["can_delete"]),
+                "can_renew": bool(state["can_renew"]),
                 "status_text": str(state["status_text"]),
                 "expires_at": state["expires_at"],
             }
@@ -374,8 +383,10 @@ def _serialize_subscription_row(request: HttpRequest, row: dict[str, object]) ->
         "status_text": str(row["status_text"]),
         "expires_at": _format_dt_label(row.get("expires_at")),
         "config_url": _account_frontend_url(f"config/{int(row['id'])}/"),
+        "renew_url": _account_frontend_renew_url(int(row["id"])),
         "feed_url": feed_url,
         "vless_url": vless_url,
+        "can_renew": bool(row.get("can_renew")),
         "can_delete": bool(row.get("can_delete")),
         "delete_url": _account_frontend_url(f"subscriptions/{int(row['id'])}/delete/"),
     }
@@ -397,6 +408,7 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
         "stats": {
             "active_configs": 0,
             "inactive_configs": 0,
+            "renewable_configs": 0,
         },
         "telegram": {
             "linked": False,
@@ -455,6 +467,7 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
     empty_payload["stats"] = {
         "active_configs": active_configs,
         "inactive_configs": inactive_configs,
+        "renewable_configs": sum(1 for row in rows if bool(row.get("can_renew"))),
     }
     empty_payload["subscriptions"] = subscriptions_payload
     return empty_payload
@@ -527,6 +540,7 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
                 "display_name": _subscription_display_name(sub),
                 "status_text": str(current_row["status_text"]),
                 "is_active": bool(current_row["is_active"]),
+                "can_renew": bool(current_row["can_renew"]),
                 "expires_at": _format_dt_label(getattr(sub, "expires_at", None)),
                 "client_code": (getattr(getattr(sub, "user", None), "client_code", "") or ""),
                 "copy_text": primary_link,
@@ -535,6 +549,7 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
                 "vless_url": raw_vless_url,
                 "qr_image_data_url": f"data:image/png;base64,{qr_b64}",
                 "dashboard_url": _account_frontend_url(),
+                "renew_url": _account_frontend_renew_url(int(sub.id)),
                 "can_delete": bool(current_row.get("can_delete")),
                 "delete_url": _account_frontend_url(f"subscriptions/{int(sub.id)}/delete/"),
                 "subscriptions": [
@@ -658,6 +673,33 @@ def _list_subscriptions_for_bot_user(bot_user: BotUser | None) -> list[BotSubscr
     )
 
 
+def _list_renewable_subscriptions_for_bot_user(bot_user: BotUser | None) -> list[BotSubscription]:
+    if not bot_user:
+        return []
+    return list(
+        BotSubscription.objects.filter(user_id=bot_user.id, revoked_at__isnull=True)
+        .order_by("-is_active", "-expires_at", "-id")
+    )
+
+
+def _resolve_renew_target_subscription_id(
+    bot_user: BotUser,
+    requested_subscription_id: int | None,
+) -> tuple[int | None, str | None]:
+    subscriptions = _list_renewable_subscriptions_for_bot_user(bot_user)
+    if requested_subscription_id is not None:
+        requested_id = int(requested_subscription_id)
+        if any(int(item.id) == requested_id for item in subscriptions):
+            return requested_id, None
+        return None, "Конфиг для продления не найден."
+
+    if len(subscriptions) == 1:
+        return int(subscriptions[0].id), None
+    if len(subscriptions) > 1:
+        return None, "Выберите, какой конфиг продлить."
+    return None, "Нет конфигов, которые можно продлить."
+
+
 def _subscription_display_name(subscription: BotSubscription) -> str:
     value = (getattr(subscription, "display_name", "") or "").strip()
     if value:
@@ -685,6 +727,7 @@ def _subscription_state(subscription: BotSubscription | None, *, now: datetime |
     return {
         "is_active": is_active,
         "can_delete": bool(subscription and not is_active),
+        "can_renew": bool(subscription and revoked_at is None),
         "status_text": status_text,
         "expires_at": expires_at,
     }
@@ -847,8 +890,10 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
                 "display_name": _subscription_display_name(item),
                 "is_active": bool(state["is_active"]),
                 "can_delete": bool(state["can_delete"]),
+                "can_renew": bool(state["can_renew"]),
                 "status_text": str(state["status_text"]),
                 "expires_at": state["expires_at"],
+                "renew_url": _account_renew_url(request, int(item.id)),
                 "feed_url": _subscription_feed_url(request, item),
                 "vless_url": _normalize_vless_public_endpoint(
                     getattr(item, "vless_url", "") or "",
@@ -860,6 +905,10 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
         )
     active_configs = sum(1 for row in subscription_rows if bool(row["is_active"]))
     inactive_configs = max(len(subscription_rows) - active_configs, 0)
+    renewable_configs = sum(1 for row in subscription_rows if bool(row["can_renew"]))
+    single_renew_url = ""
+    if renewable_configs == 1:
+        single_renew_url = str(next(row["renew_url"] for row in subscription_rows if bool(row["can_renew"])))
     return render(
         request,
         "cabinet/dashboard.html",
@@ -875,6 +924,8 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
             "subscription_rows": subscription_rows,
             "active_configs": active_configs,
             "inactive_configs": inactive_configs,
+            "renewable_configs": renewable_configs,
+            "single_renew_url": single_renew_url,
             **_account_template_urls(request),
         },
     )
@@ -970,6 +1021,8 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
             "primary_link": qr_data,
             "feed_url": feed_url,
             "vless_url": raw_vless_url,
+            "can_renew": bool(_subscription_state(sub)["can_renew"]),
+            "renew_url": _account_renew_url(request, int(sub.id)),
             **_account_template_urls(request),
         },
     )
@@ -1009,18 +1062,12 @@ def _start_checkout_flow(
     now = timezone.now()
     target_subscription_id: int | None = None
     if flow_mode == "renew":
-        if requested_subscription_id is not None:
-            candidate_id = int(requested_subscription_id)
-            if BotSubscription.objects.filter(id=candidate_id, user_id=bot_user.id).exists():
-                target_subscription_id = candidate_id
-        if target_subscription_id is None:
-            active_sub = (
-                BotSubscription.objects.filter(user_id=bot_user.id, is_active=True, expires_at__gt=now)
-                .order_by("-expires_at", "-id")
-                .first()
-            )
-            if active_sub:
-                target_subscription_id = int(active_sub.id)
+        target_subscription_id, resolve_error = _resolve_renew_target_subscription_id(
+            bot_user,
+            requested_subscription_id,
+        )
+        if resolve_error:
+            return None, resolve_error
 
     session_state = _load_web_order_session_state(request, user_id=bot_user.id)
     idempotency_key = str(session_state.get("idempotency_key") or "").strip() or _new_web_idempotency_key()
@@ -1055,7 +1102,8 @@ def _start_checkout_flow(
         .first()
     )
     if existing_pending:
-        pay_url = str(session_state.get("pay_url") or "").strip()
+        session_order_id = int(session_state.get("order_id") or 0)
+        pay_url = str(session_state.get("pay_url") or "").strip() if session_order_id == int(existing_pending.id) else ""
         if not pay_url and str(settings.PAYMENT_PROVIDER).lower() == "reference":
             pay_url = _reference_checkout_url_from_order(existing_pending) or ""
         if not pay_url:

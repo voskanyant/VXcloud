@@ -13,6 +13,9 @@
     <article class="account-section account-section-qr">
       <div class="auth-actions">
         <a class="account-secondary-button" href="{{ backend_dashboard_url }}">{{ cabinet_config_back_action }}</a>
+        {% if can_renew %}
+          <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+        {% endif %}
       </div>
 
       <div class="account-section-head">

@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -20,7 +21,12 @@ from django.db import DatabaseError
 from django.test import Client, RequestFactory
 from unittest.mock import patch
 
-from cabinet.views import _build_public_absolute_url, _vpn_public_host, _vpn_public_port
+from cabinet.views import (
+    _build_public_absolute_url,
+    _resolve_renew_target_subscription_id,
+    _vpn_public_host,
+    _vpn_public_port,
+)
 
 
 class AccountAppStateResilienceUnitTests(unittest.TestCase):
@@ -84,6 +90,35 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         ):
             self.assertEqual(_vpn_public_host(), "vxcloud.ru")
             self.assertEqual(_vpn_public_port(), 29940)
+
+    def test_renew_without_selection_requires_choice_when_multiple_configs(self):
+        bot_user = SimpleNamespace(id=7)
+        subscriptions = [SimpleNamespace(id=11), SimpleNamespace(id=12)]
+        with patch("cabinet.views._list_renewable_subscriptions_for_bot_user", return_value=subscriptions):
+            target_id, error = _resolve_renew_target_subscription_id(bot_user, None)
+
+        self.assertIsNone(target_id)
+        self.assertEqual(error, "Выберите, какой конфиг продлить.")
+
+    def test_renew_without_selection_allows_single_config(self):
+        bot_user = SimpleNamespace(id=7)
+        with patch(
+            "cabinet.views._list_renewable_subscriptions_for_bot_user",
+            return_value=[SimpleNamespace(id=42)],
+        ):
+            target_id, error = _resolve_renew_target_subscription_id(bot_user, None)
+
+        self.assertEqual(target_id, 42)
+        self.assertIsNone(error)
+
+    def test_renew_with_selection_targets_owned_config(self):
+        bot_user = SimpleNamespace(id=7)
+        subscriptions = [SimpleNamespace(id=11), SimpleNamespace(id=12)]
+        with patch("cabinet.views._list_renewable_subscriptions_for_bot_user", return_value=subscriptions):
+            target_id, error = _resolve_renew_target_subscription_id(bot_user, 12)
+
+        self.assertEqual(target_id, 12)
+        self.assertIsNone(error)
 
 
 if __name__ == "__main__":
