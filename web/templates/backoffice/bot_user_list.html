@@ -24,7 +24,6 @@
         <table class="table table-hover align-middle mb-0 bo-table bo-client-table">
           <thead>
             <tr>
-              <th class="bo-toggle-col"></th>
               {% for header in headers %}
                 <th>{{ header }}</th>
               {% endfor %}
@@ -34,20 +33,31 @@
           <tbody>
             {% for row in rows %}
               <tr class="bo-client-row" data-client-row="{{ row.obj.pk }}">
-                <td>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-light bo-row-toggle"
-                    aria-expanded="false"
-                    aria-controls="client-subscriptions-{{ row.obj.pk }}"
-                    data-client-toggle="{{ row.obj.pk }}"
-                    title="Show subscriptions"
-                  >
-                    <i class="bi bi-chevron-down"></i>
-                  </button>
-                </td>
                 {% for cell in row.cells %}
-                  <td>{{ cell }}</td>
+                  {% if forloop.first %}
+                    <td>
+                      <button
+                        type="button"
+                        class="bo-client-name-toggle"
+                        aria-expanded="false"
+                        aria-controls="client-subscriptions-{{ row.obj.pk }}"
+                        data-client-toggle="{{ row.obj.pk }}"
+                      >
+                        <span class="bo-client-name-content">
+                          <span class="bo-client-title">{{ row.client_title }}</span>
+                          <span class="bo-client-meta">#{{ row.obj.id }} / {{ row.obj.client_code|default:"-" }}</span>
+                          {% if row.obj.username %}
+                            <span class="bo-client-meta">@{{ row.obj.username }}</span>
+                          {% endif %}
+                        </span>
+                        <span class="bo-client-name-icon" aria-hidden="true">
+                          <i class="bi bi-chevron-down"></i>
+                        </span>
+                      </button>
+                    </td>
+                  {% else %}
+                    <td>{{ cell }}</td>
+                  {% endif %}
                 {% endfor %}
                 <td class="text-end">
                   <div class="d-inline-flex flex-wrap justify-content-end gap-2">
@@ -62,7 +72,6 @@
                 </td>
               </tr>
               <tr class="bo-subscriptions-row d-none" id="client-subscriptions-{{ row.obj.pk }}" data-client-subscriptions="{{ row.obj.pk }}">
-                <td></td>
                 <td colspan="{{ headers|length|add:'1' }}">
                   <div class="bo-subscriptions-panel">
                     <div class="bo-subscriptions-head">
@@ -133,7 +142,7 @@
               </tr>
             {% empty %}
               <tr>
-                <td colspan="{{ headers|length|add:'2' }}" class="text-muted">No clients found.</td>
+                <td colspan="{{ headers|length|add:'1' }}" class="text-muted">No clients found.</td>
               </tr>
             {% endfor %}
           </tbody>
@@ -173,6 +182,8 @@
         const expanded = button.getAttribute("aria-expanded") === "true";
         button.setAttribute("aria-expanded", expanded ? "false" : "true");
         target.classList.toggle("d-none", expanded);
+        const row = document.querySelector(`[data-client-row="${clientId}"]`);
+        if (row) row.classList.toggle("is-expanded", !expanded);
       });
     });
   })();
