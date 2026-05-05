@@ -33,6 +33,7 @@ class _FakeBotUserQuerySet:
 
     def __init__(self, user):
         self.user = user
+        self._prefetch_related_lookups = ()
 
     def get(self, **kwargs):
         lookup_value = kwargs.get("pk")
@@ -52,6 +53,9 @@ class _FakeBotUserQuerySet:
         return iter([self.user])
 
     def count(self):
+        return 1
+
+    def __len__(self):
         return 1
 
 
@@ -80,8 +84,8 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         request.user = self.staff_user
         return self._attach_session_and_messages(request)
 
-    def _build_get_request(self):
-        request = self.factory.get("/ops/bot/subscriptions/new/")
+    def _build_get_request(self, query=None):
+        request = self.factory.get("/ops/bot/subscriptions/new/", query or {})
         request.user = self.staff_user
         return self._attach_session_and_messages(request)
 
@@ -90,6 +94,15 @@ class BackofficeSubscriptionCreateUnitTests(unittest.TestCase):
         with patch("backoffice.forms.BotUser.objects.order_by", return_value=_FakeBotUserQuerySet(fake_user)):
             response = BotSubscriptionCreateView.as_view()(self._build_get_request())
         self.assertEqual(response.status_code, 200)
+
+    def test_create_view_get_can_preselect_user_from_query(self):
+        fake_user = SimpleNamespace(id=1, username="tester", first_name="Test", client_code="VX-000001")
+        with patch("backoffice.forms.BotUser.objects.order_by", return_value=_FakeBotUserQuerySet(fake_user)):
+            response = BotSubscriptionCreateView.as_view()(self._build_get_request({"user_id": "1"}))
+        response.render()
+        content = response.content.decode("utf-8")
+        self.assertIn('id="id_user_id"', content)
+        self.assertIn('value="1"', content)
 
     def test_create_subscription_from_ops_single_node(self):
         now = timezone.now()

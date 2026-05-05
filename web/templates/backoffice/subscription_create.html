@@ -47,7 +47,7 @@
 
       <div class="d-flex flex-wrap gap-2 mt-4">
         <button type="submit" class="btn btn-dark">Сохранить</button>
-        <a href="{% url 'backoffice:bot_subscription_list' %}" class="btn btn-outline-secondary">Назад</a>
+        <a href="{% url 'backoffice:bot_user_list' %}" class="btn btn-outline-secondary">Back to clients</a>
       </div>
     </form>
   </div>
@@ -103,8 +103,7 @@
               <img
                 src="{{ created_result.qr_image_data_url }}"
                 alt="QR code for subscription link"
-                class="img-fluid rounded bg-white p-2 border mx-auto"
-                style="max-width: 320px;"
+                class="img-fluid rounded bg-white p-2 border mx-auto bo-qr-image"
               >
             {% else %}
               <div class="text-muted">QR код недоступен</div>

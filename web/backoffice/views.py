@@ -1612,27 +1612,84 @@ class SiteTextListView(BaseListView):
 class BotUserListView(BaseListView):
     template_name = "backoffice/bot_user_list.html"
     model = BotUser
-    title = "Пользователи"
-    subtitle = "Единая база bot users и site-only placeholder accounts."
+    title = "Clients"
+    subtitle = "Clients with subscriptions collapsed under each row."
     readonly = False
     add_url_name = "backoffice:bot_user_create"
     delete_url_name = "backoffice:bot_user_delete"
     columns = [
-        ("id", "ID"),
-        ("client_code", "Client code"),
-        ("telegram_id", "Telegram ID"),
+        ("client", "Client"),
+        ("contact", "Contact"),
         ("source", "Source"),
-        ("username", "Username"),
-        ("email", "Email"),
-        ("first_name", "Имя"),
-        ("created_at", "Создан"),
+        ("subscriptions", "Subscriptions"),
+        ("created_at", "Created"),
     ]
-    search_fields = ["telegram_id", "username", "first_name", "client_code"]
+    search_fields = [
+        "telegram_id",
+        "username",
+        "first_name",
+        "client_code",
+        "botsubscription__display_name",
+        "botsubscription__client_email",
+        "botsubscription__alias_fqdn",
+    ]
 
     def get_queryset(self):
-        return super().get_queryset().order_by("-id")
+        return super().get_queryset().distinct().order_by("-id")
+
+    @staticmethod
+    def _client_title(user: BotUser) -> str:
+        return (
+            str(getattr(user, "first_name", "") or "").strip()
+            or str(getattr(user, "username", "") or "").strip()
+            or str(getattr(user, "client_code", "") or "").strip()
+            or f"Client #{int(getattr(user, 'id', 0) or 0)}"
+        )
+
+    @staticmethod
+    def _subscription_row(subscription: BotSubscription) -> dict[str, Any]:
+        is_active_now, status_label, status_tone = subscription_status_state(subscription)
+        current_node = getattr(subscription, "current_node", None) or getattr(subscription, "assigned_node", None)
+        desired_node = getattr(subscription, "desired_node", None)
+        return {
+            "obj": subscription,
+            "id": int(getattr(subscription, "id", 0) or 0),
+            "display_name": str(getattr(subscription, "display_name", "") or "").strip()
+            or str(getattr(subscription, "client_email", "") or "").strip()
+            or f"Subscription #{int(getattr(subscription, 'id', 0) or 0)}",
+            "client_email": str(getattr(subscription, "client_email", "") or "").strip(),
+            "alias_fqdn": str(getattr(subscription, "alias_fqdn", "") or "").strip(),
+            "is_active_now": is_active_now,
+            "status_badge": status_badge(status_label, status_tone),
+            "expires_at": format_subscription_expires_at(getattr(subscription, "expires_at", None)),
+            "node_label": str(getattr(current_node, "name", "") or "").strip() or "-",
+            "desired_node_label": str(getattr(desired_node, "name", "") or "").strip(),
+            "assignment_state": str(getattr(subscription, "assignment_state", "") or "").strip(),
+            "updated_at": format_cell(getattr(subscription, "updated_at", None)),
+            "edit_url": reverse("backoffice:bot_subscription_expiry_update", args=[subscription.pk]),
+            "delete_url": reverse("backoffice:bot_subscription_delete", args=[subscription.pk]),
+        }
+
+    @staticmethod
+    def _active_subscription_count(subscriptions: list[dict[str, Any]]) -> int:
+        return sum(1 for subscription in subscriptions if bool(subscription.get("is_active_now")))
+
+    def _subscriptions_by_user(self) -> dict[int, list[dict[str, Any]]]:
+        user_ids = [int(item.id) for item in self.object_list]
+        subscriptions_by_user: dict[int, list[dict[str, Any]]] = {user_id: [] for user_id in user_ids}
+        if not user_ids:
+            return subscriptions_by_user
+        subscriptions = (
+            BotSubscription.objects.select_related("assigned_node", "current_node", "desired_node")
+            .filter(user_id__in=user_ids)
+            .order_by("user_id", "-is_active", "-expires_at", "-id")
+        )
+        for subscription in subscriptions:
+            subscriptions_by_user.setdefault(int(subscription.user_id), []).append(self._subscription_row(subscription))
+        return subscriptions_by_user
 
     def get_table_rows(self) -> list[dict[str, Any]]:
+        subscriptions_by_user = self._subscriptions_by_user()
         telegram_ids = [int(item.telegram_id) for item in self.object_list if int(item.telegram_id) > 0]
         site_user_ids = [
             int(abs(int(item.telegram_id)) - WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET)
@@ -1666,19 +1723,47 @@ class BotUserListView(BaseListView):
                 auth_user_id = int(site_user_id)
             else:
                 auth_user_id = None
+
+            subscriptions = subscriptions_by_user.get(int(item.id), [])
+            active_count = self._active_subscription_count(subscriptions)
+            client_html = format_html(
+                '<div class="bo-client-title">{}</div>'
+                '<div class="bo-client-meta">ID {} / {}</div>'
+                '{}',
+                self._client_title(item),
+                item.id,
+                item.client_code or "-",
+                format_html('<div class="bo-client-meta">@{}</div>', item.username) if item.username else "",
+            )
+            contact_html = format_html(
+                "{}{}",
+                format_html("<div>{}</div>", email) if email else format_html('<span class="text-muted">-</span>'),
+                format_html('<div class="text-muted">{}</div>', item.first_name) if item.first_name else "",
+            )
             rows.append(
                 {
                     "obj": item,
                     "cells": [
-                        item.id,
-                        item.client_code,
-                        item.telegram_id,
-                        user_source_badge(item.telegram_id),
-                        item.username or "",
-                        email,
-                        item.first_name or "",
+                        client_html,
+                        contact_html,
+                        format_html(
+                            '<div>{}</div><div class="bo-client-meta">{}</div>',
+                            user_source_badge(item.telegram_id),
+                            item.telegram_id,
+                        ),
+                        format_html(
+                            '<span class="fw-semibold">{}</span> <span class="text-muted">total</span><br>'
+                            '<span class="fw-semibold">{}</span> <span class="text-muted">active</span>',
+                            len(subscriptions),
+                            active_count,
+                        ),
                         format_cell(item.created_at),
                     ],
+                    "client_title": self._client_title(item),
+                    "subscriptions": subscriptions,
+                    "subscription_count": len(subscriptions),
+                    "active_subscription_count": active_count,
+                    "add_subscription_url": f"{reverse('backoffice:bot_subscription_create')}?user_id={int(item.id)}",
                     "password_url": reverse("backoffice:bot_user_password_reset", args=[item.pk]) if auth_user_id else None,
                 }
             )
@@ -1922,7 +2007,11 @@ class BotSubscriptionCreateView(LegacyContentContextMixin, StaffRequiredMixin, T
         return "backoffice_created_subscription_id"
 
     def _default_form(self) -> BackofficeSubscriptionCreateForm:
-        return BackofficeSubscriptionCreateForm(initial={"expires_at": ""})
+        initial = {"expires_at": ""}
+        user_id = str(self.request.GET.get("user_id") or "").strip()
+        if user_id.isdigit():
+            initial["user_id"] = int(user_id)
+        return BackofficeSubscriptionCreateForm(initial=initial)
 
     def _build_created_result(self, subscription: BotSubscription) -> dict[str, Any]:
         return build_subscription_result(subscription)

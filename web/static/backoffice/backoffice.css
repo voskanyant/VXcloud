@@ -23,6 +23,37 @@ body {
   color: var(--bo-text);
 }
 
+* {
+  min-width: 0;
+}
+
+img,
+svg,
+video,
+canvas {
+  max-width: 100%;
+}
+
+.table-responsive {
+  max-width: 100%;
+}
+
+.btn,
+.form-control,
+.form-select,
+.page-link {
+  min-height: 38px;
+}
+
+.btn {
+  white-space: normal;
+}
+
+code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .bo-shell {
   min-height: 100vh;
   display: grid;
@@ -138,6 +169,7 @@ body {
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .bo-user {
@@ -306,6 +338,7 @@ body {
 .bo-info-grid strong {
   font-weight: 700;
   text-align: right;
+  overflow-wrap: anywhere;
 }
 
 .bo-note-list {
@@ -487,6 +520,7 @@ body {
   color: var(--bo-muted);
   margin-top: 6px;
   font-size: 0.92rem;
+  overflow-wrap: anywhere;
 }
 
 .bo-empty {
@@ -550,6 +584,7 @@ body {
 .bo-ticket-body {
   white-space: normal;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .bo-command-stack {
@@ -585,6 +620,92 @@ body {
 
 .bo-table td {
   border-bottom-color: #edf1f7;
+  overflow-wrap: anywhere;
+}
+
+.bo-actions-col {
+  width: 170px;
+}
+
+.bo-toggle-col {
+  width: 48px;
+}
+
+.bo-client-actions-col {
+  width: 290px;
+}
+
+.bo-qr-image {
+  max-width: 320px;
+  width: 100%;
+}
+
+.bo-client-table {
+  min-width: 1120px;
+}
+
+.bo-client-row > td {
+  background: #fff;
+}
+
+.bo-client-title {
+  font-weight: 800;
+}
+
+.bo-client-meta {
+  color: var(--bo-muted);
+  font-size: 0.82rem;
+  margin-top: 2px;
+}
+
+.bo-row-toggle {
+  border: 1px solid var(--bo-line);
+  color: var(--bo-primary);
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+}
+
+.bo-row-toggle i {
+  transition: transform 0.16s ease;
+}
+
+.bo-row-toggle[aria-expanded="true"] i {
+  transform: rotate(180deg);
+}
+
+.bo-subscriptions-row > td {
+  background: #f8fbff;
+  border-top: 0;
+}
+
+.bo-subscriptions-panel {
+  border: 1px solid var(--bo-line);
+  border-radius: 16px;
+  background: #fff;
+  padding: 14px;
+}
+
+.bo-subscriptions-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.bo-subscriptions-title {
+  font-weight: 800;
+}
+
+.bo-subscriptions-table {
+  min-width: 980px;
+}
+
+.bo-subscriptions-table td {
+  vertical-align: top;
 }
 
 .bo-badge {
@@ -665,17 +786,113 @@ body {
   }
 
   .bo-sidebar {
-    position: static;
+    position: sticky;
+    top: 0;
+    z-index: 30;
     height: auto;
+    padding: 10px 12px 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-right: 0;
+    border-bottom: 1px solid var(--bo-line);
+  }
+
+  .bo-brand {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 4px 8px;
+    margin-bottom: 8px;
+    border-bottom: 0;
+  }
+
+  .bo-brand-link {
+    font-size: 1.35rem;
+    letter-spacing: 0;
+  }
+
+  .bo-brand-subtitle,
+  .bo-nav-label {
+    display: none;
+  }
+
+  .bo-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+
+  .bo-nav-section,
+  .bo-nav-section + .bo-nav-section {
+    display: contents;
+    margin-top: 0;
+  }
+
+  .bo-link {
+    flex: 0 0 auto;
+    gap: 8px;
+    margin-bottom: 0;
+    padding: 9px 11px;
+    border-radius: 12px;
+    font-size: 0.92rem;
+    white-space: nowrap;
+  }
+
+  .bo-link.active {
+    box-shadow: none;
   }
 
   .bo-header {
     position: static;
+    flex-direction: column;
+    align-items: stretch;
     padding: 20px 18px 16px;
+  }
+
+  .bo-page-title {
+    font-size: 1.55rem;
+    letter-spacing: 0;
+  }
+
+  .bo-header-actions {
+    justify-content: flex-start;
   }
 
   .bo-content {
     padding: 18px;
+  }
+
+  .bo-panel,
+  .bo-system-card,
+  .bo-metric-card {
+    border-radius: 18px;
+    padding: 16px;
+  }
+
+  .bo-panel .card-body,
+  .bo-form-card {
+    padding: 14px;
+  }
+
+  .bo-panel-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bo-hero {
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  .bo-hero-title {
+    letter-spacing: 0;
+  }
+
+  .bo-hero-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .bo-form-grid {
@@ -686,5 +903,97 @@ body {
   .bo-field:has(.js-block-editor-source),
   .bo-field:has(textarea[name="content"]) {
     grid-column: span 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .bo-header,
+  .bo-content {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .bo-header-actions,
+  .bo-panel .d-flex,
+  .bo-panel-head,
+  .bo-subscriptions-head,
+  .bo-ticket-meta,
+  .bo-list-meta {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bo-header-actions > *,
+  .bo-panel .d-flex > *,
+  .bo-subscriptions-head > * {
+    width: 100%;
+  }
+
+  .bo-panel form.d-flex {
+    width: 100%;
+  }
+
+  .bo-panel form.d-flex .form-control {
+    flex: 1 1 auto;
+  }
+
+  .bo-hero-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .bo-metric-value {
+    font-size: 2.25rem;
+    letter-spacing: 0;
+  }
+
+  .bo-info-grid > div {
+    padding: 10px 12px;
+  }
+
+  .bo-info-grid strong {
+    text-align: left;
+  }
+
+  .bo-form-card {
+    border-radius: 16px;
+  }
+
+  .bo-field-checkbox {
+    padding-top: 0;
+  }
+
+  .bo-client-table {
+    min-width: 760px;
+  }
+
+  .bo-subscriptions-table {
+    min-width: 760px;
+  }
+
+  .bo-node-stats-table {
+    min-width: 980px;
+  }
+}
+
+@media (max-width: 420px) {
+  .bo-sidebar {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .bo-link span {
+    max-width: 132px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bo-page-title {
+    font-size: 1.35rem;
+  }
+
+  .bo-panel,
+  .bo-system-card,
+  .bo-metric-card {
+    padding: 12px;
   }
 }
