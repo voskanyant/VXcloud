@@ -23,7 +23,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.views import LoginView, LogoutView
 from django.core.exceptions import PermissionDenied
 from django.db import transaction
-from django.db.models import Avg, Count, Max, Q, QuerySet
+from django.db.models import Avg, Count, Max, Min, Q, QuerySet, Sum
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
@@ -46,7 +46,10 @@ from cabinet.models import (
     VPNNode,
     VPNNodeClient,
     VPNNodeLoadSnapshot,
+    VPNNodeMetricSample,
     VPNRebalanceDecision,
+    VPNSubscriptionEvent,
+    VPNSubscriptionMetricSample,
 )
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -2791,73 +2794,120 @@ class VPNNodeListView(BaseListView):
 
 class VPNNodeStatsView(LegacyContentContextMixin, StaffRequiredMixin, TemplateView):
     template_name = "backoffice/node_stats.html"
-    title = "Node statistics"
-    subtitle = "Current node load, 7-day averages, health samples, capacity and telemetry gaps."
+    title = "Statistics"
+    subtitle = "Node telemetry, client usage, movement history, logs and projections."
+
+    @staticmethod
+    def _pct(used: Any, total: Any) -> float | None:
+        try:
+            used_float = float(used or 0)
+            total_float = float(total or 0)
+        except (TypeError, ValueError):
+            return None
+        if total_float <= 0:
+            return None
+        return max(0.0, min(100.0, used_float / total_float * 100.0))
+
+    @staticmethod
+    def _delta(values: list[int]) -> int:
+        if len(values) < 2:
+            return 0
+        return max(max(values) - min(values), 0)
+
+    @staticmethod
+    def _compact_reason(value: Any) -> str:
+        text = str(value or "").strip()
+        return text if text else "-"
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
         ctx["title"] = self.title
         ctx["subtitle"] = self.subtitle
 
-        since = timezone.now() - timedelta(days=7)
+        now = timezone.now()
+        since_24h = now - timedelta(hours=24)
+        since_7d = now - timedelta(days=7)
+        since_30d = now - timedelta(days=30)
         nodes = safe_list(lambda: VPNNode.objects.order_by("name", "id"))
         node_ids = [int(node.id) for node in nodes]
         latest_snapshots = _latest_node_snapshots(node_ids)
         active_assignments = _active_assignment_counts(node_ids)
 
-        desired_client_counts = {
-            int(row["node_id"]): int(row["total"])
-            for row in safe_list(
-                lambda: VPNNodeClient.objects.filter(node_id__in=node_ids, desired_enabled=True)
-                .values("node_id")
-                .annotate(total=Count("id"))
-            )
-            if row.get("node_id")
-        }
+        node_metric_rows = safe_list(
+            lambda: VPNNodeMetricSample.objects.filter(node_id__in=node_ids, observed_at__gte=since_30d)
+            .order_by("node_id", "-observed_at")
+        )
+        latest_node_metrics: dict[int, VPNNodeMetricSample] = {}
+        metric_history: dict[int, list[VPNNodeMetricSample]] = {node_id: [] for node_id in node_ids}
+        for sample in node_metric_rows:
+            node_id = int(sample.node_id)
+            latest_node_metrics.setdefault(node_id, sample)
+            metric_history.setdefault(node_id, []).append(sample)
+        for history in metric_history.values():
+            history.sort(key=lambda item: item.observed_at)
 
-        snapshot_stats = {
+        load_snapshot_stats = {
             int(row["node_id"]): row
             for row in safe_list(
-                lambda: VPNNodeLoadSnapshot.objects.filter(node_id__in=node_ids, created_at__gte=since)
+                lambda: VPNNodeLoadSnapshot.objects.filter(node_id__in=node_ids, created_at__gte=since_7d)
                 .values("node_id")
                 .annotate(
                     sample_count=Count("id"),
                     healthy_samples=Count("id", filter=Q(health_ok=True)),
                     failed_samples=Count("id", filter=Q(health_ok=False)),
-                    avg_assigned=Avg("assigned_active_subscriptions"),
-                    max_assigned=Max("assigned_active_subscriptions"),
-                    avg_observed=Avg("observed_enabled_clients"),
-                    max_observed=Max("observed_enabled_clients"),
                     avg_peak_concurrency=Avg("peak_concurrency"),
                     max_peak_concurrency=Max("peak_concurrency"),
                     avg_probe_latency_ms=Avg("probe_latency_ms"),
                     max_probe_latency_ms=Max("probe_latency_ms"),
                     avg_score_hint=Avg("score_hint"),
-                    max_total_traffic_bytes=Max("total_traffic_bytes"),
                 )
             )
             if row.get("node_id")
         }
 
+        subscription_metric_rows = safe_list(
+            lambda: VPNSubscriptionMetricSample.objects.select_related("subscription", "subscription__user", "node")
+            .filter(observed_at__gte=since_30d)
+            .order_by("subscription_id", "observed_at")
+        )
+        subscription_history: dict[int, list[VPNSubscriptionMetricSample]] = {}
+        for sample in subscription_metric_rows:
+            subscription_history.setdefault(int(sample.subscription_id), []).append(sample)
+
+        subscriptions = safe_list(
+            lambda: BotSubscription.objects.select_related("user", "current_node", "assigned_node")
+            .filter(is_active=True, revoked_at__isnull=True)
+            .order_by("user__first_name", "user__username", "id")
+        )
+
         rows = []
         total_active_assignments = 0
-        total_desired_clients = 0
         healthy_nodes = 0
         eligible_nodes = 0
-        sample_total = 0
+        failed_metric_samples = 0
+        fleet_traffic_30d = 0
+        online_clients = 0
 
         for node in nodes:
             node_id = int(node.id)
-            latest = latest_snapshots.get(node_id)
-            stats = snapshot_stats.get(node_id, {})
+            latest_load = latest_snapshots.get(node_id)
+            latest_metric = latest_node_metrics.get(node_id)
+            load_stats = load_snapshot_stats.get(node_id, {})
+            history = metric_history.get(node_id, [])
             assigned_now = int(active_assignments.get(node_id, 0))
-            desired_clients = int(desired_client_counts.get(node_id, 0))
             capacity = int(getattr(node, "connection_capacity", 0) or 0)
-            load_pct = (assigned_now / capacity * 100.0) if capacity > 0 else None
-            sample_count = int(stats.get("sample_count") or 0)
-            healthy_sample_count = int(stats.get("healthy_samples") or 0)
-            failed_sample_count = int(stats.get("failed_samples") or 0)
-            health_pct = (healthy_sample_count / sample_count * 100.0) if sample_count > 0 else None
+            capacity_pct = self._pct(assigned_now, capacity)
+            sample_count = int(load_stats.get("sample_count") or 0)
+            healthy_sample_count = int(load_stats.get("healthy_samples") or 0)
+            failed_sample_count = int(load_stats.get("failed_samples") or 0)
+            failed_metric_samples += sum(1 for sample in history if sample.agent_error or sample.xui_error)
+            health_pct = self._pct(healthy_sample_count, sample_count)
+            memory_pct = self._pct(getattr(latest_metric, "memory_used_bytes", None), getattr(latest_metric, "memory_total_bytes", None))
+            swap_pct = self._pct(getattr(latest_metric, "swap_used_bytes", None), getattr(latest_metric, "swap_total_bytes", None))
+            disk_pct = self._pct(getattr(latest_metric, "disk_used_bytes", None), getattr(latest_metric, "disk_total_bytes", None))
+            net_values = [int((sample.net_rx_bytes or 0) + (sample.net_tx_bytes or 0)) for sample in history]
+            traffic_30d = self._delta(net_values)
+            fleet_traffic_30d += traffic_30d
 
             latest_payload = {
                 "id": node_id,
@@ -2875,18 +2925,17 @@ class VPNNodeStatsView(LegacyContentContextMixin, StaffRequiredMixin, TemplateVi
                 "bandwidth_capacity_mbps": int(node.bandwidth_capacity_mbps or 0),
                 "connection_capacity": capacity,
                 "active_assigned_subscriptions": assigned_now,
-                "observed_enabled_clients": int(getattr(latest, "observed_enabled_clients", 0) or 0),
-                "weekly_traffic_bytes": int(getattr(latest, "total_traffic_bytes", 0) or 0),
-                "peak_concurrency": int(getattr(latest, "peak_concurrency", 0) or 0),
-                "probe_latency_ms": int(getattr(latest, "probe_latency_ms", 0) or 0),
+                "observed_enabled_clients": int(getattr(latest_load, "observed_enabled_clients", 0) or 0),
+                "weekly_traffic_bytes": int(getattr(latest_load, "total_traffic_bytes", 0) or 0),
+                "peak_concurrency": int(getattr(latest_load, "peak_concurrency", 0) or 0),
+                "probe_latency_ms": int(getattr(latest_load, "probe_latency_ms", 0) or 0),
                 "moves_in_week": 0,
             }
             issue = node_ineligibility_reason(latest_payload, compatibility_pool=str(node.compatibility_pool or "default"))
             scored = score_node(latest_payload, compatibility_pool=str(node.compatibility_pool or "default")) if issue is None else None
 
             total_active_assignments += assigned_now
-            total_desired_clients += desired_clients
-            sample_total += sample_count
+            online_clients += int(getattr(latest_load, "observed_enabled_clients", 0) or 0)
             if node.last_health_ok is True:
                 healthy_nodes += 1
             if issue is None:
@@ -2898,54 +2947,192 @@ class VPNNodeStatsView(LegacyContentContextMixin, StaffRequiredMixin, TemplateVi
                     "endpoint": f"{node.backend_host}:{node.backend_port}",
                     "public_endpoint": " / ".join(part for part in [node.node_fqdn, node.public_ip] if part) or "-",
                     "pool": str(node.compatibility_pool or "default"),
+                    "agent": boolean_badge(bool(getattr(node, "metrics_agent_enabled", False)), "agent on", "agent off"),
                     "health": health_badge(node),
                     "eligibility": status_badge("eligible", "success") if issue is None else status_badge(issue, "secondary"),
                     "lb": boolean_badge(bool(node.lb_enabled), "enabled", "off"),
                     "backfill": sync_state_badge("needed" if node.needs_backfill else "ok"),
                     "assigned_now": assigned_now,
-                    "assigned_avg": format_number(stats.get("avg_assigned")),
-                    "assigned_max": int(stats.get("max_assigned") or 0),
-                    "desired_clients": desired_clients,
-                    "observed_now": int(getattr(latest, "observed_enabled_clients", 0) or 0),
-                    "observed_avg": format_number(stats.get("avg_observed")),
-                    "observed_max": int(stats.get("max_observed") or 0),
-                    "peak_now": int(getattr(latest, "peak_concurrency", 0) or 0),
-                    "peak_avg": format_number(stats.get("avg_peak_concurrency")),
-                    "peak_max": int(stats.get("max_peak_concurrency") or 0),
-                    "traffic_latest": format_bytes(getattr(latest, "total_traffic_bytes", None)),
-                    "traffic_max_7d": format_bytes(stats.get("max_total_traffic_bytes")),
-                    "latency_now": "-" if getattr(latest, "probe_latency_ms", None) is None else f"{int(getattr(latest, 'probe_latency_ms') or 0)} ms",
-                    "latency_avg": "-" if stats.get("avg_probe_latency_ms") is None else f"{format_number(stats.get('avg_probe_latency_ms'), 0)} ms",
-                    "latency_max": "-" if stats.get("max_probe_latency_ms") is None else f"{int(stats.get('max_probe_latency_ms') or 0)} ms",
+                    "observed_now": int(getattr(latest_load, "observed_enabled_clients", 0) or 0),
+                    "peak_now": int(getattr(latest_load, "peak_concurrency", 0) or 0),
+                    "peak_avg": format_number(load_stats.get("avg_peak_concurrency")),
+                    "peak_max": int(load_stats.get("max_peak_concurrency") or 0),
+                    "traffic_30d": format_bytes(traffic_30d),
+                    "traffic_value": traffic_30d,
+                    "traffic_latest": format_bytes(getattr(latest_load, "total_traffic_bytes", None)),
+                    "latency_now": "-" if getattr(latest_load, "probe_latency_ms", None) is None else f"{int(getattr(latest_load, 'probe_latency_ms') or 0)} ms",
+                    "latency_avg": "-" if load_stats.get("avg_probe_latency_ms") is None else f"{format_number(load_stats.get('avg_probe_latency_ms'), 0)} ms",
+                    "latency_max": "-" if load_stats.get("max_probe_latency_ms") is None else f"{int(load_stats.get('max_probe_latency_ms') or 0)} ms",
                     "capacity": f"{capacity} conn" if capacity else "-",
-                    "capacity_pct": format_percent(load_pct, 1),
+                    "capacity_pct": format_percent(capacity_pct, 1),
                     "bandwidth": f"{int(node.bandwidth_capacity_mbps or 0)} Mbps" if node.bandwidth_capacity_mbps else "-",
+                    "cpu_pct": format_percent(getattr(latest_metric, "cpu_percent", None), 1),
+                    "cpu_value": float(getattr(latest_metric, "cpu_percent", 0) or 0),
+                    "memory": f"{format_bytes(getattr(latest_metric, 'memory_used_bytes', None))} / {format_bytes(getattr(latest_metric, 'memory_total_bytes', None))}",
+                    "memory_pct": format_percent(memory_pct, 1),
+                    "memory_value": float(memory_pct or 0),
+                    "swap": f"{format_bytes(getattr(latest_metric, 'swap_used_bytes', None))} / {format_bytes(getattr(latest_metric, 'swap_total_bytes', None))}",
+                    "swap_pct": format_percent(swap_pct, 1),
+                    "swap_value": float(swap_pct or 0),
+                    "disk": f"{format_bytes(getattr(latest_metric, 'disk_used_bytes', None))} / {format_bytes(getattr(latest_metric, 'disk_total_bytes', None))}",
+                    "disk_pct": format_percent(disk_pct, 1),
+                    "disk_value": float(disk_pct or 0),
+                    "load": "- / - / -"
+                    if latest_metric is None
+                    else f"{format_number(latest_metric.load1, 2)} / {format_number(latest_metric.load5, 2)} / {format_number(latest_metric.load15, 2)}",
+                    "sockets": "-"
+                    if latest_metric is None
+                    else f"TCP {latest_metric.tcp_connections or 0} / UDP {latest_metric.udp_sockets or 0}",
+                    "xray": str(getattr(latest_metric, "xray_state", "") or "-"),
                     "score_now": "-" if scored is None else f"{float(scored.score):.2f}",
-                    "score_avg": format_number(stats.get("avg_score_hint")),
+                    "score_avg": format_number(load_stats.get("avg_score_hint")),
                     "score_reasons": ", ".join(f"{key}={float(value):.2f}" for key, value in sorted((getattr(scored, "reasons", None) or {}).items())) if scored else "",
                     "samples": sample_count,
                     "healthy_samples": healthy_sample_count,
                     "failed_samples": failed_sample_count,
                     "health_pct": format_percent(health_pct, 0),
-                    "cpu_avg": "not collected",
-                    "system_load_avg": "not collected",
-                    "latest_snapshot_at": format_cell(getattr(latest, "created_at", None)),
+                    "latest_snapshot_at": format_cell(getattr(latest_metric, "observed_at", None) or getattr(latest_load, "created_at", None)),
+                    "last_error": self._compact_reason(getattr(latest_metric, "agent_error", None) or getattr(latest_metric, "xui_error", None)),
                 }
             )
+
+        user_rows = []
+        total_client_traffic_30d = 0
+        for sub in subscriptions:
+            history = subscription_history.get(int(sub.id), [])
+            all_time_values = [int(item.all_time_bytes or 0) for item in history]
+            usage_delta = self._delta(all_time_values)
+            total_client_traffic_30d += usage_delta
+            latest_sub_sample = history[-1] if history else None
+            user = sub.user
+            user_label = str(getattr(user, "first_name", "") or getattr(user, "username", "") or f"User #{user.id}")
+            node_name = (
+                getattr(getattr(sub, "current_node", None), "name", None)
+                or getattr(getattr(sub, "assigned_node", None), "name", None)
+                or "-"
+            )
+            user_rows.append(
+                {
+                    "user": user_label,
+                    "telegram_id": getattr(user, "telegram_id", ""),
+                    "subscription": sub.display_name,
+                    "subscription_id": int(sub.id),
+                    "node": node_name,
+                    "alias": sub.alias_fqdn or "-",
+                    "traffic_30d": format_bytes(usage_delta),
+                    "traffic_value": usage_delta,
+                    "last_online": format_cell(getattr(latest_sub_sample, "last_online_at", None)) or "-",
+                    "enabled": status_badge("enabled", "success") if getattr(latest_sub_sample, "enabled", None) else status_badge("unknown", "secondary"),
+                    "latest_total": format_bytes(getattr(latest_sub_sample, "all_time_bytes", None)),
+                }
+            )
+
+        user_rows.sort(key=lambda item: int(item["traffic_value"]), reverse=True)
+
+        event_rows = [
+            {
+                "time": format_cell(event.created_at),
+                "subscription": f"{event.subscription.display_name} #{event.subscription_id}",
+                "event": event.event_kind,
+                "from": getattr(event.from_node, "name", None) or "-",
+                "to": getattr(event.to_node, "name", None) or "-",
+                "reason": self._compact_reason(event.reason),
+                "dns": event.dns_change_id or "-",
+            }
+            for event in safe_list(
+                lambda: VPNSubscriptionEvent.objects.select_related("subscription", "from_node", "to_node")
+                .order_by("-created_at")[:80]
+            )
+        ]
+        if not event_rows:
+            event_rows = [
+                {
+                    "time": format_cell(decision.created_at),
+                    "subscription": f"{decision.subscription.display_name} #{decision.subscription_id}",
+                    "event": decision.decision_kind,
+                    "from": getattr(decision.from_node, "name", None) or "-",
+                    "to": getattr(decision.to_node, "name", None) or "-",
+                    "reason": self._compact_reason(decision.reason),
+                    "dns": decision.dns_change_id or "-",
+                }
+                for decision in safe_list(
+                    lambda: VPNRebalanceDecision.objects.select_related("subscription", "from_node", "to_node")
+                    .order_by("-created_at")[:80]
+                )
+            ]
+
+        log_rows = []
+        for row in rows:
+            if row["last_error"] != "-":
+                log_rows.append({"source": row["node"].name, "kind": "metrics", "message": row["last_error"], "time": row["latest_snapshot_at"]})
+        log_rows.extend(
+            {
+                "source": client.node.name,
+                "kind": "sync",
+                "message": client.last_error or "sync error",
+                "time": format_cell(client.updated_at),
+            }
+            for client in safe_list(
+                lambda: VPNNodeClient.objects.select_related("node")
+                .exclude(Q(last_error__isnull=True) | Q(last_error=""))
+                .order_by("-updated_at")[:40]
+            )
+        )
+
+        projection_base = total_client_traffic_30d or fleet_traffic_30d
+        projected_daily = projection_base / 30.0 if projection_base > 0 else 0.0
+        projection_rows = [
+            {"window": "30 days", "traffic": format_bytes(projected_daily * 30), "clients": total_active_assignments},
+            {"window": "60 days", "traffic": format_bytes(projected_daily * 60), "clients": total_active_assignments},
+            {"window": "90 days", "traffic": format_bytes(projected_daily * 90), "clients": total_active_assignments},
+        ]
+
+        chart_payload = {
+            "nodes": [row["node"].name for row in rows],
+            "cpu": [row["cpu_value"] for row in rows],
+            "memory": [row["memory_value"] for row in rows],
+            "disk": [row["disk_value"] for row in rows],
+            "assigned": [row["assigned_now"] for row in rows],
+            "traffic": [int(row["traffic_value"]) if "traffic_value" in row else 0 for row in rows],
+            "users": [item["user"][:18] for item in user_rows[:10]],
+            "userTraffic": [item["traffic_value"] for item in user_rows[:10]],
+            "projections": {
+                "labels": [item["window"] for item in projection_rows],
+                "traffic": [projected_daily * days for days in (30, 60, 90)],
+            },
+            "nodeSeries": {
+                row["node"].name: [
+                    {
+                        "t": format_cell(sample.observed_at),
+                        "cpu": float(sample.cpu_percent or 0),
+                        "memory": float(self._pct(sample.memory_used_bytes, sample.memory_total_bytes) or 0),
+                        "disk": float(self._pct(sample.disk_used_bytes, sample.disk_total_bytes) or 0),
+                    }
+                    for sample in metric_history.get(int(row["node"].id), [])[-48:]
+                ]
+                for row in rows
+            },
+        }
 
         ctx["summary_cards"] = [
             {"label": "Nodes", "value": len(nodes), "hint": f"{healthy_nodes} healthy"},
             {"label": "Eligible for LB", "value": eligible_nodes, "hint": "healthy, compatible, backfilled"},
-            {"label": "Active users", "value": total_active_assignments, "hint": "currently assigned"},
-            {"label": "Provisioned clients", "value": total_desired_clients, "hint": "desired on nodes"},
-            {"label": "7d samples", "value": sample_total, "hint": "load snapshots"},
+            {"label": "Active subs", "value": total_active_assignments, "hint": "currently assigned"},
+            {"label": "Online clients", "value": online_clients, "hint": "from 3x-ui health"},
+            {"label": "30d traffic", "value": format_bytes(total_client_traffic_30d or fleet_traffic_30d), "hint": "client counters preferred"},
+            {"label": "Metric errors", "value": failed_metric_samples + len(log_rows), "hint": "last 30 days plus sync"},
         ]
         ctx["rows"] = rows
-        ctx["window_label"] = f"since {format_cell(since)}"
+        ctx["user_rows"] = user_rows[:120]
+        ctx["event_rows"] = event_rows
+        ctx["log_rows"] = log_rows[:80]
+        ctx["projection_rows"] = projection_rows
+        ctx["chart_payload"] = chart_payload
+        ctx["window_label"] = f"since {format_cell(since_30d)}"
         ctx["telemetry_notes"] = [
-            "CPU load and system load are not stored in VXcloud yet. Add node exporter or Xray metrics ingestion before using CPU in balancing decisions.",
-            "Current balancing uses active assigned subscriptions, observed Xray clients, traffic, peak concurrency, probe latency, health, capacity, cooldowns and compatibility pool.",
-            "Traffic values are snapshot counters from the node sync pipeline; use deltas in the metrics collector if you need precise per-period bandwidth charts.",
+            "Server CPU/RAM/disk/network comes from the lightweight node agent when enabled; 3x-ui is used for VPN/client counters.",
+            "Projection uses 30-day client traffic deltas when available, then falls back to node network deltas.",
+            "Movement history is append-only from rebalance/failover decisions and subscription events.",
         ]
         return self.add_wordpress_context(ctx)
 

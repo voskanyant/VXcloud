@@ -386,6 +386,9 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
             "xray_api_port",
             "xray_metrics_host",
             "xray_metrics_port",
+            "metrics_agent_enabled",
+            "metrics_agent_url",
+            "metrics_agent_token",
             "bandwidth_capacity_mbps",
             "connection_capacity",
             "backend_host",
@@ -397,6 +400,7 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         ]
         widgets = {
             "xui_password": forms.PasswordInput(render_value=True),
+            "metrics_agent_token": forms.PasswordInput(render_value=True),
         }
 
     def __init__(self, *args, **kwargs):
@@ -414,6 +418,9 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["xray_api_port"].label = "Xray API port"
         self.fields["xray_metrics_host"].label = "Xray metrics host"
         self.fields["xray_metrics_port"].label = "Xray metrics port"
+        self.fields["metrics_agent_enabled"].label = "Node metrics agent enabled"
+        self.fields["metrics_agent_url"].label = "Node metrics agent URL"
+        self.fields["metrics_agent_token"].label = "Node metrics token"
         self.fields["bandwidth_capacity_mbps"].label = "Bandwidth capacity (Mbps)"
         self.fields["connection_capacity"].label = "Connection capacity"
         self.fields["backend_host"].label = "Backend host"
@@ -429,6 +436,9 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["compatibility_pool"].help_text = "Только ноды из одного pool могут обмениваться подписками через DNS rebalance."
         self.fields["xray_api_host"].help_text = "Loopback/внутренний host Xray API для будущей stats automation."
         self.fields["xray_metrics_host"].help_text = "Loopback/внутренний host Xray metrics listener."
+        self.fields["metrics_agent_enabled"].help_text = "Включите после установки lightweight agent на ноду."
+        self.fields["metrics_agent_url"].help_text = "Например: http://194.99.21.173:9109/metrics"
+        self.fields["metrics_agent_token"].help_text = "Shared bearer token из /etc/vxnode-metrics-agent.env."
         self.fields["backend_host"].help_text = "Куда HAProxy будет направлять VPN-трафик."
         self.fields["backend_port"].help_text = "Обычно тот же inbound port Xray на ноде."
         self.fields["lb_enabled"].help_text = "Новые подключения пойдут на ноду только если это поле включено, health=ok и backfill завершён."

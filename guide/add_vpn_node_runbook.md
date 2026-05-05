@@ -148,7 +148,35 @@ Record these values for `/ops/`:
 - fingerprint
 - port
 
-## 5. Add The Node In `/ops/`
+## 5. Install The Node Metrics Agent
+
+Install the lightweight VXcloud agent on the VPN node so `/ops/infra/node-stats/`
+can show server CPU, RAM, disk, swap, load, network counters, uptime, and socket
+counts directly from the VPS. This is more reliable than treating 3x-ui as the
+source of truth for OS metrics.
+
+From the app checkout copied to the node, or after uploading the two scripts:
+
+```bash
+cd /srv/apps/vxcloud/app
+bash scripts/ops/install-vxnode-metrics-agent.sh
+```
+
+Open the firewall only from the VXcloud main server:
+
+```bash
+ufw allow from <main-server-ip> to any port 9109 proto tcp
+systemctl status vxnode-metrics-agent --no-pager
+curl -H "Authorization: Bearer <token>" http://127.0.0.1:9109/metrics
+```
+
+The token is stored on the node in:
+
+```text
+/etc/vxnode-metrics-agent.env
+```
+
+## 6. Add The Node In `/ops/`
 
 Open:
 
@@ -177,6 +205,10 @@ Xray API port: 0
 Xray metrics host: 127.0.0.1
 Xray metrics port: 0
 
+Node metrics agent enabled: checked after agent install
+Node metrics agent URL: http://<node-ip>:9109/metrics
+Node metrics token: <VXNODE_METRICS_TOKEN from /etc/vxnode-metrics-agent.env>
+
 Bandwidth capacity (Mbps): 1000
 Connection capacity: 10000
 Backend host: <node-ip>
@@ -199,8 +231,11 @@ Notes:
 - For DNS-alias steady-state, users connect to `u-*.connect.vxcloud.ru`, which
   resolves directly to `Public IP`.
 - `Node FQDN` is metadata unless you also create a DNS record for the node.
+- If the metrics agent is not installed yet, leave it disabled. The stats page
+  will still collect 3x-ui client counters, but OS resource gauges will stay
+  empty or use 3x-ui fallback values.
 
-## 6. Wait For Health And Backfill
+## 7. Wait For Health And Backfill
 
 After saving, refresh `/ops/infra/nodes/`.
 
@@ -227,11 +262,11 @@ Common causes:
 - xray not listening on `443`
 
 Open `/ops/infra/node-stats/` after sync has run. It should show current
-assigned users, observed clients, 7-day averages, traffic, peak concurrency,
-probe latency, health sample percentage, and capacity usage for the node.
-CPU/system load will show as not collected until a metrics exporter is wired.
+assigned users, observed clients, CPU/RAM/disk gauges, traffic, peak
+concurrency, probe latency, health sample percentage, capacity usage, recent
+events, and projection data for the node.
 
-## 7. Test A New Subscription
+## 8. Test A New Subscription
 
 Only after the node is healthy:
 
@@ -250,7 +285,7 @@ curl -s 'https://vxcloud.ru/account/feed/<token>/'
 The feed should return a base64 subscription payload. When decoded, the VLESS
 host should be the alias hostname, not the direct node IP.
 
-## 8. Enable For Production Assignments
+## 9. Enable For Production Assignments
 
 After a successful test:
 
@@ -266,9 +301,9 @@ For DNS-alias assignments, the important production readiness values are:
 - compatibility pool set
 - capacity values set
 
-## 9. Rebalance Or Failover Existing Users
+## 10. Rebalance Or Failover Existing Users
 
-Use `/ops/infra/cluster/` for manual dry-run, rebalance, or emergency failover.
+Use `/ops/infra/system/` for manual dry-run, rebalance, or emergency failover.
 
 Rules:
 
@@ -279,7 +314,7 @@ Rules:
 - if the destination node uses different Reality keys, users may need the client
   to refresh the subscription before it works
 
-## 10. Cloudflare Notes
+## 11. Cloudflare Notes
 
 No manual Cloudflare record is required for each node.
 

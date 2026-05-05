@@ -76,6 +76,11 @@ class Settings:
     single_ip_window_seconds: int
     single_ip_block_seconds: int
     xray_access_log_path: str
+    vpn_metrics_enabled: bool = False
+    vpn_metrics_sample_interval_seconds: int = 300
+    vpn_metrics_retention_days: int = 180
+    vpn_client_metrics_retention_days: int = 90
+    vpn_metrics_agent_timeout_seconds: int = 5
     xui_sub_path: str = "/sub"
 
     @classmethod
@@ -99,6 +104,11 @@ def load_settings() -> Settings:
         vpn_cluster_healthcheck_interval_seconds=int(_get("VPN_CLUSTER_HEALTHCHECK_INTERVAL_SECONDS", "30")),
         vpn_cluster_sync_interval_seconds=int(_get("VPN_CLUSTER_SYNC_INTERVAL_SECONDS", "60")),
         vpn_cluster_sync_batch_size=int(_get("VPN_CLUSTER_SYNC_BATCH_SIZE", "200")),
+        vpn_metrics_enabled=_get("VPN_METRICS_ENABLED", _get("VPN_CLUSTER_ENABLED", "0")).strip() == "1",
+        vpn_metrics_sample_interval_seconds=int(_get("VPN_METRICS_SAMPLE_INTERVAL_SECONDS", "300")),
+        vpn_metrics_retention_days=int(_get("VPN_METRICS_RETENTION_DAYS", "180")),
+        vpn_client_metrics_retention_days=int(_get("VPN_CLIENT_METRICS_RETENTION_DAYS", "90")),
+        vpn_metrics_agent_timeout_seconds=int(_get("VPN_METRICS_AGENT_TIMEOUT_SECONDS", "5")),
         vpn_rebalance_enabled=_get("VPN_REBALANCE_ENABLED", _get("VPN_CLUSTER_ENABLED", "0")).strip() == "1",
         vpn_rebalance_interval_seconds=int(_get("VPN_REBALANCE_INTERVAL_SECONDS", "604800")),
         vpn_rebalance_workflow_tick_seconds=int(_get("VPN_REBALANCE_WORKFLOW_TICK_SECONDS", "300")),

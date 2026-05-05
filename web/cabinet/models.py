@@ -214,6 +214,9 @@ class VPNNode(models.Model):
     xray_api_port = models.IntegerField(null=True, blank=True)
     xray_metrics_host = models.TextField(null=True, blank=True)
     xray_metrics_port = models.IntegerField(null=True, blank=True)
+    metrics_agent_enabled = models.BooleanField(default=False)
+    metrics_agent_url = models.TextField(null=True, blank=True)
+    metrics_agent_token = models.TextField(null=True, blank=True)
     bandwidth_capacity_mbps = models.IntegerField()
     connection_capacity = models.IntegerField()
     backend_weight = models.IntegerField()
@@ -309,8 +312,8 @@ class VPNNodeLoadSnapshot(models.Model):
     probe_latency_ms = models.IntegerField(null=True, blank=True)
     health_ok = models.BooleanField()
     health_error = models.TextField(null=True, blank=True)
-    score_hint = models.FloatField(null=True, blank=True)
-    created_at = models.DateTimeField()
+    score_hint = models.FloatField(db_column="score", null=True, blank=True)
+    created_at = models.DateTimeField(db_column="observed_at")
 
     class Meta:
         managed = False
@@ -339,17 +342,107 @@ class VPNRebalanceDecision(models.Model):
         related_name="rebalance_decisions_to",
     )
     decision_kind = models.TextField()
-    assignment_source = models.TextField()
-    from_score = models.FloatField(null=True, blank=True)
-    to_score = models.FloatField(null=True, blank=True)
-    score_delta = models.FloatField(null=True, blank=True)
+    from_score = models.FloatField(db_column="score_before", null=True, blank=True)
+    to_score = models.FloatField(db_column="score_after", null=True, blank=True)
     reason = models.TextField(null=True, blank=True)
+    details = models.JSONField(default=dict)
     dns_change_id = models.TextField(null=True, blank=True)
     rollback_reason = models.TextField(null=True, blank=True)
-    created_at = models.DateTimeField()
+    created_at = models.DateTimeField(db_column="decided_at")
 
     class Meta:
         managed = False
         db_table = "vpn_rebalance_decisions"
         verbose_name = "VPN Rebalance Decision"
         verbose_name_plural = "VPN Rebalance Decisions"
+
+
+class VPNNodeMetricSample(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    node = models.ForeignKey(VPNNode, db_column="node_id", on_delete=models.DO_NOTHING)
+    observed_at = models.DateTimeField()
+    source = models.TextField()
+    agent_ok = models.BooleanField()
+    agent_error = models.TextField(null=True, blank=True)
+    xui_ok = models.BooleanField()
+    xui_error = models.TextField(null=True, blank=True)
+    cpu_percent = models.FloatField(null=True, blank=True)
+    load1 = models.FloatField(null=True, blank=True)
+    load5 = models.FloatField(null=True, blank=True)
+    load15 = models.FloatField(null=True, blank=True)
+    memory_used_bytes = models.BigIntegerField(null=True, blank=True)
+    memory_total_bytes = models.BigIntegerField(null=True, blank=True)
+    swap_used_bytes = models.BigIntegerField(null=True, blank=True)
+    swap_total_bytes = models.BigIntegerField(null=True, blank=True)
+    disk_used_bytes = models.BigIntegerField(null=True, blank=True)
+    disk_total_bytes = models.BigIntegerField(null=True, blank=True)
+    net_rx_bytes = models.BigIntegerField(null=True, blank=True)
+    net_tx_bytes = models.BigIntegerField(null=True, blank=True)
+    tcp_connections = models.IntegerField(null=True, blank=True)
+    udp_sockets = models.IntegerField(null=True, blank=True)
+    uptime_seconds = models.BigIntegerField(null=True, blank=True)
+    xray_state = models.TextField(null=True, blank=True)
+    xray_version = models.TextField(null=True, blank=True)
+    panel_latency_ms = models.IntegerField(null=True, blank=True)
+    raw = models.JSONField(default=dict)
+    created_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = "vpn_node_metric_samples"
+        verbose_name = "VPN Node Metric Sample"
+        verbose_name_plural = "VPN Node Metric Samples"
+
+
+class VPNSubscriptionMetricSample(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    subscription = models.ForeignKey(BotSubscription, db_column="subscription_id", on_delete=models.DO_NOTHING)
+    node = models.ForeignKey(VPNNode, db_column="node_id", on_delete=models.DO_NOTHING, null=True, blank=True)
+    observed_at = models.DateTimeField()
+    client_email = models.TextField(null=True, blank=True)
+    xui_sub_id = models.TextField(null=True, blank=True)
+    up_bytes = models.BigIntegerField()
+    down_bytes = models.BigIntegerField()
+    all_time_bytes = models.BigIntegerField()
+    last_online_at = models.DateTimeField(null=True, blank=True)
+    enabled = models.BooleanField(null=True, blank=True)
+    raw = models.JSONField(default=dict)
+    created_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = "vpn_subscription_metric_samples"
+        verbose_name = "VPN Subscription Metric Sample"
+        verbose_name_plural = "VPN Subscription Metric Samples"
+
+
+class VPNSubscriptionEvent(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    subscription = models.ForeignKey(BotSubscription, db_column="subscription_id", on_delete=models.DO_NOTHING)
+    event_kind = models.TextField()
+    from_node = models.ForeignKey(
+        VPNNode,
+        db_column="from_node_id",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+        related_name="subscription_events_from",
+    )
+    to_node = models.ForeignKey(
+        VPNNode,
+        db_column="to_node_id",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+        related_name="subscription_events_to",
+    )
+    reason = models.TextField(null=True, blank=True)
+    dns_change_id = models.TextField(null=True, blank=True)
+    details = models.JSONField(default=dict)
+    created_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = "vpn_subscription_events"
+        verbose_name = "VPN Subscription Event"
+        verbose_name_plural = "VPN Subscription Events"

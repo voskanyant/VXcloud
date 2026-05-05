@@ -3,8 +3,8 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
-from src.cluster.jobs import _sync_manual_clients_from_canonical, healthcheck_tick, sync_tick
-from src.xui_client import InboundClientState
+from src.cluster.jobs import _sync_manual_clients_from_canonical, healthcheck_tick, metrics_tick, sync_tick
+from src.xui_client import ClientTrafficStats, InboundClientState
 
 
 class _FakeHealthXUI:
@@ -140,6 +140,41 @@ class _FakeManualSyncXUI:
             and client.email.strip().lower() != normalized_email
         ]
         return "deleted"
+
+
+class _FakeMetricsXUI:
+    def __init__(self, base_url: str, username: str, password: str) -> None:  # noqa: ARG002
+        self.base_url = base_url
+
+    async def start(self) -> None:
+        return None
+
+    async def close(self) -> None:
+        return None
+
+    async def get_server_status(self):
+        return {
+            "xrayVersion": "26.4.25",
+            "xray": "running",
+            "cpu": 12.5,
+            "mem": {"current": 1024, "total": 4096},
+            "disk": {"current": 2048, "total": 8192},
+        }
+
+    async def list_client_traffic_stats(self, inbound_id: int):  # noqa: ARG002
+        return [
+            ClientTrafficStats(
+                email="client@example.com",
+                client_uuid="00000000-0000-0000-0000-000000000301",
+                sub_id="sub-301",
+                enabled=True,
+                up_bytes=100,
+                down_bytes=200,
+                all_time_bytes=300,
+                last_online=datetime(2026, 5, 1, tzinfo=timezone.utc),
+                raw={"email": "client@example.com"},
+            )
+        ]
 
 
 class ClusterJobsUnitTests(unittest.IsolatedAsyncioTestCase):
@@ -289,6 +324,44 @@ class ClusterJobsUnitTests(unittest.IsolatedAsyncioTestCase):
         follower_clients = _FakeManualSyncXUI.states["https://node-2.local"]
         self.assertEqual(len(follower_clients), 1)
         self.assertEqual(follower_clients[0].email, "manual-import@example.com")
+
+    async def test_metrics_tick_records_node_and_subscription_samples(self):
+        db = AsyncMock()
+        db.get_active_vpn_nodes.return_value = [
+            {
+                "id": 1,
+                "xui_base_url": "https://node.local",
+                "xui_username": "u",
+                "xui_password": "p",
+                "xui_inbound_id": 1,
+                "metrics_agent_enabled": False,
+            }
+        ]
+        db.list_active_subscriptions_for_node.return_value = [
+            {
+                "id": 301,
+                "client_uuid": "00000000-0000-0000-0000-000000000301",
+                "client_email": "client@example.com",
+                "xui_sub_id": "sub-301",
+            }
+        ]
+        db.record_node_metric_sample.return_value = True
+        db.record_subscription_metric_sample.return_value = True
+        db.cleanup_metric_samples.return_value = {"node_deleted": 0, "client_deleted": 0}
+        settings = SimpleNamespace(
+            vpn_metrics_agent_timeout_seconds=5,
+            vpn_metrics_retention_days=180,
+            vpn_client_metrics_retention_days=90,
+        )
+
+        with patch("src.cluster.jobs.XUIClient", new=_FakeMetricsXUI):
+            result = await metrics_tick(db, settings)
+
+        self.assertEqual(result["node_samples"], 1)
+        self.assertEqual(result["client_samples"], 1)
+        self.assertEqual(result["failed"], 0)
+        self.assertEqual(db.record_node_metric_sample.await_args.kwargs["xray_version"], "26.4.25")
+        self.assertEqual(db.record_subscription_metric_sample.await_args.kwargs["all_time_bytes"], 300)
 
 
 if __name__ == "__main__":

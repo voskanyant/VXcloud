@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 import time
 from typing import Any
 
+import aiohttp
+
 from src.cluster.provisioner import create_client_on_node, delete_or_disable_client_on_node, update_client_on_node
 from src.cluster.rebalance import backfill_unassigned_subscriptions, score_node
 from src.db import DB
@@ -40,6 +42,115 @@ def _node_inbound_id(node: dict[str, Any], fallback: int = 1) -> int:
     if raw is None:
         return int(fallback)
     return int(raw)
+
+
+def _as_int(value: Any) -> int | None:
+    try:
+        if value is None:
+            return None
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_float(value: Any) -> float | None:
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _fetch_node_agent_metrics(node: dict[str, Any], timeout_seconds: int) -> dict[str, Any] | None:
+    if not bool(node.get("metrics_agent_enabled")):
+        return None
+    url = str(node.get("metrics_agent_url") or "").strip()
+    if not url:
+        return None
+    token = str(node.get("metrics_agent_token") or "").strip()
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
+    timeout = aiohttp.ClientTimeout(total=max(1, int(timeout_seconds)))
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(url, headers=headers) as response:
+            data = await response.json(content_type=None)
+            if response.status >= 400:
+                raise RuntimeError(f"metrics agent HTTP {response.status}: {data}")
+            if not isinstance(data, dict):
+                raise RuntimeError("metrics agent returned non-object payload")
+            return data
+
+
+def _server_status_value(payload: dict[str, Any], *keys: str) -> Any:
+    current: Any = payload
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
+def _extract_agent_sample(payload: dict[str, Any]) -> dict[str, Any]:
+    memory = payload.get("memory") if isinstance(payload.get("memory"), dict) else {}
+    swap = payload.get("swap") if isinstance(payload.get("swap"), dict) else {}
+    disk = payload.get("disk") if isinstance(payload.get("disk"), dict) else {}
+    net = payload.get("network") if isinstance(payload.get("network"), dict) else {}
+    load = payload.get("load") if isinstance(payload.get("load"), dict) else {}
+    sockets = payload.get("sockets") if isinstance(payload.get("sockets"), dict) else {}
+    return {
+        "source": str(payload.get("source") or "agent"),
+        "cpu_percent": _as_float(payload.get("cpu_percent")),
+        "load1": _as_float(load.get("load1")),
+        "load5": _as_float(load.get("load5")),
+        "load15": _as_float(load.get("load15")),
+        "memory_used_bytes": _as_int(memory.get("used_bytes")),
+        "memory_total_bytes": _as_int(memory.get("total_bytes")),
+        "swap_used_bytes": _as_int(swap.get("used_bytes")),
+        "swap_total_bytes": _as_int(swap.get("total_bytes")),
+        "disk_used_bytes": _as_int(disk.get("used_bytes")),
+        "disk_total_bytes": _as_int(disk.get("total_bytes")),
+        "net_rx_bytes": _as_int(net.get("rx_bytes")),
+        "net_tx_bytes": _as_int(net.get("tx_bytes")),
+        "tcp_connections": _as_int(sockets.get("tcp_connections")),
+        "udp_sockets": _as_int(sockets.get("udp_sockets")),
+        "uptime_seconds": _as_int(payload.get("uptime_seconds")),
+    }
+
+
+def _extract_xui_server_sample(payload: dict[str, Any]) -> dict[str, Any]:
+    if not payload:
+        return {}
+    cpu_value = payload.get("cpu") or payload.get("cpuPercent") or payload.get("cpu_percent")
+    if isinstance(cpu_value, dict):
+        cpu_value = cpu_value.get("percent") or cpu_value.get("usedPercent")
+    mem_total = (
+        _server_status_value(payload, "mem", "total")
+        or _server_status_value(payload, "memory", "total")
+        or _server_status_value(payload, "memory", "total_bytes")
+    )
+    mem_used = (
+        _server_status_value(payload, "mem", "current")
+        or _server_status_value(payload, "mem", "used")
+        or _server_status_value(payload, "memory", "used")
+        or _server_status_value(payload, "memory", "used_bytes")
+    )
+    disk_total = _server_status_value(payload, "disk", "total") or _server_status_value(payload, "disk", "total_bytes")
+    disk_used = (
+        _server_status_value(payload, "disk", "current")
+        or _server_status_value(payload, "disk", "used")
+        or _server_status_value(payload, "disk", "used_bytes")
+    )
+    return {
+        "source": "xui",
+        "cpu_percent": _as_float(cpu_value),
+        "memory_used_bytes": _as_int(mem_used),
+        "memory_total_bytes": _as_int(mem_total),
+        "disk_used_bytes": _as_int(disk_used),
+        "disk_total_bytes": _as_int(disk_total),
+        "xray_state": str(payload.get("xray") or payload.get("xrayState") or "") or None,
+        "xray_version": str(payload.get("xrayVersion") or payload.get("version") or "") or None,
+        "uptime_seconds": _as_int(payload.get("uptime") or payload.get("uptime_seconds")),
+    }
 
 
 def _canonical_sync_node(nodes: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -264,6 +375,148 @@ async def healthcheck_tick(db: DB) -> dict[str, int]:
             await xui.close()
 
     return {"checked": checked, "ok": ok_count, "failed": failed_count}
+
+
+async def metrics_tick(db: DB, settings: Any) -> dict[str, int]:
+    nodes = await db.get_active_vpn_nodes(lb_only=False)
+    if not nodes:
+        return {"nodes": 0, "node_samples": 0, "client_samples": 0, "failed": 0}
+
+    node_samples = 0
+    client_samples = 0
+    failed = 0
+    agent_timeout = int(getattr(settings, "vpn_metrics_agent_timeout_seconds", 5))
+
+    for node in nodes:
+        node_id = int(node["id"])
+        inbound_id = _node_inbound_id(node)
+        agent_payload: dict[str, Any] | None = None
+        xui_payload: dict[str, Any] | None = None
+        agent_ok = False
+        xui_ok = False
+        agent_error: str | None = None
+        xui_error: str | None = None
+        panel_latency_ms: int | None = None
+        sample: dict[str, Any] = {"source": "none"}
+
+        try:
+            try:
+                agent_payload = await _fetch_node_agent_metrics(node, agent_timeout)
+                if agent_payload is not None:
+                    agent_ok = True
+                    sample = _extract_agent_sample(agent_payload)
+            except Exception as exc:
+                agent_error = str(exc)
+
+            xui = _node_client(node)
+            try:
+                started = time.perf_counter()
+                await xui.start()
+                panel_latency_ms = int((time.perf_counter() - started) * 1000)
+                xui_ok = True
+                try:
+                    xui_payload = await xui.get_server_status()
+                    xui_sample = _extract_xui_server_sample(xui_payload)
+                    if not agent_ok:
+                        sample = xui_sample or {"source": "xui"}
+                    else:
+                        for key, value in xui_sample.items():
+                            if key not in sample or sample.get(key) is None:
+                                sample[key] = value
+                except Exception as exc:
+                    xui_error = str(exc)
+
+                try:
+                    traffic_stats = await xui.list_client_traffic_stats(inbound_id)
+                except Exception as exc:
+                    xui_error = "; ".join(part for part in [xui_error, str(exc)] if part)
+                    traffic_stats = []
+                subscriptions = await db.list_active_subscriptions_for_node(node_id, limit=10000)
+                by_email = {str(sub.get("client_email") or "").strip().lower(): sub for sub in subscriptions}
+                by_sub_id = {
+                    str(sub.get("xui_sub_id") or "").strip().lower(): sub
+                    for sub in subscriptions
+                    if str(sub.get("xui_sub_id") or "").strip()
+                }
+                by_uuid = {str(sub.get("client_uuid") or "").strip().lower(): sub for sub in subscriptions}
+                for stat in traffic_stats:
+                    sub = None
+                    if stat.sub_id:
+                        sub = by_sub_id.get(stat.sub_id.strip().lower())
+                    if sub is None:
+                        sub = by_email.get(stat.email.strip().lower())
+                    if sub is None and stat.client_uuid:
+                        sub = by_uuid.get(stat.client_uuid.strip().lower())
+                    if sub is None:
+                        continue
+                    ok = await db.record_subscription_metric_sample(
+                        subscription_id=int(sub["id"]),
+                        node_id=node_id,
+                        client_email=stat.email,
+                        xui_sub_id=stat.sub_id,
+                        up_bytes=stat.up_bytes,
+                        down_bytes=stat.down_bytes,
+                        all_time_bytes=stat.all_time_bytes,
+                        last_online_at=stat.last_online,
+                        enabled=stat.enabled,
+                        raw=stat.raw,
+                    )
+                    if ok:
+                        client_samples += 1
+            except Exception as exc:
+                xui_error = str(exc)
+            finally:
+                try:
+                    await xui.close()
+                except Exception:
+                    pass
+
+            ok = await db.record_node_metric_sample(
+                node_id=node_id,
+                source=str(sample.get("source") or ("agent" if agent_ok else "xui" if xui_ok else "none")),
+                agent_ok=agent_ok,
+                agent_error=agent_error,
+                xui_ok=xui_ok,
+                xui_error=xui_error,
+                cpu_percent=sample.get("cpu_percent"),
+                load1=sample.get("load1"),
+                load5=sample.get("load5"),
+                load15=sample.get("load15"),
+                memory_used_bytes=sample.get("memory_used_bytes"),
+                memory_total_bytes=sample.get("memory_total_bytes"),
+                swap_used_bytes=sample.get("swap_used_bytes"),
+                swap_total_bytes=sample.get("swap_total_bytes"),
+                disk_used_bytes=sample.get("disk_used_bytes"),
+                disk_total_bytes=sample.get("disk_total_bytes"),
+                net_rx_bytes=sample.get("net_rx_bytes"),
+                net_tx_bytes=sample.get("net_tx_bytes"),
+                tcp_connections=sample.get("tcp_connections"),
+                udp_sockets=sample.get("udp_sockets"),
+                uptime_seconds=sample.get("uptime_seconds"),
+                xray_state=sample.get("xray_state"),
+                xray_version=sample.get("xray_version"),
+                panel_latency_ms=panel_latency_ms,
+                raw={"agent": agent_payload, "xui": xui_payload},
+            )
+            if ok:
+                node_samples += 1
+            if agent_error or xui_error:
+                failed += 1
+        except Exception:
+            failed += 1
+            LOGGER.exception("Metrics collection failed for node_id=%s", node_id)
+
+    cleanup = await db.cleanup_metric_samples(
+        node_days=int(getattr(settings, "vpn_metrics_retention_days", 180)),
+        client_days=int(getattr(settings, "vpn_client_metrics_retention_days", 90)),
+    )
+    return {
+        "nodes": len(nodes),
+        "node_samples": node_samples,
+        "client_samples": client_samples,
+        "failed": failed,
+        **cleanup,
+    }
 
 
 async def sync_tick(db: DB, settings: Any) -> dict[str, int]:

@@ -30,6 +30,19 @@ class InboundClientState:
     comment: str | None = None
 
 
+@dataclass(frozen=True)
+class ClientTrafficStats:
+    email: str
+    client_uuid: str | None
+    sub_id: str | None
+    enabled: bool | None
+    up_bytes: int
+    down_bytes: int
+    all_time_bytes: int
+    last_online: datetime | None
+    raw: dict[str, Any]
+
+
 NO_EXPIRY_SENTINEL = datetime(2099, 12, 31, 23, 59, 59, tzinfo=timezone.utc)
 RESERVED_PLACEHOLDER_EMAIL = "_vxcloud_reserved"
 RESERVED_PLACEHOLDER_COMMENT = "VXcloud reserved placeholder"
@@ -162,6 +175,16 @@ class XUIClient:
         data = await self._get(f"/panel/api/inbounds/get/{inbound_id}")
         return data["obj"]
 
+    async def list_inbounds(self) -> list[dict[str, Any]]:
+        data = await self._get("/panel/api/inbounds/list")
+        obj = data.get("obj")
+        return obj if isinstance(obj, list) else []
+
+    async def get_server_status(self) -> dict[str, Any]:
+        data = await self._get("/panel/api/server/status")
+        obj = data.get("obj")
+        return obj if isinstance(obj, dict) else {}
+
     async def get_client_sub_id(self, inbound_id: int, client_uuid: str) -> str | None:
         inbound = await self.get_inbound(inbound_id)
         clients = self._parse_inbound_clients(inbound)
@@ -223,6 +246,65 @@ class XUIClient:
                 )
             )
         return states
+
+    @staticmethod
+    def _coerce_last_online(value: Any) -> datetime | None:
+        try:
+            raw = int(value or 0)
+        except (TypeError, ValueError):
+            return None
+        if raw <= 0:
+            return None
+        if raw > 10_000_000_000:
+            raw = int(raw / 1000)
+        try:
+            return datetime.fromtimestamp(raw, tz=timezone.utc)
+        except (OSError, OverflowError, ValueError):
+            return None
+
+    async def list_client_traffic_stats(self, inbound_id: int) -> list[ClientTrafficStats]:
+        inbounds = await self.list_inbounds()
+        inbound: dict[str, Any] | None = None
+        for item in inbounds:
+            try:
+                if int(item.get("id") or 0) == int(inbound_id):
+                    inbound = item
+                    break
+            except (TypeError, ValueError):
+                continue
+        if inbound is None:
+            return []
+
+        client_stats = inbound.get("clientStats")
+        if not isinstance(client_stats, list):
+            return []
+
+        rows: list[ClientTrafficStats] = []
+        for item in client_stats:
+            if not isinstance(item, dict):
+                continue
+            email = str(item.get("email") or "").strip()
+            if not email:
+                continue
+            uuid_raw = item.get("uuid") or item.get("id")
+            sub_id_raw = item.get("subId")
+            up = int(item.get("up") or 0)
+            down = int(item.get("down") or 0)
+            all_time = int(item.get("allTime") or (up + down) or 0)
+            rows.append(
+                ClientTrafficStats(
+                    email=email,
+                    client_uuid=str(uuid_raw).strip() if uuid_raw else None,
+                    sub_id=str(sub_id_raw).strip() if sub_id_raw else None,
+                    enabled=bool(item["enable"]) if "enable" in item else None,
+                    up_bytes=up,
+                    down_bytes=down,
+                    all_time_bytes=all_time,
+                    last_online=self._coerce_last_online(item.get("lastOnline")),
+                    raw=dict(item),
+                )
+            )
+        return rows
 
     @staticmethod
     def _build_client_payload(

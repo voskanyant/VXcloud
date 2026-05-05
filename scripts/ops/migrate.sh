@@ -40,6 +40,8 @@ MIGRATIONS=(
   "sql/migrations/20260402_add_vpn_nodes_backfill_requested_at.sql"
   "sql/migrations/20260402_extend_vpn_nodes_ops_fields.sql"
   "sql/migrations/20260420_add_subscription_assignment_and_rebalance.sql"
+  "sql/migrations/20260421_add_dns_alias_rebalance_architecture.sql"
+  "sql/migrations/20260506_add_metrics_dashboard.sql"
 )
 
 set_env_var() {

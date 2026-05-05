@@ -67,6 +67,38 @@ class XUIClientDeleteUnitTests(unittest.TestCase):
         client.update_client.assert_not_awaited()
         client.set_client_enabled.assert_awaited_once()
 
+    def test_client_traffic_stats_parse_inbound_list(self):
+        client = XUIClient("https://panel.local", "user", "pass")
+        client.list_inbounds = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "clientStats": [
+                        {
+                            "email": "client@example.com",
+                            "uuid": "11111111-1111-1111-1111-111111111111",
+                            "subId": "sub-1",
+                            "up": 100,
+                            "down": 200,
+                            "allTime": 300,
+                            "lastOnline": 1_777_777_777,
+                            "enable": True,
+                        }
+                    ],
+                }
+            ]
+        )
+
+        rows = asyncio.run(client.list_client_traffic_stats(1))
+
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0].email, "client@example.com")
+        self.assertEqual(rows[0].up_bytes, 100)
+        self.assertEqual(rows[0].down_bytes, 200)
+        self.assertEqual(rows[0].all_time_bytes, 300)
+        self.assertTrue(rows[0].enabled)
+        self.assertIsNotNone(rows[0].last_online)
+
 
 if __name__ == "__main__":
     unittest.main()

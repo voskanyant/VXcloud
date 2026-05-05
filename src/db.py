@@ -1326,6 +1326,205 @@ class DB:
             return False
         return True
 
+    async def record_node_metric_sample(
+        self,
+        *,
+        node_id: int,
+        source: str,
+        agent_ok: bool = False,
+        agent_error: str | None = None,
+        xui_ok: bool = False,
+        xui_error: str | None = None,
+        cpu_percent: float | None = None,
+        load1: float | None = None,
+        load5: float | None = None,
+        load15: float | None = None,
+        memory_used_bytes: int | None = None,
+        memory_total_bytes: int | None = None,
+        swap_used_bytes: int | None = None,
+        swap_total_bytes: int | None = None,
+        disk_used_bytes: int | None = None,
+        disk_total_bytes: int | None = None,
+        net_rx_bytes: int | None = None,
+        net_tx_bytes: int | None = None,
+        tcp_connections: int | None = None,
+        udp_sockets: int | None = None,
+        uptime_seconds: int | None = None,
+        xray_state: str | None = None,
+        xray_version: str | None = None,
+        panel_latency_ms: int | None = None,
+        raw: dict[str, Any] | None = None,
+    ) -> bool:
+        assert self.pool is not None
+        try:
+            await self.pool.execute(
+                """
+                INSERT INTO vpn_node_metric_samples (
+                    node_id,
+                    source,
+                    agent_ok,
+                    agent_error,
+                    xui_ok,
+                    xui_error,
+                    cpu_percent,
+                    load1,
+                    load5,
+                    load15,
+                    memory_used_bytes,
+                    memory_total_bytes,
+                    swap_used_bytes,
+                    swap_total_bytes,
+                    disk_used_bytes,
+                    disk_total_bytes,
+                    net_rx_bytes,
+                    net_tx_bytes,
+                    tcp_connections,
+                    udp_sockets,
+                    uptime_seconds,
+                    xray_state,
+                    xray_version,
+                    panel_latency_ms,
+                    raw
+                )
+                VALUES (
+                    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
+                    $11, $12, $13, $14, $15, $16, $17, $18,
+                    $19, $20, $21, $22, $23, $24, $25::jsonb
+                )
+                """,
+                int(node_id),
+                source,
+                bool(agent_ok),
+                agent_error,
+                bool(xui_ok),
+                xui_error,
+                cpu_percent,
+                load1,
+                load5,
+                load15,
+                memory_used_bytes,
+                memory_total_bytes,
+                swap_used_bytes,
+                swap_total_bytes,
+                disk_used_bytes,
+                disk_total_bytes,
+                net_rx_bytes,
+                net_tx_bytes,
+                tcp_connections,
+                udp_sockets,
+                uptime_seconds,
+                xray_state,
+                xray_version,
+                panel_latency_ms,
+                json.dumps(raw or {}, ensure_ascii=False),
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+            return False
+        return True
+
+    async def record_subscription_metric_sample(
+        self,
+        *,
+        subscription_id: int,
+        node_id: int | None,
+        client_email: str | None,
+        xui_sub_id: str | None,
+        up_bytes: int,
+        down_bytes: int,
+        all_time_bytes: int,
+        last_online_at: datetime | None,
+        enabled: bool | None,
+        raw: dict[str, Any] | None = None,
+    ) -> bool:
+        assert self.pool is not None
+        try:
+            await self.pool.execute(
+                """
+                INSERT INTO vpn_subscription_metric_samples (
+                    subscription_id,
+                    node_id,
+                    client_email,
+                    xui_sub_id,
+                    up_bytes,
+                    down_bytes,
+                    all_time_bytes,
+                    last_online_at,
+                    enabled,
+                    raw
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)
+                """,
+                int(subscription_id),
+                int(node_id) if node_id is not None else None,
+                client_email,
+                xui_sub_id,
+                int(up_bytes),
+                int(down_bytes),
+                int(all_time_bytes),
+                last_online_at,
+                enabled,
+                json.dumps(raw or {}, ensure_ascii=False),
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+            return False
+        return True
+
+    async def record_subscription_event(
+        self,
+        *,
+        subscription_id: int,
+        event_kind: str,
+        from_node_id: int | None = None,
+        to_node_id: int | None = None,
+        reason: str | None = None,
+        dns_change_id: str | None = None,
+        details: dict[str, Any] | None = None,
+    ) -> bool:
+        assert self.pool is not None
+        try:
+            await self.pool.execute(
+                """
+                INSERT INTO vpn_subscription_events (
+                    subscription_id,
+                    event_kind,
+                    from_node_id,
+                    to_node_id,
+                    reason,
+                    dns_change_id,
+                    details
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+                """,
+                int(subscription_id),
+                event_kind,
+                int(from_node_id) if from_node_id is not None else None,
+                int(to_node_id) if to_node_id is not None else None,
+                reason,
+                dns_change_id,
+                json.dumps(details or {}, ensure_ascii=False),
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+            return False
+        return True
+
+    async def cleanup_metric_samples(self, *, node_days: int = 180, client_days: int = 90) -> dict[str, int]:
+        assert self.pool is not None
+        result = {"node_deleted": 0, "client_deleted": 0}
+        try:
+            node_status = await self.pool.execute(
+                "DELETE FROM vpn_node_metric_samples WHERE observed_at < (NOW() - make_interval(days => $1))",
+                max(1, int(node_days)),
+            )
+            client_status = await self.pool.execute(
+                "DELETE FROM vpn_subscription_metric_samples WHERE observed_at < (NOW() - make_interval(days => $1))",
+                max(1, int(client_days)),
+            )
+        except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
+            return result
+        result["node_deleted"] = int(str(node_status).split()[-1]) if str(node_status).split() else 0
+        result["client_deleted"] = int(str(client_status).split()[-1]) if str(client_status).split() else 0
+        return result
+
     async def record_rebalance_decision(
         self,
         *,
@@ -1371,6 +1570,15 @@ class DB:
             )
         except (asyncpg.UndefinedColumnError, asyncpg.UndefinedTableError):
             return False
+        await self.record_subscription_event(
+            subscription_id=subscription_id,
+            event_kind=decision_kind,
+            from_node_id=from_node_id,
+            to_node_id=to_node_id,
+            reason=reason,
+            dns_change_id=dns_change_id,
+            details=details,
+        )
         return True
 
     async def list_rebalance_candidates(self, from_node_id: int, cooldown_hours: int, limit: int) -> list[dict[str, Any]]:

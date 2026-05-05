@@ -1,4 +1,5 @@
 {% extends "backoffice/base.html" %}
+{% load static %}
 
 {% block content %}
 <div class="row g-3 mb-4">
@@ -13,10 +14,54 @@
   {% endfor %}
 </div>
 
+<section class="bo-panel bo-stats-overview mb-4">
+  <div class="bo-panel-head">
+    <h3>Live node gauges</h3>
+    <span class="text-muted small">{{ window_label }}</span>
+  </div>
+  <div class="bo-gauge-grid">
+    {% for row in rows %}
+      <article class="bo-node-gauge-card">
+        <div class="bo-node-gauge-head">
+          <div>
+            <strong>{{ row.node.name }}</strong>
+            <div class="text-muted small">{{ row.public_endpoint }}</div>
+          </div>
+          <div class="d-flex flex-wrap gap-1 justify-content-end">
+            {{ row.health }} {{ row.lb }} {{ row.agent }}
+          </div>
+        </div>
+        <div class="bo-gauge-metrics">
+          <div class="bo-ring" style="--value: {{ row.cpu_value }};">
+            <span>{{ row.cpu_pct }}</span>
+            <small>CPU</small>
+          </div>
+          <div class="bo-ring" style="--value: {{ row.memory_value }};">
+            <span>{{ row.memory_pct }}</span>
+            <small>RAM</small>
+          </div>
+          <div class="bo-ring" style="--value: {{ row.disk_value }};">
+            <span>{{ row.disk_pct }}</span>
+            <small>Disk</small>
+          </div>
+        </div>
+        <div class="bo-node-gauge-foot">
+          <div><span>Load</span><strong>{{ row.load }}</strong></div>
+          <div><span>Traffic 30d</span><strong>{{ row.traffic_30d }}</strong></div>
+          <div><span>Users</span><strong>{{ row.assigned_now }}</strong></div>
+          <div><span>Latency</span><strong>{{ row.latency_now }}</strong></div>
+        </div>
+      </article>
+    {% empty %}
+      <div class="text-muted">No VPN nodes found.</div>
+    {% endfor %}
+  </div>
+</section>
+
 <section class="bo-panel mb-4">
   <div class="bo-panel-head">
     <h3>Telemetry coverage</h3>
-    <span class="text-muted small">{{ window_label }}</span>
+    <span class="text-muted small">Server agent + 3x-ui client counters</span>
   </div>
   <ul class="bo-note-list">
     {% for note in telemetry_notes %}
@@ -25,99 +70,169 @@
   </ul>
 </section>
 
-<section class="bo-panel">
-  <div class="bo-panel-head">
-    <h3>Node load summary</h3>
-    <a href="{% url 'backoffice:vpn_node_list' %}">Open nodes</a>
-  </div>
-  <div class="table-responsive">
-    <table class="table bo-table align-middle bo-node-stats-table">
-      <thead>
-        <tr>
-          <th>Node</th>
-          <th>State</th>
-          <th>Users</th>
-          <th>Clients</th>
-          <th>Concurrency</th>
-          <th>Traffic</th>
-          <th>Latency</th>
-          <th>Capacity</th>
-          <th>CPU / load</th>
-          <th>Score</th>
-          <th>Samples</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in rows %}
-          <tr>
-            <td>
-              <div class="fw-semibold">{{ row.node.name }}</div>
-              <code class="small">{{ row.endpoint }}</code>
-              <div class="text-muted small">{{ row.public_endpoint }}</div>
-              <div class="text-muted small">pool: {{ row.pool }}</div>
-            </td>
-            <td>
-              <div class="d-flex flex-wrap gap-1">
-                {{ row.health }}
-                {{ row.lb }}
-                {{ row.backfill }}
-                {{ row.eligibility }}
-              </div>
-            </td>
-            <td>
-              <strong>{{ row.assigned_now }}</strong>
-              <div class="text-muted small">7d avg {{ row.assigned_avg }}</div>
-              <div class="text-muted small">7d max {{ row.assigned_max }}</div>
-            </td>
-            <td>
-              <strong>{{ row.observed_now }}</strong>
-              <div class="text-muted small">desired {{ row.desired_clients }}</div>
-              <div class="text-muted small">7d avg {{ row.observed_avg }} / max {{ row.observed_max }}</div>
-            </td>
-            <td>
-              <strong>{{ row.peak_now }}</strong>
-              <div class="text-muted small">7d avg {{ row.peak_avg }}</div>
-              <div class="text-muted small">7d max {{ row.peak_max }}</div>
-            </td>
-            <td>
-              <strong>{{ row.traffic_latest }}</strong>
-              <div class="text-muted small">7d max {{ row.traffic_max_7d }}</div>
-            </td>
-            <td>
-              <strong>{{ row.latency_now }}</strong>
-              <div class="text-muted small">7d avg {{ row.latency_avg }}</div>
-              <div class="text-muted small">7d max {{ row.latency_max }}</div>
-            </td>
-            <td>
-              <strong>{{ row.capacity_pct }}</strong>
-              <div class="text-muted small">{{ row.capacity }}</div>
-              <div class="text-muted small">{{ row.bandwidth }}</div>
-            </td>
-            <td>
-              <span class="text-muted">{{ row.cpu_avg }}</span>
-              <div class="text-muted small">system {{ row.system_load_avg }}</div>
-            </td>
-            <td>
-              <strong>{{ row.score_now }}</strong>
-              <div class="text-muted small">7d avg {{ row.score_avg }}</div>
-              {% if row.score_reasons %}
-                <div class="text-muted small">{{ row.score_reasons }}</div>
-              {% endif %}
-            </td>
-            <td>
-              <strong>{{ row.samples }}</strong>
-              <div class="text-muted small">{{ row.health_pct }} healthy</div>
-              <div class="text-muted small">{{ row.failed_samples }} failed</div>
-              <div class="text-muted small">{{ row.latest_snapshot_at|default:"no snapshots" }}</div>
-            </td>
-          </tr>
+<ul class="nav nav-pills bo-stats-tabs mb-3" id="statsTabs" role="tablist">
+  <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="pill" data-bs-target="#stats-fleet" type="button" role="tab">Fleet</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#stats-nodes" type="button" role="tab">Nodes</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#stats-users" type="button" role="tab">Users</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#stats-moves" type="button" role="tab">Moves</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#stats-projections" type="button" role="tab">Projections</button></li>
+  <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="pill" data-bs-target="#stats-logs" type="button" role="tab">Logs</button></li>
+</ul>
+
+<div class="tab-content">
+  <section class="tab-pane fade show active" id="stats-fleet" role="tabpanel">
+    <div class="bo-chart-grid mb-4">
+      <article class="bo-panel bo-chart-card">
+        <div class="bo-panel-head"><h3>CPU / RAM / Disk</h3></div>
+        <canvas id="nodeResourceChart"></canvas>
+      </article>
+      <article class="bo-panel bo-chart-card">
+        <div class="bo-panel-head"><h3>Top user traffic</h3></div>
+        <canvas id="userTrafficChart"></canvas>
+      </article>
+    </div>
+  </section>
+
+  <section class="tab-pane fade" id="stats-nodes" role="tabpanel">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>Node detail</h3>
+        <a href="{% url 'backoffice:vpn_node_list' %}">Open nodes</a>
+      </div>
+      <div class="table-responsive bo-stats-responsive">
+        <table class="table bo-table align-middle bo-node-stats-table">
+          <thead>
+            <tr>
+              <th>Node</th>
+              <th>State</th>
+              <th>Usage</th>
+              <th>Resources</th>
+              <th>Traffic</th>
+              <th>Score</th>
+              <th>Samples</th>
+              <th>Last error</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td data-label="Node">
+                  <div class="fw-semibold">{{ row.node.name }}</div>
+                  <code class="small">{{ row.endpoint }}</code>
+                  <div class="text-muted small">pool: {{ row.pool }}</div>
+                </td>
+                <td data-label="State"><div class="d-flex flex-wrap gap-1">{{ row.health }} {{ row.lb }} {{ row.backfill }} {{ row.eligibility }} {{ row.agent }}</div></td>
+                <td data-label="Usage"><strong>{{ row.assigned_now }}</strong><div class="text-muted small">observed {{ row.observed_now }}, peak {{ row.peak_now }}</div><div class="text-muted small">capacity {{ row.capacity_pct }}</div></td>
+                <td data-label="Resources"><strong>CPU {{ row.cpu_pct }}</strong><div class="text-muted small">RAM {{ row.memory }}</div><div class="text-muted small">Disk {{ row.disk }}</div><div class="text-muted small">{{ row.sockets }}</div></td>
+                <td data-label="Traffic"><strong>{{ row.traffic_30d }}</strong><div class="text-muted small">x-ui total {{ row.traffic_latest }}</div></td>
+                <td data-label="Score"><strong>{{ row.score_now }}</strong><div class="text-muted small">7d avg {{ row.score_avg }}</div>{% if row.score_reasons %}<div class="text-muted small">{{ row.score_reasons }}</div>{% endif %}</td>
+                <td data-label="Samples"><strong>{{ row.samples }}</strong><div class="text-muted small">{{ row.health_pct }} healthy</div><div class="text-muted small">{{ row.failed_samples }} failed</div><div class="text-muted small">{{ row.latest_snapshot_at|default:"no samples" }}</div></td>
+                <td data-label="Last error"><span class="text-muted">{{ row.last_error }}</span></td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="8" class="text-muted">No VPN nodes found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+
+  <section class="tab-pane fade" id="stats-users" role="tabpanel">
+    <section class="bo-panel">
+      <div class="bo-panel-head">
+        <h3>User and subscription usage</h3>
+        <input class="form-control bo-table-filter" type="search" data-filter-target="#userUsageTable" placeholder="Search users or subscriptions">
+      </div>
+      <div class="table-responsive bo-stats-responsive">
+        <table class="table bo-table align-middle bo-user-usage-table" id="userUsageTable">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Subscription</th>
+              <th>Node</th>
+              <th>Traffic 30d</th>
+              <th>Last online</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in user_rows %}
+              <tr>
+                <td data-label="User"><strong>{{ row.user }}</strong><div class="text-muted small">tg {{ row.telegram_id }}</div></td>
+                <td data-label="Subscription"><strong>{{ row.subscription }}</strong><div class="text-muted small">#{{ row.subscription_id }} · {{ row.alias }}</div></td>
+                <td data-label="Node">{{ row.node }}</td>
+                <td data-label="Traffic 30d"><strong>{{ row.traffic_30d }}</strong><div class="text-muted small">total {{ row.latest_total }}</div></td>
+                <td data-label="Last online">{{ row.last_online }}</td>
+                <td data-label="Status">{{ row.enabled }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6" class="text-muted">No subscription usage samples yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </section>
+
+  <section class="tab-pane fade" id="stats-moves" role="tabpanel">
+    <section class="bo-panel">
+      <div class="bo-panel-head"><h3>Movement timeline</h3></div>
+      <div class="bo-timeline">
+        {% for event in event_rows %}
+          <article class="bo-timeline-item">
+            <div class="bo-timeline-time">{{ event.time }}</div>
+            <div class="bo-timeline-body">
+              <strong>{{ event.subscription }}</strong>
+              <div>{{ event.event }}: {{ event.from }} -> {{ event.to }}</div>
+              <div class="text-muted small">{{ event.reason }}{% if event.dns != "-" %} · DNS {{ event.dns }}{% endif %}</div>
+            </div>
+          </article>
         {% empty %}
-          <tr>
-            <td colspan="11" class="text-muted">No VPN nodes found.</td>
-          </tr>
+          <div class="text-muted">No movement events recorded yet.</div>
         {% endfor %}
-      </tbody>
-    </table>
-  </div>
-</section>
+      </div>
+    </section>
+  </section>
+
+  <section class="tab-pane fade" id="stats-projections" role="tabpanel">
+    <div class="bo-chart-grid">
+      <article class="bo-panel bo-chart-card">
+        <div class="bo-panel-head"><h3>Traffic projection</h3></div>
+        <canvas id="projectionChart"></canvas>
+      </article>
+      <section class="bo-panel">
+        <div class="bo-panel-head"><h3>Forecast table</h3></div>
+        <div class="bo-info-grid">
+          {% for row in projection_rows %}
+            <div><span>{{ row.window }}</span><strong>{{ row.traffic }}</strong><small>{{ row.clients }} active subs today</small></div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <section class="tab-pane fade" id="stats-logs" role="tabpanel">
+    <section class="bo-panel">
+      <div class="bo-panel-head"><h3>Recent ops logs</h3></div>
+      <div class="bo-log-list">
+        {% for log in log_rows %}
+          <article>
+            <span>{{ log.time }}</span>
+            <strong>{{ log.source }} · {{ log.kind }}</strong>
+            <div>{{ log.message }}</div>
+          </article>
+        {% empty %}
+          <div class="text-muted">No recent metric or sync errors.</div>
+        {% endfor %}
+      </div>
+    </section>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ chart_payload|json_script:"stats-data" }}
+<script src="{% static 'backoffice/chart.umd.min.js' %}"></script>
+<script src="{% static 'backoffice/stats_dashboard.js' %}"></script>
 {% endblock %}
