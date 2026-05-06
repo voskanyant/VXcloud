@@ -265,15 +265,6 @@ class VPNBot:
     def _mini_app_button(self, text: str, next_path: str | None = None) -> InlineKeyboardButton:
         return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=self._mini_app_url(next_path)))
 
-    def _site_web_app_url(self, path: str) -> str:
-        site = urlsplit(self._site_url().rstrip("/") or "https://vxcloud.ru")
-        parsed = urlsplit((path or "/").strip() or "/")
-        route = parsed.path if parsed.path.startswith("/") else f"/{parsed.path}"
-        return urlunsplit((site.scheme or "https", site.netloc or "vxcloud.ru", route, parsed.query, parsed.fragment))
-
-    def _site_web_app_button(self, text: str, path: str) -> InlineKeyboardButton:
-        return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=self._site_web_app_url(path)))
-
     async def _mini_app_with_fallback_rows(
         self,
         *,
@@ -415,17 +406,17 @@ class VPNBot:
         if node_key == "menu_instructions":
             return InlineKeyboardMarkup(
                 [
-                    [self._site_web_app_button("iPhone", "/instructions/?device=iphone")],
-                    [self._site_web_app_button("Android", "/instructions/?device=android")],
-                    [self._site_web_app_button("Windows/macOS", "/instructions/?device=desktop")],
-                    [self._site_web_app_button("Полная инструкция", "/instructions/")],
+                    [self._mini_app_button("iPhone", "/account/?view=instructions&device=iphone")],
+                    [self._mini_app_button("Android", "/account/?view=instructions&device=android")],
+                    [self._mini_app_button("Windows/macOS", "/account/?view=instructions&device=desktop")],
+                    [self._mini_app_button("Полная инструкция", "/account/?view=instructions")],
                     [InlineKeyboardButton(text="Мой VPN", callback_data="act|start_mysub|_")],
                 ]
             )
         if node_key == "instructions_install":
             return InlineKeyboardMarkup(
                 [
-                    [self._site_web_app_button("Полная инструкция", "/instructions/")],
+                    [self._mini_app_button("Полная инструкция", "/account/?view=instructions")],
                     [InlineKeyboardButton(text="Назад", callback_data="nav|menu_instructions|_")],
                 ]
             )

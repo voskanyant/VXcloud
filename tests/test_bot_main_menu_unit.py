@@ -684,10 +684,10 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(bot._node_response_text("menu_instructions"), "\u041a\u0430\u043a \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c\n\n\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e. \u041f\u043e\u043b\u043d\u0430\u044f \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f \u043e\u0442\u043a\u0440\u043e\u0435\u0442\u0441\u044f \u0432 Telegram.")
         self.assertEqual(markup.inline_keyboard[0][0].text, "iPhone")
-        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/instructions/?device=iphone")
-        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/instructions/?device=android")
-        self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/instructions/?device=desktop")
-        self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/instructions/")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&device=iphone&embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&device=android&embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&device=desktop&embed=1")
+        self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&embed=1")
         self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|start_mysub|_")
 
     async def test_legacy_install_instructions_open_full_guide_in_mini_app(self):
@@ -700,7 +700,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
             "\u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f \u043f\u043e \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044e\n\n\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435. \u0422\u0430\u043c \u0441\u043e\u0431\u0440\u0430\u043d\u044b \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u0438, \u0441\u0441\u044b\u043b\u043a\u0438 \u043d\u0430 \u043f\u0440\u0438\u043b\u043e\u0436\u0435\u043d\u0438\u044f \u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430.",
         )
         self.assertEqual(markup.inline_keyboard[0][0].text, "\u041f\u043e\u043b\u043d\u0430\u044f \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f")
-        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/instructions/")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&embed=1")
         self.assertIsNone(markup.inline_keyboard[0][0].url)
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "nav|menu_instructions|_")
 

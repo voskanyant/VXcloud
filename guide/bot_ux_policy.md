@@ -102,6 +102,8 @@ The 2026-05-06 cleanup did three things:
   post-payment entrypoints instead of every payment choice
 - localized the Mini App support view opened from the bot, so support copy and
   actions stay Russian
+- moved bot instruction choices to Mini App instruction views instead of
+  opening public `/instructions/` directly from Telegram
 - cleaned remaining English fallback labels in input cancellation, delete alerts,
   and raw connection-link messages
 - made bot CMS fallback reject mojibake overrides, so broken stored labels do

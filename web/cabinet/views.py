@@ -495,6 +495,37 @@ def _build_support_payload(request: HttpRequest) -> dict[str, object]:
     }
 
 
+def _normalize_instruction_device(value: str | None) -> str:
+    normalized = (value or "").strip().lower()
+    if normalized in {"iphone", "ios"}:
+        return "iphone"
+    if normalized == "android":
+        return "android"
+    if normalized in {"desktop", "windows", "macos", "mac"}:
+        return "desktop"
+    return ""
+
+
+def _build_instructions_payload(request: HttpRequest, *, device: str = "") -> dict[str, object]:
+    selected_device = _normalize_instruction_device(device)
+    return {
+        "title": "Инструкция по подключению",
+        "subtitle": "Выберите устройство и откройте QR или subscription URL в своем кабинете.",
+        "device": selected_device,
+        "devices": [
+            {"key": "iphone", "label": "iPhone", "url": _account_backend_url(request, "?view=instructions&device=iphone")},
+            {"key": "android", "label": "Android", "url": _account_backend_url(request, "?view=instructions&device=android")},
+            {
+                "key": "desktop",
+                "label": "Windows/macOS",
+                "url": _account_backend_url(request, "?view=instructions&device=desktop"),
+            },
+        ],
+        "dashboard_url": _account_backend_url(request),
+        "support_url": _account_backend_url(request, "?view=support"),
+    }
+
+
 def _build_link_telegram_payload(request: HttpRequest, *, regenerate: bool = False) -> dict[str, object]:
     linked = LinkedAccount.objects.filter(user=request.user).first()
     now = timezone.now()
@@ -923,7 +954,10 @@ def signup_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def account_dashboard(request: HttpRequest) -> HttpResponse:
-    support_view = (request.GET.get("view") or "").strip().lower() == "support"
+    view_name = (request.GET.get("view") or "").strip().lower()
+    support_view = view_name == "support"
+    instructions_view = view_name == "instructions"
+    instruction_payload = _build_instructions_payload(request, device=request.GET.get("device")) if instructions_view else {}
     linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
     sub, has_active, last_payment_method = _get_subscription_snapshot_for_bot_user(bot_user)
     subscriptions = _list_subscriptions_for_bot_user(bot_user)
@@ -976,6 +1010,8 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
             "single_renew_url": single_renew_url,
             "support_view": support_view,
             "support_client_code": getattr(bot_user, "client_code", "") or "",
+            "instructions_view": instructions_view,
+            "instructions_payload": instruction_payload,
             **_account_template_urls(request),
         },
     )
@@ -1345,6 +1381,11 @@ def account_api_state(request: HttpRequest) -> JsonResponse:
     if view_name == "support":
         payload["view"] = "support"
         payload["support"] = _build_support_payload(request)
+        return JsonResponse(payload)
+
+    if view_name == "instructions":
+        payload["view"] = "instructions"
+        payload["instructions"] = _build_instructions_payload(request, device=request.GET.get("device"))
         return JsonResponse(payload)
 
     payload["view"] = "dashboard"
