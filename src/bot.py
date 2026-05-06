@@ -642,21 +642,26 @@ class VPNBot:
         )
         return InlineKeyboardMarkup(rows)
 
-    def _buy_card_markup(self, pay_url: str) -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton(text=self._with_card_price("💳 Перейти к оплате"), url=pay_url)],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|buy_card_back|_")],
-            ]
+    async def _buy_card_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
+        rows = await self._mini_app_with_fallback_rows(
+            user_id=user_id,
+            next_path="/account/buy/",
+            web_app_text=self._with_card_price("Pay by card in app"),
         )
+        rows.append([InlineKeyboardButton(text="Back", callback_data="act|buy_card_back|_")])
+        return InlineKeyboardMarkup(rows)
 
-    def _renew_card_markup(self, pay_url: str) -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton(text=self._with_card_price("💳 Перейти к оплате"), url=pay_url)],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|renew_card_back|_")],
-            ]
+    async def _renew_card_markup(self, user_id: int | None, subscription_id: int | None = None) -> InlineKeyboardMarkup:
+        next_path = "/account/renew/"
+        if isinstance(subscription_id, int) and subscription_id > 0:
+            next_path = f"{next_path}?subscription_id={subscription_id}"
+        rows = await self._mini_app_with_fallback_rows(
+            user_id=user_id,
+            next_path=next_path,
+            web_app_text=self._with_card_price("Renew by card in app"),
         )
+        rows.append([InlineKeyboardButton(text="Back", callback_data="act|renew_card_back|_")])
+        return InlineKeyboardMarkup(rows)
 
     def _post_payment_ready_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
@@ -836,20 +841,26 @@ class VPNBot:
             "Продление доступа\n\n"
             f"Текущее устройство: {self._subscription_name(target_sub)}\n"
             f"Действует до: {expires_text}\n\n"
-            f"Рекомендуем оплату картой на сайте · {self._card_price_label()}.\n"
+            f"Рекомендуем оплату картой в Mini App · {self._card_price_label()}.\n"
+            "Telegram Stars остаются внутри бота.\n"
             "После оплаты срок доступа продлится автоматически.",
             reply_markup=await self._renew_offer_markup(user_id, target_subscription_id),
         )
 
-    async def _show_renew_card_info(self, message: Message) -> None:
-        pay_url = await self._account_url(None, "/account/renew/")
-        await message.edit_reply_markup(reply_markup=self._renew_card_markup(pay_url))
+    async def _show_renew_card_info(
+        self,
+        message: Message,
+        user_id: int | None,
+        subscription_id: int | None = None,
+    ) -> None:
+        await message.edit_reply_markup(reply_markup=await self._renew_card_markup(user_id, subscription_id))
 
     async def _show_buy_checkout_options(self, message: Message, user_id: int | None = None) -> None:
         await self._replace_or_reply(
             message,
             "Оформление доступа\n\n"
-            f"Рекомендуем оплату картой на сайте · {self._card_price_label()}.\n\n"
+            f"Рекомендуем оплату картой в Mini App · {self._card_price_label()}.\n"
+            "Telegram Stars остаются внутри бота.\n\n"
             "Подходит, если вы хотите:\n"
             "• подключить ещё одно устройство\n"
             "• получить отдельный доступ\n"
@@ -872,9 +883,8 @@ class VPNBot:
             return
         await self._show_buy_checkout_options(message, user_id)
 
-    async def _show_buy_card_info(self, message: Message) -> None:
-        pay_url = await self._account_url(None, "/account/buy/")
-        await message.edit_reply_markup(reply_markup=self._buy_card_markup(pay_url))
+    async def _show_buy_card_info(self, message: Message, user_id: int | None) -> None:
+        await message.edit_reply_markup(reply_markup=await self._buy_card_markup(user_id))
 
     async def _show_trial_offer(self, message: Message, user_id: int) -> None:
         if await self.db.has_any_subscription(user_id):
@@ -1814,7 +1824,8 @@ class VPNBot:
             if target == "buy_card":
                 await query.answer()
                 if query.message is not None:
-                    await self._show_buy_card_info(query.message)
+                    user_id = await self._ensure_user(update)
+                    await self._show_buy_card_info(query.message, user_id)
                 return
             if target == "buy_card_back":
                 await query.answer()
@@ -1886,7 +1897,9 @@ class VPNBot:
             if target == "renew_card":
                 await query.answer()
                 if query.message is not None:
-                    await self._show_renew_card_info(query.message)
+                    user_id = await self._ensure_user(update)
+                    target_subscription_id, _ = await self._resolve_renew_target(user_id, context)
+                    await self._show_renew_card_info(query.message, user_id, target_subscription_id)
                 return
             if target == "renew_card_back":
                 await query.answer()

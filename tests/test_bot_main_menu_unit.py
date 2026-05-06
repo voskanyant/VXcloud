@@ -234,6 +234,28 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Fbuy%2F")
 
+    async def test_buy_copy_names_mini_app_as_card_checkout_surface(self):
+        bot = make_bot()
+        message = FakeMessage()
+
+        await bot._show_buy_checkout_options(message, user_id=123)
+
+        text = message.replies[-1][0]
+        self.assertIn("Mini App", text)
+        self.assertIn("Telegram Stars", text)
+        self.assertNotIn("на сайте", text)
+
+    async def test_legacy_card_markups_keep_mini_app_primary(self):
+        bot = make_bot()
+
+        buy_markup = await bot._buy_card_markup(user_id=123)
+        renew_markup = await bot._renew_card_markup(user_id=123, subscription_id=42)
+
+        self.assertEqual(buy_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(buy_markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Fbuy%2F")
+        self.assertEqual(renew_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
+        self.assertEqual(renew_markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Frenew%2F%3Fsubscription_id%3D42")
+
     async def test_payment_ready_markups_keep_app_primary_and_browser_fallback(self):
         bot = make_bot()
         account_url = "https://vxcloud.ru/account/"
@@ -354,6 +376,28 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(db.events[-1]["subscription_id"], 12)
         markup = query.message.replies[-1][1]
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=12&embed=1")
+
+    async def test_renew_copy_names_mini_app_as_card_checkout_surface(self):
+        db = FakeDB()
+        db.subscription_list = [
+            {
+                "id": 42,
+                "display_name": "Work laptop",
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=7),
+                "is_active": True,
+                "revoked_at": None,
+            }
+        ]
+        bot = make_bot(db)
+        message = FakeMessage()
+        context = SimpleNamespace(user_data={})
+
+        await bot._show_renew_offer(message, user_id=123, context=context)
+
+        text = message.replies[-1][0]
+        self.assertIn("Mini App", text)
+        self.assertIn("Telegram Stars", text)
+        self.assertNotIn("на сайте", text)
 
     async def test_instructions_hub_uses_short_webapp_device_choices(self):
         bot = make_bot()
