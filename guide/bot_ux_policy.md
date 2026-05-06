@@ -125,14 +125,16 @@ Back/Назад button should be ignored by the bot.
   already used and the user has active access, point to the current subscription
   instead of pushing another purchase.
 - Buy: two payment choices only, card checkout in Mini App and Stars in bot.
-  Copy should mention where access appears after payment, not repeat delivery
-  mechanics. If the user already has active access, the buy screen should make
-  "buy another device" and "renew this access" explicit and target renewal to
-  the active subscription when possible.
+  Copy should say that one access is for one device and mention where access
+  appears after payment, not repeat delivery mechanics. If the user already has
+  active access, the buy screen should make "buy another device" and "renew
+  this access" explicit and target renewal to the active subscription when
+  possible.
 - Renew: always target one explicit subscription before showing payment. If
   several subscriptions can be renewed, show the same active/nearest-expiry
-  ordering and status cues as My VPN. If there is nothing to renew, offer the
-  7-day trial first, then card and Stars purchase actions.
+  ordering and status icons as My VPN. Copy should say renewal adds time to
+  the selected device, not that it creates a new access. If there is nothing to
+  renew, offer the 7-day trial first, then card and Stars purchase actions.
 - Payment success: compact confirmation only. Do not explain every possible
   action in prose when the buttons already show cabinet and QR. Do not add an
   "Открыть в боте" button on success screens; the user is already in the bot.
@@ -145,12 +147,15 @@ Back/Назад button should be ignored by the bot.
 - Reminders: short expiration notices that name the device and include direct
   `🔄 Продлить` and `📱 Кабинет` Mini App buttons. Do not use "config" wording
   in customer reminders.
-- Support: hub first with a short prompt and user ID; writing a message hides
-  the menu until submit/cancel. Overlong messages should not create tickets;
-  keep the user in input mode, explain the limit, and keep only `Отмена`
-  visible. Submitted-ticket confirmation should restore the persistent menu,
-  include the ticket number, and point to `📱 Кабинет` for support history
-  without replacing the menu with inline navigation.
+- Support: hub first with a short prompt and user ID. The hub should explain
+  that the answer comes in Telegram and ask for one useful message: device,
+  what does not work, and when it started. Keep two actions: `✍️ Написать в
+  поддержку` and `📱 История обращений`. Writing a message hides the menu until
+  submit/cancel. Overlong messages should not create tickets; keep the user in
+  input mode, explain the limit, and keep only `Отмена` visible.
+  Submitted-ticket confirmation should restore the persistent menu, include the
+  ticket number, and point to `📱 Кабинет` for support history without replacing
+  the menu with inline navigation.
 - Instructions: bot shows only device choices and opens Mini App guide pages.
   Copy must say the full guide opens in the cabinet, not in a separate site.
   Legacy cached labels and typed phrases such as "Как подключить" should still

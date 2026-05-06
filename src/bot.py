@@ -826,8 +826,8 @@ class VPNBot:
     def _support_hub_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(text="✍️ Написать", callback_data="act|support_start|_")],
-                [self._mini_app_button("📱 Поддержка в кабинете", "/account/?view=support")],
+                [InlineKeyboardButton(text="✍️ Написать в поддержку", callback_data="act|support_start|_")],
+                [self._mini_app_button("📱 История обращений", "/account/?view=support")],
             ]
         )
 
@@ -844,7 +844,9 @@ class VPNBot:
         await self._replace_or_reply(
             message,
             "Поддержка\n\n"
-            "Опишите проблему одним сообщением. Если VPN не работает, укажите устройство и что уже пробовали.\n\n"
+            "Мы ответим здесь, в Telegram.\n\n"
+            "Чтобы решить быстрее, напишите одним сообщением:\n"
+            "устройство, что не работает, когда началось.\n\n"
             "Ваш ID: "
             f"{client_code}",
             reply_markup=self._support_hub_markup(),
@@ -934,7 +936,7 @@ class VPNBot:
             rows.append(
                 [
                     InlineKeyboardButton(
-                        text=f"{idx}. {self._subscription_name(sub)}",
+                        text=f"{idx}. {self._subscription_button_icon(sub)} {self._subscription_name(sub)}",
                         callback_data=f"act|renew_select:{subscription_id}|_",
                     )
                 ]
@@ -944,7 +946,12 @@ class VPNBot:
 
     def _renew_select_text(self, subscriptions: list[dict[str, object]]) -> str:
         now = datetime.now(timezone.utc)
-        lines = ["Продлить доступ", "", "Выберите устройство. Продление применится только к нему.", ""]
+        lines = [
+            "Продлить доступ",
+            "",
+            "Выберите устройство. Продление добавит срок только к нему.",
+            "",
+        ]
         for idx, sub in enumerate(self._sorted_subscriptions(subscriptions), start=1):
             expires_at = sub.get("expires_at")
             expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "-"
@@ -1000,6 +1007,7 @@ class VPNBot:
             "Продлить доступ\n\n"
             f"Устройство: {self._subscription_name(target_sub)}\n"
             f"Действует до: {expires_text}\n\n"
+            "Продление добавит срок этому устройству.\n\n"
             f"Картой: {self._card_price_label()} в кабинете.\n"
             "Stars: внутри Telegram.\n\n"
             "После оплаты срок обновится автоматически.",
@@ -1018,6 +1026,7 @@ class VPNBot:
         await self._replace_or_reply(
             message,
             "Купить доступ\n\n"
+            "Один доступ рассчитан на одно устройство.\n\n"
             f"Картой: {self._card_price_label()} в кабинете.\n"
             "Stars: внутри Telegram.\n\n"
             "После оплаты доступ появится в «🛡 Мой VPN».",
@@ -1032,7 +1041,7 @@ class VPNBot:
                 message,
                 "У вас уже есть активный доступ\n\n"
                 f"Устройство: {self._subscription_name(active_sub)}\n\n"
-                "Купить ещё устройство: отдельный доступ.\n"
+                "Купить ещё устройство: отдельный доступ для другого телефона или компьютера.\n"
                 "Продлить этот доступ: добавить срок текущему устройству.",
                 reply_markup=await self._buy_existing_access_markup(user_id, active_subscription_id),
             )
@@ -2268,7 +2277,9 @@ class VPNBot:
                     await query.message.reply_text(
                         self._content_text(
                             "support_start_message",
-                            "Напишите сообщение одним текстом.\n\nЧтобы выйти без отправки, нажмите «Отмена».",
+                            "Напишите проблему одним сообщением.\n\n"
+                            "Лучше сразу указать устройство, что не работает и текст ошибки, если он есть.\n"
+                            "Чтобы выйти без отправки, нажмите «Отмена».",
                         ),
                         reply_markup=self._cancel_input_keyboard(),
                     )

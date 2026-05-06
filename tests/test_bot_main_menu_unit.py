@@ -441,6 +441,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._show_buy_checkout_options(message, user_id=123)
 
         text = message.replies[-1][0]
+        self.assertIn("Один доступ рассчитан на одно устройство", text)
         self.assertIn("Картой", text)
         self.assertIn("Stars", text)
         self.assertIn("🛡 Мой VPN", text)
@@ -465,6 +466,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("активный доступ", text)
         self.assertIn("Устройство: Work laptop", text)
         self.assertIn("Купить ещё устройство", text)
+        self.assertIn("для другого телефона или компьютера", text)
         self.assertIn("Продлить этот доступ", text)
         self.assertNotIn("Можно купить еще один доступ", text)
         markup = message.replies[-1][1]
@@ -1135,7 +1137,10 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("selected_subscription_id", context.user_data)
         self.assertIn("Продлить доступ", message.replies[-1][0])
         self.assertIn("Выберите устройство", message.replies[-1][0])
+        self.assertIn("Продление добавит срок только к нему", message.replies[-1][0])
         markup = message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[0][0].text, "1. ⚠️ Phone")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "2. ⚠️ Laptop")
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|renew_select:11|_")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|renew_select:12|_")
         self.assertEqual(markup.inline_keyboard[-1][0].web_app.url, "https://vxcloud.ru/account-app/renew/?embed=1")
@@ -1157,6 +1162,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(text.index("скоро закончится Phone"), text.index("активен Laptop"))
         self.assertLess(text.index("активен Laptop"), text.index("истек Old phone"))
         markup = message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[0][0].text, "1. ⏳ Phone")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "2. ✅ Laptop")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "3. ⚠️ Old phone")
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|renew_select:13|_")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|renew_select:12|_")
         self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|renew_select:11|_")
@@ -1248,6 +1256,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._show_renew_offer(message, user_id=123, context=context)
 
         text = message.replies[-1][0]
+        self.assertIn("Продление добавит срок этому устройству", text)
         self.assertIn("Картой", text)
         self.assertIn("Stars", text)
         self.assertNotIn("на сайте", text)
@@ -1286,9 +1295,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         markup = bot._support_hub_markup()
 
-        self.assertEqual(markup.inline_keyboard[0][0].text, "✍️ Написать")
+        self.assertEqual(markup.inline_keyboard[0][0].text, "✍️ Написать в поддержку")
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|support_start|_")
-        self.assertEqual(markup.inline_keyboard[1][0].text, "📱 Поддержка в кабинете")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "📱 История обращений")
         self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?view=support&embed=1")
         self.assertEqual(len(markup.inline_keyboard), 2)
 
@@ -1299,10 +1308,12 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._show_support_hub(message, user_id=123)
 
         self.assertIn("\u0412\u0430\u0448 ID: VX-000123", message.replies[0][0])
-        self.assertIn("\u041e\u043f\u0438\u0448\u0438\u0442\u0435 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0443 \u043e\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c", message.replies[0][0])
+        self.assertIn("Мы ответим здесь, в Telegram", message.replies[0][0])
+        self.assertIn("устройство, что не работает", message.replies[0][0])
         self.assertIn("Поддержка", message.replies[0][0])
         self.assertIsInstance(message.replies[0][1], InlineKeyboardMarkup)
         self.assertEqual(message.replies[0][1].inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?view=support&embed=1")
+        self.assertEqual(len(message.replies[0][1].inline_keyboard), 2)
 
     async def test_support_start_hides_main_menu_and_shows_cancel_keyboard(self):
         bot = make_bot()
@@ -1313,7 +1324,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(context.user_data["support_wait_message"])
         self.assertEqual(bot.db.events[-1]["event_name"], "support_started")
-        self.assertIn("\u043e\u0434\u043d\u0438\u043c \u0442\u0435\u043a\u0441\u0442\u043e\u043c", query.message.replies[-1][0])
+        self.assertIn("одним сообщением", query.message.replies[-1][0])
+        self.assertIn("устройство", query.message.replies[-1][0])
         self.assertIn("Отмена", query.message.replies[-1][0])
         markup = query.message.replies[-1][1]
         self.assertIsInstance(markup, ReplyKeyboardMarkup)
