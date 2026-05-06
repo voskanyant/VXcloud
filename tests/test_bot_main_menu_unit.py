@@ -523,6 +523,26 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(db.events[-1]["event_name"], "support_sent")
         self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
 
+    async def test_cancel_clears_rename_state_and_restores_main_menu(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        message = FakeMessage("cancel")
+        context = SimpleNamespace(
+            user_data={
+                "rename_wait_subscription_id": 42,
+                "support_wait_message": True,
+                "buy_wait_phone": True,
+            }
+        )
+
+        await bot.menu_click(make_update(message), context)
+
+        self.assertNotIn("rename_wait_subscription_id", context.user_data)
+        self.assertNotIn("support_wait_message", context.user_data)
+        self.assertNotIn("buy_wait_phone", context.user_data)
+        self.assertEqual(db.renamed, [])
+        self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
+
     async def test_rename_submission_restores_main_menu(self):
         db = FakeDB()
         bot = make_bot(db)

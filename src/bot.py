@@ -1313,6 +1313,7 @@ class VPNBot:
             context.user_data.pop("buy_wait_name", None)
             context.user_data.pop("buy_phone", None)
             context.user_data.pop("support_wait_message", None)
+            context.user_data.pop("rename_wait_subscription_id", None)
             await update.message.reply_text(
                 self._content_text("cancel_message", "\u041e\u043f\u0435\u0440\u0430\u0446\u0438\u044f \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u0430."),
                 reply_markup=menu_keyboard,
