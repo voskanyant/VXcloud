@@ -42,6 +42,7 @@ MIGRATIONS=(
   "sql/migrations/20260420_add_subscription_assignment_and_rebalance.sql"
   "sql/migrations/20260421_add_dns_alias_rebalance_architecture.sql"
   "sql/migrations/20260506_add_metrics_dashboard.sql"
+  "sql/migrations/20260506_add_metrics_agent_installer.sql"
 )
 
 set_env_var() {

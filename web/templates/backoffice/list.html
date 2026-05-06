@@ -33,7 +33,7 @@
               {% for header in headers %}
                 <th>{{ header }}</th>
               {% endfor %}
-              {% if not readonly and edit_url_name or not readonly and delete_url_name %}
+              {% if not readonly and edit_url_name or not readonly and delete_url_name or row_actions_enabled %}
                 <th class="text-end bo-actions-col">Действия</th>
               {% endif %}
             </tr>
@@ -44,8 +44,20 @@
                 {% for cell in row.cells %}
                   <td>{{ cell }}</td>
                 {% endfor %}
-                {% if not readonly and edit_url_name or not readonly and delete_url_name %}
+                {% if not readonly and edit_url_name or not readonly and delete_url_name or row.actions %}
                   <td class="text-end">
+                    {% for action in row.actions %}
+                      <form method="post" class="d-inline">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="{{ action.action }}">
+                        <input type="hidden" name="node_id" value="{{ row.obj.pk }}">
+                        <button
+                          type="submit"
+                          class="btn btn-sm btn-{{ action.style|default:'outline-secondary' }}"
+                          {% if action.confirm %}onclick="return confirm('{{ action.confirm|escapejs }}')"{% endif %}
+                        >{{ action.label }}</button>
+                      </form>
+                    {% endfor %}
                     {% if edit_url_name %}
                       <a href="{% url edit_url_name row.obj.pk %}" class="btn btn-sm btn-outline-primary">Изменить</a>
                     {% endif %}

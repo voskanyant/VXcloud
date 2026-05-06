@@ -7,6 +7,7 @@ import io
 import json
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import uuid
@@ -71,6 +72,8 @@ from src.xui_client import NO_EXPIRY_SENTINEL
 LOGGER = logging.getLogger(__name__)
 REPO_ROOT = Path(__file__).resolve().parents[2]
 HAPROXY_RUNTIME_OUTPUT_PATH = REPO_ROOT / "ops" / "haproxy" / "runtime" / "haproxy.cfg"
+VXNODE_METRICS_AGENT_PATH = REPO_ROOT / "scripts" / "ops" / "vxnode_metrics_agent.py"
+VXNODE_METRICS_PORT = 9109
 
 from .forms import (
     BackofficeCategoryForm,
@@ -887,6 +890,174 @@ def ensure_local_main_node() -> VPNNode | None:
         return None
 
 
+class MetricsAgentInstallError(RuntimeError):
+    pass
+
+
+def _node_ssh_host(node: VPNNode) -> str:
+    return str(
+        getattr(node, "ssh_host", None)
+        or getattr(node, "public_ip", None)
+        or getattr(node, "backend_host", None)
+        or ""
+    ).strip()
+
+
+def _node_metrics_agent_url(node: VPNNode, host: str) -> str:
+    public_host = str(getattr(node, "public_ip", None) or getattr(node, "backend_host", None) or host).strip()
+    return f"http://{public_host}:{VXNODE_METRICS_PORT}/metrics"
+
+
+def _build_metrics_agent_install_script(agent_source: str, token: str) -> str:
+    return f"""#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "Run as root or configure passwordless sudo for the SSH user." >&2
+  exit 1
+fi
+
+INSTALL_DIR="/opt/vxcloud-node-metrics"
+ENV_FILE="/etc/vxnode-metrics-agent.env"
+SERVICE_FILE="/etc/systemd/system/vxnode-metrics-agent.service"
+
+if ! command -v python3 >/dev/null 2>&1 || ! command -v curl >/dev/null 2>&1; then
+  apt-get update
+  apt-get install -y --no-install-recommends python3 curl
+fi
+install -d -m 0755 "$INSTALL_DIR"
+
+cat > "$INSTALL_DIR/vxnode_metrics_agent.py" <<'VXNODE_AGENT_PY'
+{agent_source}
+VXNODE_AGENT_PY
+chmod 0755 "$INSTALL_DIR/vxnode_metrics_agent.py"
+
+cat > "$ENV_FILE" <<'VXNODE_AGENT_ENV'
+VXNODE_METRICS_BIND=0.0.0.0
+VXNODE_METRICS_PORT={VXNODE_METRICS_PORT}
+VXNODE_METRICS_TOKEN={token}
+VXNODE_METRICS_DISK_PATH=/
+VXNODE_METRICS_INTERFACE_PREFIXES=e,eth,en
+VXNODE_AGENT_ENV
+chmod 0600 "$ENV_FILE"
+
+cat > "$SERVICE_FILE" <<'VXNODE_AGENT_SERVICE'
+[Unit]
+Description=VXcloud node metrics agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/vxnode-metrics-agent.env
+ExecStart=/usr/bin/python3 /opt/vxcloud-node-metrics/vxnode_metrics_agent.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
+VXNODE_AGENT_SERVICE
+
+systemctl daemon-reload
+systemctl enable --now vxnode-metrics-agent
+if command -v ufw >/dev/null 2>&1; then
+  ufw allow {VXNODE_METRICS_PORT}/tcp >/dev/null || true
+fi
+curl -fsS -H "Authorization: Bearer {token}" "http://127.0.0.1:{VXNODE_METRICS_PORT}/metrics" >/dev/null
+systemctl is-active --quiet vxnode-metrics-agent
+echo "vxnode metrics agent installed"
+"""
+
+
+def install_metrics_agent_on_node(node: VPNNode) -> str:
+    host = _node_ssh_host(node)
+    if not host:
+        raise MetricsAgentInstallError("Node has no SSH host, public IP, or backend host.")
+
+    ssh_port = int(getattr(node, "ssh_port", None) or 22)
+    ssh_user = str(getattr(node, "ssh_user", None) or "root").strip() or "root"
+    ssh_password = str(getattr(node, "ssh_password", None) or "")
+    if ssh_password and shutil.which("sshpass") is None:
+        raise MetricsAgentInstallError("sshpass is not installed in the web container; rebuild the image first.")
+    if not ssh_password and shutil.which("ssh") is None:
+        raise MetricsAgentInstallError("ssh client is not installed in the web container; rebuild the image first.")
+    if not VXNODE_METRICS_AGENT_PATH.exists():
+        raise MetricsAgentInstallError(f"Agent source not found: {VXNODE_METRICS_AGENT_PATH}")
+
+    token = str(getattr(node, "metrics_agent_token", None) or "").strip() or get_random_string(48)
+    agent_source = VXNODE_METRICS_AGENT_PATH.read_text(encoding="utf-8")
+    script = _build_metrics_agent_install_script(agent_source=agent_source, token=token)
+
+    ssh_target = f"{ssh_user}@{host}"
+    ssh_args = [
+        "ssh",
+        "-p",
+        str(ssh_port),
+        "-o",
+        "BatchMode=no",
+        "-o",
+        "ConnectTimeout=12",
+        "-o",
+        "ServerAliveInterval=10",
+        "-o",
+        "ServerAliveCountMax=2",
+        "-o",
+        "StrictHostKeyChecking=accept-new",
+        "-o",
+        "UserKnownHostsFile=/tmp/vxcloud_known_hosts",
+        ssh_target,
+        "bash -s",
+    ]
+    args = ssh_args
+    env = os.environ.copy()
+    if ssh_password:
+        args = ["sshpass", "-e", *ssh_args]
+        env["SSHPASS"] = ssh_password
+
+    try:
+        result = subprocess.run(
+            args,
+            input=script,
+            text=True,
+            capture_output=True,
+            timeout=90,
+            check=False,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise MetricsAgentInstallError("SSH install timed out after 90 seconds.") from exc
+    if result.returncode != 0:
+        error_text = (result.stderr or result.stdout or "").strip()
+        if len(error_text) > 600:
+            error_text = error_text[-600:]
+        raise MetricsAgentInstallError(error_text or f"SSH install failed with exit code {result.returncode}.")
+
+    now = timezone.now()
+    node.ssh_host = str(getattr(node, "ssh_host", None) or host).strip()
+    node.ssh_port = ssh_port
+    node.ssh_user = ssh_user
+    node.metrics_agent_enabled = True
+    node.metrics_agent_url = _node_metrics_agent_url(node, host)
+    node.metrics_agent_token = token
+    node.updated_at = now
+    node.save(
+        update_fields=[
+            "ssh_host",
+            "ssh_port",
+            "ssh_user",
+            "metrics_agent_enabled",
+            "metrics_agent_url",
+            "metrics_agent_token",
+            "updated_at",
+        ]
+    )
+    output = (result.stdout or "").strip()
+    return output.splitlines()[-1] if output else "vxnode metrics agent installed"
+
+
 def _node_reality_signature(node: VPNNode) -> tuple[str, str, str, str]:
     return (
         str(getattr(node, "last_reality_public_key", "") or "").strip(),
@@ -1522,6 +1693,7 @@ class BaseListView(LegacyContentContextMixin, StaffRequiredMixin, ListView):
         ctx["query"] = (self.request.GET.get("q") or "").strip()
         ctx["headers"] = [label for _, label in self.columns]
         ctx["rows"] = self.get_table_rows()
+        ctx["row_actions_enabled"] = any(row.get("actions") for row in ctx["rows"])
         ctx["add_url_name"] = self.add_url_name
         ctx["edit_url_name"] = self.edit_url_name
         ctx["delete_url_name"] = self.delete_url_name
@@ -2716,6 +2888,21 @@ class VPNNodeListView(BaseListView):
         ensure_local_main_node()
         return super().get_queryset().order_by("name", "id")
 
+    def post(self, request: HttpRequest, *args: Any, **kwargs: Any) -> HttpResponse:
+        action = str(request.POST.get("action") or "").strip()
+        if action != "install_metrics_agent":
+            messages.error(request, "Unknown node action.")
+            return redirect("backoffice:vpn_node_list")
+
+        node = get_object_or_404(VPNNode, pk=request.POST.get("node_id"))
+        try:
+            detail = install_metrics_agent_on_node(node)
+        except MetricsAgentInstallError as exc:
+            messages.error(request, f"Metrics agent install failed for {node.name}: {exc}")
+        else:
+            messages.success(request, f"Metrics agent installed on {node.name}: {detail}")
+        return redirect("backoffice:vpn_node_list")
+
     def get_table_rows(self) -> list[dict[str, Any]]:
         node_ids = [int(item.id) for item in self.object_list]
         assignment_counts = _active_assignment_counts(node_ids)
@@ -2773,6 +2960,14 @@ class VPNNodeListView(BaseListView):
             rows.append(
                 {
                     "obj": item,
+                    "actions": [
+                        {
+                            "action": "install_metrics_agent",
+                            "label": "Install stats agent",
+                            "style": "outline-dark",
+                            "confirm": f"Install/update VXcloud stats agent on {item.name}?",
+                        }
+                    ],
                     "cells": [
                         item.id,
                         item.name,

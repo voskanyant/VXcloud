@@ -389,6 +389,10 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
             "metrics_agent_enabled",
             "metrics_agent_url",
             "metrics_agent_token",
+            "ssh_host",
+            "ssh_port",
+            "ssh_user",
+            "ssh_password",
             "bandwidth_capacity_mbps",
             "connection_capacity",
             "backend_host",
@@ -401,6 +405,7 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         widgets = {
             "xui_password": forms.PasswordInput(render_value=True),
             "metrics_agent_token": forms.PasswordInput(render_value=True),
+            "ssh_password": forms.PasswordInput(render_value=True),
         }
 
     def __init__(self, *args, **kwargs):
@@ -421,6 +426,10 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["metrics_agent_enabled"].label = "Node metrics agent enabled"
         self.fields["metrics_agent_url"].label = "Node metrics agent URL"
         self.fields["metrics_agent_token"].label = "Node metrics token"
+        self.fields["ssh_host"].label = "SSH host"
+        self.fields["ssh_port"].label = "SSH port"
+        self.fields["ssh_user"].label = "SSH user"
+        self.fields["ssh_password"].label = "SSH password"
         self.fields["bandwidth_capacity_mbps"].label = "Bandwidth capacity (Mbps)"
         self.fields["connection_capacity"].label = "Connection capacity"
         self.fields["backend_host"].label = "Backend host"
@@ -439,6 +448,10 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
         self.fields["metrics_agent_enabled"].help_text = "Включите после установки lightweight agent на ноду."
         self.fields["metrics_agent_url"].help_text = "Например: http://194.99.21.173:9109/metrics"
         self.fields["metrics_agent_token"].help_text = "Shared bearer token из /etc/vxnode-metrics-agent.env."
+        self.fields["ssh_host"].help_text = "Если пусто, ops installer использует Public IP или backend host."
+        self.fields["ssh_port"].help_text = "Обычно 22."
+        self.fields["ssh_user"].help_text = "Обычно root для установки systemd service."
+        self.fields["ssh_password"].help_text = "Используется только для ops install button; храните доступ ограниченно."
         self.fields["backend_host"].help_text = "Куда HAProxy будет направлять VPN-трафик."
         self.fields["backend_port"].help_text = "Обычно тот же inbound port Xray на ноде."
         self.fields["lb_enabled"].help_text = "Новые подключения пойдут на ноду только если это поле включено, health=ok и backfill завершён."
@@ -451,6 +464,12 @@ class BackofficeVPNNodeForm(BootstrapFormMixin, forms.ModelForm):
 
     def clean_node_fqdn(self) -> str:
         return str(self.cleaned_data.get("node_fqdn") or "").strip().lower()
+
+    def clean_ssh_host(self) -> str:
+        return str(self.cleaned_data.get("ssh_host") or "").strip()
+
+    def clean_ssh_user(self) -> str:
+        return str(self.cleaned_data.get("ssh_user") or "root").strip() or "root"
 
     def clean_compatibility_pool(self) -> str:
         return str(self.cleaned_data.get("compatibility_pool") or "default").strip().lower() or "default"

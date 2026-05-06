@@ -23,7 +23,13 @@ from django.http import HttpResponse
 from django.test import RequestFactory
 from django.views.generic import UpdateView
 
-from backoffice.views import VPNNodeDeleteView, VPNNodeUpdateView, _render_local_haproxy_runtime
+from backoffice.views import (
+    VPNNodeDeleteView,
+    VPNNodeListView,
+    VPNNodeUpdateView,
+    install_metrics_agent_on_node,
+    _render_local_haproxy_runtime,
+)
 
 
 class BackofficeVPNNodeAutoRenderUnitTests(unittest.TestCase):
@@ -95,6 +101,59 @@ class BackofficeVPNNodeAutoRenderUnitTests(unittest.TestCase):
         self.assertTrue(filter_mock.return_value.delete.called)
         fake_node.delete.assert_called_once()
         render_mock.assert_called_once()
+
+    def test_install_metrics_agent_streams_agent_over_password_ssh(self):
+        saved_fields = []
+        fake_node = SimpleNamespace(
+            name="node-test",
+            ssh_host="203.0.113.10",
+            ssh_port=2222,
+            ssh_user="root",
+            ssh_password="secret",
+            public_ip="203.0.113.10",
+            backend_host="203.0.113.10",
+            metrics_agent_token="existing-token",
+            save=lambda update_fields=None: saved_fields.extend(update_fields or []),
+        )
+        completed = SimpleNamespace(returncode=0, stdout="vxnode metrics agent installed\n", stderr="")
+
+        with (
+            patch("backoffice.views.shutil.which", return_value="/usr/bin/sshpass"),
+            patch("backoffice.views.subprocess.run", return_value=completed) as run_mock,
+        ):
+            detail = install_metrics_agent_on_node(fake_node)
+
+        self.assertEqual(detail, "vxnode metrics agent installed")
+        command = run_mock.call_args.args[0]
+        self.assertEqual(command[:2], ["sshpass", "-e"])
+        self.assertIn("root@203.0.113.10", command)
+        self.assertIn("2222", command)
+        self.assertEqual(run_mock.call_args.kwargs["env"]["SSHPASS"], "secret")
+        self.assertIn("metrics_agent_enabled", saved_fields)
+        self.assertTrue(fake_node.metrics_agent_enabled)
+        self.assertEqual(fake_node.metrics_agent_url, "http://203.0.113.10:9109/metrics")
+        self.assertEqual(fake_node.metrics_agent_token, "existing-token")
+
+    def test_vpn_node_list_install_action_calls_installer(self):
+        request = self.factory.post(
+            "/ops/infra/nodes/",
+            data={"action": "install_metrics_agent", "node_id": "10"},
+        )
+        request.user = self.staff_user
+        session_middleware = SessionMiddleware(lambda req: None)
+        session_middleware.process_request(request)
+        request.session.save()
+        setattr(request, "_messages", FallbackStorage(request))
+        fake_node = SimpleNamespace(id=10, pk=10, name="node-test")
+
+        with (
+            patch("backoffice.views.get_object_or_404", return_value=fake_node),
+            patch("backoffice.views.install_metrics_agent_on_node", return_value="installed") as install_mock,
+        ):
+            response = VPNNodeListView().post(request)
+
+        self.assertEqual(response.status_code, 302)
+        install_mock.assert_called_once_with(fake_node)
 
 
 if __name__ == "__main__":
