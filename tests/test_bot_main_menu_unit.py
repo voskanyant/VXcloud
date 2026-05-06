@@ -605,6 +605,20 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/instructions/")
         self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|start_mysub|_")
 
+    async def test_legacy_install_instructions_open_full_guide_in_mini_app(self):
+        bot = make_bot()
+
+        markup = bot._node_inline_keyboard("instructions_install")
+
+        self.assertEqual(
+            bot._node_response_text("instructions_install"),
+            "Install guide\n\nChoose your device in the Mini App. It keeps the full guide, app links, and account data together.",
+        )
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Open full guide")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/instructions/")
+        self.assertIsNone(markup.inline_keyboard[0][0].url)
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "nav|menu_instructions|_")
+
     async def test_support_hub_offers_quick_message_and_mini_app(self):
         bot = make_bot()
 

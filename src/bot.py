@@ -55,8 +55,6 @@ from .xui_client import InboundRealityInfo, XUIClient
 
 
 LOGGER = logging.getLogger(__name__)
-STREISAND_APPSTORE_URL = "https://apps.apple.com/us/app/streisand/id6450534064"
-V2BOX_PLAYSTORE_URL = "https://play.google.com/store/search?q=V2Box&c=apps"
 IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 EMAIL_RE = re.compile(r"(?:email|user)[:=]\s*([^\s,\]]+)", re.IGNORECASE)
 BRACKET_RE = re.compile(r"\[([^\[\]\s]+)\]")
@@ -379,16 +377,9 @@ class VPNBot:
             return self._content_text(response_key, self._content_text(legacy_key, default))
         if node_key == "instructions_install":
             default = (
-                "Как установить приложение\n\n"
-                "Если вы используете iPhone в России, нужного приложения может не быть в App Store.\n\n"
-                "Это нормально — просто нужно временно сменить регион.\n\n"
-                "Сначала:\n"
-                "• смените регион App Store (на любую другую страну)\n\n"
-                "Затем:\n"
-                "• установите приложение для подключения\n\n"
-                "После установки:\n"
-                "• можно вернуть регион обратно на Россию\n\n"
-                "Ниже есть подробная инструкция и видео — мы покажем всё по шагам."
+                "Install guide\n\n"
+                "Choose your device in the Mini App. It keeps the full guide, app links, "
+                "and account data together."
             )
             return self._content_text(response_key, self._content_text(legacy_key, default))
         if node_key == "site_about":
@@ -423,24 +414,14 @@ class VPNBot:
                 ]
             )
         if node_key == "instructions_install":
-            install_help_url = "https://vxcloud.ru/2026/04/06/kak-podklyuchitsya-k-vpn-vxcloud-polnyj-poshagovyj-gajd/"
             return InlineKeyboardMarkup(
                 [
-                    [InlineKeyboardButton(text=self._button_label("instructions_full_guide_button", "📖 Подробная инструкция"), url=install_help_url)],
-                    [InlineKeyboardButton(text=self._button_label("instructions_video_button", "🎬 Видео-инструкция"), url=install_help_url)],
-                    [InlineKeyboardButton(text=self._button_label("back_button", "⬅️ Назад"), callback_data="nav|menu_instructions|_")],
+                    [self._site_web_app_button("Open full guide", "/instructions/")],
+                    [InlineKeyboardButton(text="Back", callback_data="nav|menu_instructions|_")],
                 ]
             )
         raw = self._cms_content.get(f"{node_key}_buttons")
         if not raw:
-            if node_key == "menu_instructions":
-                return InlineKeyboardMarkup(
-                    [
-                        [InlineKeyboardButton(text="🍏 Айфон", url=STREISAND_APPSTORE_URL)],
-                        [InlineKeyboardButton(text="🤖 Андроид", url=V2BOX_PLAYSTORE_URL)],
-                        [InlineKeyboardButton(text="🌐 Личный кабинет на сайте", url=self._account_fallback_url())],
-                    ]
-                )
             return None
 
         try:
