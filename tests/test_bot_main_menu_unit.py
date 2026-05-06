@@ -134,6 +134,12 @@ class FakeXUI:
         return "deleted"
 
 
+class FakeQrImage:
+    def save(self, buffer, format=None):
+        del format
+        buffer.write(b"qr")
+
+
 def make_bot(db=None):
     settings = SimpleNamespace(
         card_payment_amount_minor=24900,
@@ -451,6 +457,37 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[4][0].text, "Open in browser")
         self.assertEqual(markup.inline_keyboard[4][1].text, "Renew in browser")
         self.assertEqual(markup.inline_keyboard[-1][0].callback_data, "act|cfg_back|_")
+
+    async def test_qr_action_uses_subscription_feed_url_not_raw_vless(self):
+        db = FakeDB()
+        db.subscriptions[42] = {
+            "id": 42,
+            "display_name": "Work laptop",
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=10),
+            "is_active": True,
+            "revoked_at": None,
+            "feed_token": "feed-token",
+            "vless_url": "vless://raw-config@example.test:443#raw",
+        }
+        bot = make_bot(db)
+        captured = {}
+
+        def fake_build_qr(data, title):
+            captured["data"] = data
+            captured["title"] = title
+            return FakeQrImage()
+
+        bot._build_styled_qr = fake_build_qr
+        query = FakeCallbackQuery("act|cfg_qr:42|_")
+
+        await bot.inline_callback(make_callback_update(query), SimpleNamespace(user_data={}))
+
+        self.assertEqual(captured["data"], "https://vxcloud.ru/account/feed/feed-token/")
+        self.assertNotIn("vless://", captured["data"])
+        self.assertEqual(db.events[-1]["event_name"], "qr_opened")
+        self.assertEqual(db.events[-1]["subscription_id"], 42)
+        self.assertEqual(len(query.message.photos), 1)
+        self.assertIn("https://vxcloud.ru/account/feed/feed-token/", query.message.photos[0][1])
 
     async def test_delete_request_shows_confirmation_without_deleting(self):
         db = FakeDB()
