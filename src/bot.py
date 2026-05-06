@@ -2838,7 +2838,7 @@ class VPNBot:
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=self._button_label("open_instructions", "💬 Инструкция"),
+                    text=self._button_label("open_instructions", "How to connect"),
                     callback_data="nav|menu_instructions|_",
                 )
             ]

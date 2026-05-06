@@ -337,6 +337,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
         self.assertEqual(markup.inline_keyboard[3][0].text, "Renew in browser")
+        self.assertEqual(markup.inline_keyboard[4][0].text, "How to connect")
+        self.assertEqual(markup.inline_keyboard[4][0].callback_data, "nav|menu_instructions|_")
         self.assertEqual(markup.inline_keyboard[-1][0].text, "Open in browser")
 
     async def test_trial_success_markup_uses_mini_app_config_first(self):
