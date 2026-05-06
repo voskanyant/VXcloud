@@ -702,10 +702,11 @@ class VPNBot:
     def _support_hub_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(text="✍️ Написать в поддержку", callback_data="act|support_start|_")],
+                [InlineKeyboardButton(text="Write message", callback_data="act|support_start|_")],
+                [self._mini_app_button("Open app")],
                 [
-                    InlineKeyboardButton(text="📦 Моя подписка", callback_data="act|start_mysub|_"),
-                    InlineKeyboardButton(text="⬅️ Назад", callback_data="act|start_back|_"),
+                    InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_"),
+                    InlineKeyboardButton(text="Back", callback_data="act|start_back|_"),
                 ],
             ]
         )
@@ -713,8 +714,9 @@ class VPNBot:
     def _support_sent_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(text="📦 Моя подписка", callback_data="act|start_mysub|_")],
-                [InlineKeyboardButton(text="⬅️ В меню", callback_data="act|start_back|_")],
+                [self._mini_app_button("Open app")],
+                [InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_")],
+                [InlineKeyboardButton(text="Back", callback_data="act|start_back|_")],
             ]
         )
 

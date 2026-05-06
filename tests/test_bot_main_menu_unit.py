@@ -368,6 +368,28 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/instructions/")
         self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|start_mysub|_")
 
+    async def test_support_hub_offers_quick_message_and_mini_app(self):
+        bot = make_bot()
+
+        markup = bot._support_hub_markup()
+
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Write message")
+        self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|support_start|_")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Open app")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|start_mysub|_")
+        self.assertEqual(markup.inline_keyboard[2][1].callback_data, "act|start_back|_")
+
+    async def test_show_support_hub_uses_contextual_inline_markup(self):
+        bot = make_bot()
+        message = FakeMessage()
+
+        await bot._show_support_hub(message, user_id=123)
+
+        self.assertIn("VX-000123", message.replies[0][0])
+        self.assertIsInstance(message.replies[0][1], InlineKeyboardMarkup)
+        self.assertEqual(message.replies[0][1].inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
+
     async def test_support_message_submission_restores_main_menu(self):
         db = FakeDB()
         bot = make_bot(db)
