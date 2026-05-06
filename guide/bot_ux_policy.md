@@ -104,6 +104,8 @@ The 2026-05-06 cleanup did three things:
   actions stay Russian
 - moved bot instruction choices to Mini App instruction views instead of
   opening public `/instructions/` directly from Telegram
+- localized account dashboard/config labels that Telegram users see after
+  opening Mini App from the bot
 - cleaned remaining English fallback labels in input cancellation, delete alerts,
   and raw connection-link messages
 - made bot CMS fallback reject mojibake overrides, so broken stored labels do

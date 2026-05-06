@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -19,6 +20,7 @@ django.setup()
 from django.contrib.auth.models import User
 from django.db import DatabaseError
 from django.test import Client, RequestFactory
+from django.utils import timezone
 from unittest.mock import patch
 
 from cabinet.views import (
@@ -150,6 +152,60 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("v2rayNG", html)
         self.assertIn("/account-app/?view=instructions&amp;device=iphone&amp;embed=1", html)
         self.assertNotIn("Open full guide", html)
+
+    def test_account_app_dashboard_copy_is_localized(self):
+        bot_user = SimpleNamespace(id=7, client_code="VX-000007")
+        subscription = SimpleNamespace(
+            id=42,
+            display_name="Phone",
+            expires_at=timezone.now() + timedelta(days=7),
+            is_active=True,
+            revoked_at=None,
+            user=bot_user,
+            vless_url="vless://example",
+            feed_token="feed-token",
+        )
+        with patch("cabinet.views._resolve_account_bot_user", return_value=(None, bot_user)):
+            with patch("cabinet.views._get_subscription_snapshot_for_bot_user", return_value=(subscription, True, None)):
+                with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[subscription]):
+                    response = self.client.get("/account-app/?embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Кабинет VXcloud", html)
+        self.assertIn("Устройства", html)
+        self.assertIn("Ссылка подписки", html)
+        self.assertIn("активен", html)
+        self.assertNotIn("VXcloud account", html)
+        self.assertNotIn("Devices", html)
+        self.assertNotIn("Subscription URL", html)
+        self.assertNotIn("online", html)
+
+    def test_account_app_config_copy_is_localized(self):
+        bot_user = SimpleNamespace(id=7, client_code="VX-000007")
+        subscription = SimpleNamespace(
+            id=42,
+            display_name="Phone",
+            expires_at=timezone.now() + timedelta(days=7),
+            is_active=True,
+            revoked_at=None,
+            user=bot_user,
+            vless_url="vless://example",
+            feed_token="feed-token",
+        )
+        with patch("cabinet.views._resolve_account_bot_user", return_value=(None, bot_user)):
+            with patch("cabinet.views._get_subscription_snapshot_for_bot_user", return_value=(subscription, True, None)):
+                with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[subscription]):
+                    response = self.client.get("/account-app/config/42/?embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Импорт QR", html)
+        self.assertIn("Состояние", html)
+        self.assertIn("Ссылка подписки", html)
+        self.assertNotIn("QR import", html)
+        self.assertNotIn("Subscription URL", html)
+        self.assertNotIn("Status", html)
 
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):
         with patch.object(sys.modules["cabinet.views"].settings, "VPN_PUBLIC_HOST", ""), patch.object(

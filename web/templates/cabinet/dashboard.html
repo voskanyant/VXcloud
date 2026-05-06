@@ -15,9 +15,9 @@
 <div class="account-page-shell">
   <section class="account-hero">
     <div class="account-hero-copy">
-      <div class="account-eyebrow">VXcloud account</div>
+      <div class="account-eyebrow">Кабинет VXcloud</div>
       <h1 class="account-title">{{ cabinet_heading }}</h1>
-      <p class="account-intro">Все доступы, subscription URL и действия собраны в одном месте без отдельного админского интерфейса.</p>
+      <p class="account-intro">Все доступы, ссылки подписки и действия собраны в одном месте.</p>
       <div class="account-hero-actions">
         <a class="account-button account-button-primary" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>
           <span>{{ cabinet_buy_new_action }}</span>
@@ -88,13 +88,13 @@
             <div class="account-device-headline">
               {% if instructions_payload.device == 'iphone' %}
                 <div class="account-device-name">iPhone</div>
-                <div class="account-subtle">Установите V2Box или Streisand, затем импортируйте subscription URL из кабинета.</div>
+                <div class="account-subtle">Установите V2Box или Streisand, затем импортируйте ссылку подписки из кабинета.</div>
               {% elif instructions_payload.device == 'android' %}
                 <div class="account-device-name">Android</div>
                 <div class="account-subtle">Установите v2rayNG, затем добавьте подписку через QR или ссылку из кабинета.</div>
               {% elif instructions_payload.device == 'desktop' %}
                 <div class="account-device-name">Windows/macOS</div>
-                <div class="account-subtle">Установите Hiddify или Nekoray и добавьте subscription URL из кабинета.</div>
+                <div class="account-subtle">Установите Hiddify или Nekoray и добавьте ссылку подписки из кабинета.</div>
               {% else %}
                 <div class="account-device-name">Быстрый старт</div>
                 <div class="account-subtle">Сначала выберите устройство выше, затем откройте свой конфиг или QR.</div>
@@ -102,7 +102,7 @@
             </div>
           </div>
           <div class="account-message">
-            1. Откройте свой доступ в разделе «Мой VPN». 2. Скопируйте subscription URL или покажите QR. 3. Импортируйте его в приложение и включите подключение.
+            1. Откройте свой доступ в разделе «Мой VPN». 2. Скопируйте ссылку подписки или покажите QR. 3. Импортируйте ее в приложение и включите подключение.
           </div>
           <div class="account-device-actions">
             <a class="account-primary-button" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
@@ -127,7 +127,7 @@
             {% if bot_user and bot_user.client_code %}
               {{ bot_user.client_code }}
             {% else %}
-              client pending
+              ID создается
             {% endif %}
           </div>
         </div>
@@ -172,7 +172,7 @@
   <section class="account-section" id="account-subscriptions">
     <div class="account-section-head">
       <div>
-        <div class="account-eyebrow">Devices</div>
+        <div class="account-eyebrow">Устройства</div>
         <h2 class="account-section-title">Ваши доступы</h2>
       </div>
       <div class="account-section-meta">Активных: {{ active_configs }} · Неактивных: {{ inactive_configs }}</div>
@@ -212,12 +212,12 @@
               </div>
               <div class="account-meta-box">
                 <span>Режим</span>
-                <strong>{% if row.is_active %}online{% else %}paused{% endif %}</strong>
+                <strong>{% if row.is_active %}активен{% else %}остановлен{% endif %}</strong>
               </div>
             </div>
 
             <div class="account-link-block">
-              <label class="account-link-label">Subscription URL</label>
+              <label class="account-link-label">Ссылка подписки</label>
               <div class="account-link-row">
                 <input type="text" class="account-input account-link-input" value="{{ row.feed_url|default:row.vless_url|default:'' }}" readonly>
                 <button type="button" class="account-icon-button js-copy-config" data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
