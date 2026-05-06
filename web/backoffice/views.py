@@ -131,19 +131,19 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
         ],
     },
     {
-        "title": "Карточка конфига",
+        "title": "Доступ и QR",
         "items": [
             {"key": "config_copy_button", "label": "Кнопка: Скопировать ссылку", "default": "📋 Скопировать ссылку", "kind": "button"},
             {"key": "config_qr_button", "label": "Кнопка: QR-код", "default": "📷 QR-код", "kind": "button"},
             {"key": "config_renew_button", "label": "Кнопка: Продлить", "default": "🔄 Продлить", "kind": "button"},
             {"key": "config_rename_button", "label": "Кнопка: Переименовать", "default": "✏️ Переименовать", "kind": "button"},
             {"key": "config_delete_button", "label": "Кнопка: Удалить", "default": "🗑️ Удалить", "kind": "button"},
-            {"key": "copy_link_hint", "label": "Подсказка после выдачи конфига", "default": "Нажмите «Скопировать ссылку», затем откройте приложение, нажмите + и выберите импорт из буфера обмена.", "kind": "textarea", "rows": 3},
+            {"key": "copy_link_hint", "label": "Подсказка после выдачи доступа", "default": "Откройте QR или скопируйте ссылку подписки и импортируйте её в приложение.", "kind": "textarea", "rows": 3},
             {"key": "single_device_warning", "label": "Предупреждение про одно устройство", "default": "⚠️ Один доступ нельзя использовать одновременно на двух устройствах.", "kind": "textarea", "rows": 2},
             {"key": "menu_mysub_response", "label": "Текст: краткая карточка доступа", "default": "Доступ активен до: {expires_at}\nID: {client_code}", "kind": "textarea", "rows": 3},
-            {"key": "my_configs_list_template", "label": "Текст: список конфигов", "default": "Ваш доступ VXcloud\n\nID: {client_code}\n\nВаши устройства:\n\n{items}", "kind": "textarea", "rows": 6},
-            {"key": "my_configs_item_template", "label": "Шаблон одной строки конфига", "default": "{index}. {name}\nДействует до: {expires_at}\nСтатус: {status}", "kind": "textarea", "rows": 4},
-            {"key": "my_configs_empty_message", "label": "Текст: пустой список конфигов", "default": "Ваш доступ VXcloud\n\nID: {client_code}\n\nВаши устройства:\n\nСписок устройств пока пуст.", "kind": "textarea", "rows": 5},
+            {"key": "my_configs_list_template", "label": "Текст: список доступов", "default": "Мой VPN\n\nID: {client_code}\n{summary}\n\nУстройства:\n\n{items}\n\nНажмите устройство, чтобы открыть QR, ссылку и управление.", "kind": "textarea", "rows": 8},
+            {"key": "my_configs_item_template", "label": "Шаблон одной строки доступа", "default": "{index}. {status_icon} {name}\nДействует до: {expires_at}", "kind": "textarea", "rows": 4},
+            {"key": "my_configs_empty_message", "label": "Текст: пустой список доступов", "default": "Мой VPN\n\nПока нет устройств.\nID: {client_code}\n\nНачните с 7 дней бесплатно или купите доступ. После активации здесь появятся QR, продление и кабинет.", "kind": "textarea", "rows": 6},
         ],
     },
     {
@@ -151,8 +151,8 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
         "items": [
             {"key": "menu_instructions_response", "label": "Экран: инструкция", "default": "Инструкция\n\nВыберите устройство. Полная инструкция откроется в кабинете внутри Telegram.", "kind": "textarea", "rows": 4},
             {"key": "instructions_install_response", "label": "Экран: полная инструкция", "default": "Инструкция\n\nОткройте полную инструкцию в кабинете. Там собраны приложения, QR и данные доступа.", "kind": "textarea", "rows": 4},
-            {"key": "menu_instructions_buttons", "label": "Advanced JSON: кнопки инструкции", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатных Mini App кнопок: iPhone, Android, Windows/macOS, Полная инструкция."},
-            {"key": "instructions_install_buttons", "label": "Advanced JSON: кнопка полной инструкции", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатной Mini App кнопки полной инструкции."},
+            {"key": "menu_instructions_buttons", "label": "JSON: кнопки инструкции", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатных кнопок кабинета внутри Telegram: iPhone, Android, Windows/macOS, Полная инструкция."},
+            {"key": "instructions_install_buttons", "label": "JSON: кнопка полной инструкции", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатной кнопки кабинета внутри Telegram."},
         ],
     },
     {
@@ -163,10 +163,10 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
             {"key": "open_account", "label": "Кнопка: Кабинет", "default": "📱 Кабинет", "kind": "button"},
             {"key": "stars_only_notice", "label": "Текст: Stars покупка", "default": "Оплата Stars\n\nСейчас Telegram откроет счёт. После оплаты доступ появится в «🛡 Мой VPN».", "kind": "textarea", "rows": 4},
             {"key": "stars_renew_notice", "label": "Текст: Stars продление", "default": "Оплата Stars\n\nСейчас Telegram откроет счёт. После оплаты срок обновится автоматически.", "kind": "textarea", "rows": 4},
-            {"key": "invoice_title", "label": "Заголовок Stars invoice", "default": "Оплата VXcloud через звёзды", "kind": "input"},
-            {"key": "invoice_price_label", "label": "Label Stars price", "default": "Оплата звёздами", "kind": "input"},
-            {"key": "invoice_description", "label": "Описание Stars invoice: покупка", "default": "Покупка доступа VXcloud через Telegram Stars.", "kind": "textarea", "rows": 3},
-            {"key": "invoice_renew_description", "label": "Описание Stars invoice: продление", "default": "Продление доступа VXcloud через Telegram Stars.", "kind": "textarea", "rows": 3},
+            {"key": "invoice_title", "label": "Заголовок счёта Stars", "default": "Оплата VXcloud через звёзды", "kind": "input"},
+            {"key": "invoice_price_label", "label": "Строка цены Stars", "default": "Оплата звёздами", "kind": "input"},
+            {"key": "invoice_description", "label": "Описание счёта Stars: покупка", "default": "Покупка доступа VXcloud через Telegram Stars.", "kind": "textarea", "rows": 3},
+            {"key": "invoice_renew_description", "label": "Описание счёта Stars: продление", "default": "Продление доступа VXcloud через Telegram Stars.", "kind": "textarea", "rows": 3},
             {"key": "payment_already_processed_message", "label": "Текст: платёж уже обработан", "default": "Платёж уже обработан. Отправляю ваш доступ...", "kind": "textarea", "rows": 3},
             {"key": "provision_delay_message", "label": "Текст: активация задерживается", "default": "Платёж получен, но активация задерживается. Нажмите «🛡 Мой VPN» через 10-20 секунд. Если доступ не появится, напишите в поддержку.", "kind": "textarea", "rows": 4},
             {"key": "recovering_subscription_message", "label": "Текст: найден оплаченный заказ", "default": "Найден оплаченный заказ. Пробую восстановить доступ...", "kind": "textarea", "rows": 3},
@@ -180,11 +180,11 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
             {"key": "menu_unknown_message", "label": "Текст: неизвестная команда", "default": "Используйте кнопки меню ниже.", "kind": "textarea", "rows": 2},
             {"key": "support_start_message", "label": "Текст: старт поддержки", "default": "Напишите сообщение одним текстом.\n\nЧтобы выйти без отправки, нажмите «Отмена».", "kind": "textarea", "rows": 4},
             {"key": "support_empty_message", "label": "Текст: пустое сообщение в поддержку", "default": "Текст обращения пустой. Нажмите «Поддержка» и попробуйте снова.", "kind": "textarea", "rows": 3},
-            {"key": "support_default_subject", "label": "Subject нового тикета", "default": "Запрос из Telegram-бота", "kind": "input"},
-            {"key": "support_received_message", "label": "Текст: сообщение принято", "default": "Сообщение отправлено\n\nНомер обращения: #{ticket_id}\nОтвет придет сюда в Telegram.\n\nИсторию обращений можно открыть через «📱 Кабинет».\nВаш ID: {client_code}", "kind": "textarea", "rows": 6},
-            {"key": "support_admin_new_ticket_header", "label": "Текст: шапка для admin-уведомления", "default": "🆘 Новый тикет поддержки", "kind": "input"},
-            {"key": "support_admin_reply_subject", "label": "Subject ответа поддержки", "default": "Ответ поддержки", "kind": "input"},
-            {"key": "support_admin_reply_prefix", "label": "Текст: ответ поддержки пользователю", "default": "💬 Ответ поддержки:\n\n{message}", "kind": "textarea", "rows": 4},
+            {"key": "support_default_subject", "label": "Тема нового тикета", "default": "Запрос из Telegram-бота", "kind": "input"},
+            {"key": "support_received_message", "label": "Текст: сообщение принято", "default": "Сообщение отправлено\n\nНомер обращения: #{ticket_id}\nОтвет придет сюда в Telegram.\n\nИстория обращений: «📱 Кабинет» → «Поддержка».\nВаш ID: {client_code}", "kind": "textarea", "rows": 6},
+            {"key": "support_admin_new_ticket_header", "label": "Текст: шапка уведомления администратору", "default": "🆘 Новый тикет поддержки", "kind": "input"},
+            {"key": "support_admin_reply_subject", "label": "Тема ответа поддержки", "default": "Ответ поддержки", "kind": "input"},
+            {"key": "support_admin_reply_prefix", "label": "Текст: ответ поддержки клиенту", "default": "💬 Ответ поддержки:\n\n{message}", "kind": "textarea", "rows": 4},
             {"key": "link_success_message", "label": "Текст: Telegram привязан", "default": "Готово! Telegram успешно привязан к вашему аккаунту на сайте.", "kind": "textarea", "rows": 2},
             {"key": "link_used_message", "label": "Текст: код уже использован", "default": "Этот код уже использован. Сгенерируйте новый код на сайте.", "kind": "textarea", "rows": 2},
             {"key": "link_expired_message", "label": "Текст: код истёк", "default": "Срок действия кода истёк. Сгенерируйте новый код на сайте.", "kind": "textarea", "rows": 2},
@@ -192,13 +192,13 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
         ],
     },
     {
-        "title": "Ссылки и reminders",
+        "title": "Ссылки и напоминания",
         "items": [
             {"key": "site_url", "label": "Базовый URL сайта", "default": "https://vxcloud.ru", "kind": "input"},
-            {"key": "account_page_url", "label": "Прямой URL кабинета", "default": "", "kind": "input", "help": "Оставьте пустым, чтобы бот сам собирал magic-link или fallback /account/."},
-            {"key": "reminder_expired_message", "label": "Reminder: истёк конфиг", "default": "Истёк конфиг VXcloud: {name}\nДействовал до: {expires_at}\n\nИспользуйте /buy для продления.", "kind": "textarea", "rows": 4},
-            {"key": "reminder_1d_message", "label": "Reminder: меньше 24 часов", "default": "Напоминание: конфиг VXcloud скоро истекает\nУстройство: {name}\nДо: {expires_at}", "kind": "textarea", "rows": 3},
-            {"key": "reminder_3d_message", "label": "Reminder: меньше 3 дней", "default": "Напоминание: конфиг VXcloud истекает менее чем через 3 дня\nУстройство: {name}\nДо: {expires_at}", "kind": "textarea", "rows": 3},
+            {"key": "account_page_url", "label": "Прямой URL кабинета", "default": "", "kind": "input", "help": "Оставьте пустым, чтобы бот сам собирал magic-link или запасной /account/."},
+            {"key": "reminder_expired_message", "label": "Напоминание: доступ истёк", "default": "Доступ VXcloud истёк\nУстройство: {name}\nДействовал до: {expires_at}\n\nНажмите «🔄 Продлить», чтобы снова включить VPN.", "kind": "textarea", "rows": 4},
+            {"key": "reminder_1d_message", "label": "Напоминание: меньше 24 часов", "default": "Доступ VXcloud скоро закончится\nУстройство: {name}\nДо: {expires_at}", "kind": "textarea", "rows": 3},
+            {"key": "reminder_3d_message", "label": "Напоминание: меньше 3 дней", "default": "Доступ VXcloud закончится менее чем через 3 дня\nУстройство: {name}\nДо: {expires_at}", "kind": "textarea", "rows": 3},
         ],
     },
 ]
@@ -1503,7 +1503,7 @@ class BotContentEditorView(StaffRequiredMixin, LegacyContentContextMixin, Templa
         if updated or removed:
             messages.success(
                 request,
-                f"Bot content обновлён: сохранено {updated}, очищено {removed}. Бот подхватит изменения автоматически.",
+                f"Тексты бота обновлены: сохранено {updated}, очищено {removed}. Бот подхватит изменения автоматически.",
             )
         else:
             messages.info(request, "Изменений не найдено.")
@@ -1511,7 +1511,7 @@ class BotContentEditorView(StaffRequiredMixin, LegacyContentContextMixin, Templa
 
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
-        ctx["title"] = "Bot Settings"
+        ctx["title"] = "Настройки бота"
         ctx["subtitle"] = "Визуальное редактирование текстов, кнопок и inline-экранов Telegram-бота."
 
         overrides = {
@@ -1554,8 +1554,8 @@ class BotContentEditorView(StaffRequiredMixin, LegacyContentContextMixin, Templa
         ctx["notes"] = [
             "Пустое поле удаляет override и возвращает штатный текст или кнопку из кода.",
             "Изменения подхватываются ботом автоматически примерно в течение минуты.",
-            "DB overrides из /ops/ являются единственным источником runtime overrides для bot content.",
-            "Advanced JSON поля нужны только если вы хотите полностью переопределить layout inline-кнопок.",
+            "Переопределения из /ops/ являются единственным источником runtime-текстов бота.",
+            "Поля JSON нужны только для полного переопределения раскладки inline-кнопок.",
         ]
         return self.add_wordpress_context(ctx)
 

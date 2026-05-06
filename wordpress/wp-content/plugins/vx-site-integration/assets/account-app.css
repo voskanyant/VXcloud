@@ -159,6 +159,43 @@
   color: var(--vx-muted);
 }
 
+.vx-hero-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vx-hero-metrics > div {
+  min-width: 0;
+  border: 1px solid #e8eef7;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f7f9fd);
+  padding: 12px 14px;
+}
+
+.vx-hero-metrics span {
+  display: block;
+  color: var(--vx-muted-2);
+  font-size: 11px;
+  line-height: 1.2;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.vx-hero-metrics strong {
+  display: block;
+  min-width: 0;
+  margin-top: 6px;
+  color: var(--vx-ink);
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vx-account-actions {
   display: grid;
   grid-template-columns: 1fr;
@@ -313,10 +350,94 @@
   margin-top: 0;
 }
 
+.vx-dashboard-help {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--vx-border);
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  box-shadow: var(--vx-shadow-card);
+  padding: 14px;
+}
+
+.vx-dashboard-help__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vx-dashboard-help__copy strong {
+  color: var(--vx-ink);
+  font-size: 16px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-dashboard-help__copy span {
+  color: var(--vx-muted);
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.vx-dashboard-help__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vx-dashboard-help__actions .vx-button {
+  min-height: 46px;
+  border-radius: 14px;
+}
+
+.vx-account-secondary {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 2px 0 6px;
+  color: var(--vx-muted);
+}
+
+.vx-account-secondary .vx-inline-link {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
 .vx-profile-form {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   padding: 0 14px 16px;
+}
+
+.vx-profile-group {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--vx-border);
+  border-radius: 18px;
+  background: var(--vx-surface);
+  padding: 14px;
+}
+
+.vx-profile-group__head {
+  display: grid;
+  gap: 4px;
+}
+
+.vx-profile-group__head strong {
+  color: var(--vx-ink);
+  font-size: 1rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-profile-group__head span {
+  color: var(--vx-muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .vx-profile-grid {
@@ -384,8 +505,10 @@
 }
 
 .vx-link-code {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
+  gap: 10px;
   min-height: 56px;
   padding: 12px 14px;
   border: 1px solid #dbe5f1;
@@ -394,6 +517,10 @@
 }
 
 .vx-link-code code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: clamp(1rem, 2.5vw, 1.2rem);
   font-weight: 800;
   color: var(--vx-primary);
@@ -970,7 +1097,7 @@
 
 .vx-auth-errors {
   display: none;
-  margin-bottom: 14px;
+  margin-bottom: 0;
 }
 
 .vx-auth-telegram {
@@ -999,8 +1126,59 @@
   line-height: 1.5;
 }
 
+.vx-auth-telegram__status {
+  display: grid;
+  gap: 5px;
+  border: 1px solid #e8eef7;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.vx-auth-telegram__status strong {
+  color: var(--vx-ink);
+  font-size: 0.96rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-auth-telegram__status span {
+  color: var(--vx-muted);
+  font-size: 13px;
+  line-height: 1.42;
+  font-weight: 600;
+}
+
 .vx-auth-telegram__widget {
   min-height: 50px;
+}
+
+.vx-auth-fallback {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #e8e8e8;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.vx-auth-fallback__head {
+  display: grid;
+  gap: 4px;
+}
+
+.vx-auth-fallback__head strong {
+  color: var(--vx-ink);
+  font-size: 0.98rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-auth-fallback__head span {
+  color: var(--vx-muted);
+  font-size: 13px;
+  line-height: 1.42;
+  font-weight: 600;
 }
 
 .vx-auth-divider {
@@ -1090,6 +1268,16 @@
   background: #fff;
 }
 
+.vx-config-qr__hint {
+  display: block;
+  margin-top: 10px;
+  color: var(--vx-muted);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  font-weight: 700;
+  text-align: center;
+}
+
 .vx-config-info-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1110,6 +1298,314 @@
   color: var(--vx-muted);
   font-size: 13px;
   line-height: 1.5;
+}
+
+.vx-field-card--danger {
+  border-color: #f1d5d5;
+  background: #fffafa;
+}
+
+.vx-field-card--danger .vx-button {
+  justify-self: start;
+  width: auto;
+  min-width: 180px;
+}
+
+.vx-instructions-body,
+.vx-support-body {
+  display: grid;
+  gap: 14px;
+  padding: 0 14px 16px;
+}
+
+.vx-device-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #e7edf7;
+  border-radius: 18px;
+  background: #f7f9fd;
+}
+
+.vx-device-tab {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  background: transparent;
+  color: var(--vx-muted);
+  font-size: 14px;
+  line-height: 1.15;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.vx-device-tab.is-active {
+  border-color: #dfe7f3;
+  background: #fff;
+  color: var(--vx-ink);
+  box-shadow: 0 8px 18px rgba(11, 23, 54, 0.05);
+}
+
+.vx-guide-panel,
+.vx-support-note,
+.vx-support-templates {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #e5ebf4;
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  padding: 16px;
+}
+
+.vx-guide-access {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--vx-success-border);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, var(--vx-success-bg));
+  padding: 14px 16px;
+}
+
+.vx-guide-access.is-empty {
+  border-color: #e3e9f4;
+  background: linear-gradient(180deg, #ffffff, #f7f9fd);
+}
+
+.vx-guide-access span {
+  color: var(--vx-muted-2);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.vx-guide-access strong {
+  min-width: 0;
+  color: var(--vx-ink);
+  font-size: 1.03rem;
+  line-height: 1.2;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-guide-access small {
+  color: var(--vx-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+.vx-support-id {
+  display: grid;
+  gap: 8px;
+  border: 1px solid #e8eef7;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #ffffff, #f7f9fd);
+  padding: 14px 16px;
+}
+
+.vx-support-id span {
+  color: var(--vx-muted-2);
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.045em;
+}
+
+.vx-support-id code {
+  color: var(--vx-ink);
+  font-size: 1.05rem;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.vx-support-id__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.vx-support-id__row code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-support-contact {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #e8e8e8;
+  border-radius: 14px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.vx-support-contact__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vx-support-contact__copy strong {
+  color: var(--vx-ink);
+  font-size: 1rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-support-contact__copy span {
+  color: var(--vx-muted);
+  font-size: 0.9rem;
+  line-height: 1.42;
+  font-weight: 600;
+}
+
+.vx-support-contact .vx-button {
+  width: 100%;
+}
+
+.vx-guide-panel__head h2 {
+  margin: 0;
+  color: var(--vx-ink);
+  font-size: 1.18rem;
+  line-height: 1.18;
+  font-weight: 800;
+}
+
+.vx-guide-panel__head p,
+.vx-support-note span {
+  display: block;
+  margin: 4px 0 0;
+  color: var(--vx-muted);
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.vx-support-note strong {
+  color: var(--vx-ink);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.vx-support-templates strong {
+  color: var(--vx-ink);
+  font-size: 1rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-support-templates > span {
+  color: var(--vx-muted);
+  font-size: 14px;
+  line-height: 1.42;
+  font-weight: 600;
+}
+
+.vx-support-template-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vx-support-template {
+  appearance: none;
+  -webkit-appearance: none;
+  min-width: 0;
+  min-height: 42px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #050505;
+  padding: 9px 10px;
+  font-size: 0.86rem;
+  line-height: 1.2;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.vx-guide-steps {
+  margin: 0;
+  padding-left: 1.35rem;
+  color: var(--vx-ink);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.vx-guide-steps li + li {
+  margin-top: 8px;
+}
+
+.vx-guide-steps--cards {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+  counter-reset: vx-guide-step;
+}
+
+.vx-guide-steps--cards li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #ececec;
+  border-radius: 10px;
+  background: #ffffff;
+  counter-increment: vx-guide-step;
+}
+
+.vx-guide-steps--cards li + li {
+  margin-top: 0;
+}
+
+.vx-guide-steps--cards li::before {
+  content: counter(vx-guide-step);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #050505;
+  color: #ffffff;
+  font-size: 0.82rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.vx-guide-steps--cards strong {
+  display: block;
+  min-width: 0;
+  color: var(--vx-ink);
+  font-size: 0.94rem;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.vx-guide-steps--cards span {
+  display: block;
+  min-width: 0;
+  margin-top: 3px;
+  color: var(--vx-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  font-weight: 600;
 }
 
 .vx-account-toast {
@@ -1168,27 +1664,50 @@
     gap: 10px;
   }
 
+  .vx-config-list .vx-config-card__field {
+    display: none;
+  }
+
   .vx-account-hero {
     padding: 12px;
     gap: 10px;
-    border-radius: 22px;
+    border-radius: 14px;
   }
 
   .vx-account-title {
-    letter-spacing: -0.04em;
-    line-height: 0.96;
+    letter-spacing: 0;
+    line-height: 1.06;
   }
 
   .vx-account-subtitle {
     max-width: none;
-    line-height: 1.45;
+    margin-top: 4px;
+    line-height: 1.35;
+  }
+
+  .vx-hero-metrics {
+    gap: 8px;
+  }
+
+  .vx-hero-metrics > div {
+    border-radius: 12px;
+    padding: 10px 11px;
+  }
+
+  .vx-hero-metrics span {
+    font-size: 10px;
+  }
+
+  .vx-hero-metrics strong {
+    margin-top: 5px;
+    font-size: 14px;
   }
 
   .vx-account-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
     padding: 8px;
-    border-radius: 22px;
+    border-radius: 14px;
     background: linear-gradient(180deg, #f7f9fd, #f3f6fb);
     border: 1px solid #e7edf7;
   }
@@ -1200,8 +1719,15 @@
     line-height: 1.25;
     white-space: normal;
     text-wrap: balance;
-    border-radius: 16px;
+    border-radius: 12px;
     box-shadow: none;
+  }
+
+  .vx-account-hero .vx-account-actions {
+    grid-template-columns: 1fr;
+    padding: 0;
+    border: 0;
+    background: transparent;
   }
 
   .vx-stats-grid {
@@ -1210,11 +1736,11 @@
 
   .vx-account-summary {
     padding: 8px;
-    border-radius: 20px;
+    border-radius: 14px;
   }
 
   .vx-account-summary__grid {
-    border-radius: 16px;
+    border-radius: 12px;
   }
 
   .vx-account-summary__item {
@@ -1237,9 +1763,35 @@
     font-size: 13px;
   }
 
+  .vx-dashboard-help {
+    padding: 12px;
+    border-radius: 14px;
+    gap: 10px;
+  }
+
+  .vx-dashboard-help__actions {
+    gap: 8px;
+  }
+
+  .vx-dashboard-help__actions .vx-button {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+
+  .vx-account-secondary {
+    justify-content: flex-start;
+    padding: 0 2px 4px;
+  }
+
   .vx-profile-form {
     padding: 0 12px 14px;
     gap: 12px;
+  }
+
+  .vx-profile-group {
+    padding: 12px;
+    border-radius: 14px;
   }
 
   .vx-profile-grid {
@@ -1276,7 +1828,7 @@
   }
 
   .vx-section-card {
-    border-radius: 22px;
+    border-radius: 14px;
   }
 
   .vx-section-card__head {
@@ -1291,7 +1843,7 @@
   .vx-config-card {
     padding: 12px;
     gap: 8px;
-    border-radius: 18px;
+    border-radius: 14px;
   }
 
   .vx-config-card__meta,
@@ -1387,10 +1939,11 @@
   .vx-config-view__head {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
+    order: 1;
   }
 
   .vx-config-view__side {
-    order: 2;
+    order: 4;
   }
 
   .vx-config-view__main {
@@ -1398,12 +1951,20 @@
   }
 
   .vx-config-view__actions {
-    order: 2;
+    order: 3;
     grid-template-columns: 1fr;
   }
 
+  .vx-config-view__actions .vx-button--primary {
+    order: 1;
+  }
+
+  .vx-config-view__actions .vx-button--ghost {
+    order: 2;
+  }
+
   .vx-config-qr {
-    order: 3;
+    order: 2;
     padding: 10px;
     border-radius: 20px;
   }
@@ -1439,7 +2000,7 @@
   }
 
   .vx-auth-card {
-    border-radius: 24px;
+    border-radius: 14px;
   }
 
   .vx-auth-card__tabs {
@@ -1448,6 +2009,43 @@
 
   .vx-auth-card__body {
     padding: 16px;
+  }
+
+  .vx-instructions-body,
+  .vx-support-body {
+    padding: 0 12px 14px;
+    gap: 12px;
+  }
+
+  .vx-device-tabs {
+    grid-template-columns: 1fr;
+    border-radius: 14px;
+  }
+
+  .vx-device-tab {
+    min-height: 42px;
+    border-radius: 10px;
+  }
+
+  .vx-guide-panel,
+  .vx-guide-access,
+  .vx-support-note {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .vx-support-id {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .vx-guide-panel__head h2 {
+    font-size: 1.05rem;
+  }
+
+  .vx-guide-steps {
+    font-size: 13px;
+    line-height: 1.45;
   }
 }
 
@@ -1503,5 +2101,670 @@
   .vx-config-view {
     grid-template-columns: minmax(0, 1.08fr) minmax(320px, 0.92fr);
     align-items: start;
+  }
+}
+
+/* Compact Telegram Mini App visual normalization. */
+.vx-native-account {
+  --vx-ink: #050505;
+  --vx-muted: #4f4f4f;
+  --vx-muted-2: #6a6a6a;
+  --vx-border: #e8e8e8;
+  --vx-border-strong: #d8d8d8;
+  --vx-surface-soft: #ffffff;
+  --vx-surface-muted: #f6f6f6;
+  --vx-shadow-soft: none;
+  --vx-shadow-card: none;
+  --vx-primary: #050505;
+  --vx-primary-hover: #222222;
+  --vx-title-size: clamp(1.58rem, 4.8vw, 2.2rem);
+  --vx-subtitle-size: 0.96rem;
+}
+
+.vx-native-account .vx-account-title {
+  line-height: 1.08;
+  letter-spacing: 0;
+}
+
+.vx-native-account,
+.vx-native-account * {
+  letter-spacing: 0;
+}
+
+.vx-native-account .vx-account-subtitle {
+  line-height: 1.42;
+}
+
+.vx-native-account .vx-native-account__skeleton,
+.vx-native-account .vx-account-hero,
+.vx-native-account .vx-section-card,
+.vx-native-account .vx-auth-card,
+.vx-native-account .vx-config-view,
+.vx-native-account .vx-config-card,
+.vx-native-account .vx-stat-card,
+.vx-native-account .vx-info-card,
+.vx-native-account .vx-field-card,
+.vx-native-account .vx-dashboard-help,
+.vx-native-account .vx-guide-panel,
+.vx-native-account .vx-guide-access,
+.vx-native-account .vx-support-note,
+.vx-native-account .vx-support-id,
+.vx-native-account .vx-support-templates,
+.vx-native-account .vx-account-summary,
+.vx-native-account .vx-account-summary__grid,
+.vx-native-account .vx-config-qr {
+  border-radius: 8px;
+  box-shadow: none;
+  background: #ffffff;
+}
+
+.vx-native-account .vx-account-hero,
+.vx-native-account .vx-config-card,
+.vx-native-account .vx-guide-panel,
+.vx-native-account .vx-guide-access,
+.vx-native-account .vx-support-note,
+.vx-native-account .vx-support-id,
+.vx-native-account .vx-support-templates,
+.vx-native-account .vx-device-tabs,
+.vx-native-account .vx-auth-card__tabs,
+.vx-native-account .vx-account-actions {
+  background: #ffffff;
+}
+
+.vx-native-account .vx-account-hero {
+  padding: clamp(14px, 2.4vw, 22px);
+}
+
+.vx-native-account .vx-account-identity {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.vx-native-account .vx-account-identity__main {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vx-native-account .vx-account-identity__item,
+.vx-native-account .vx-account-identity__telegram {
+  min-width: 0;
+  border: 1px solid #eeeeee;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px;
+}
+
+.vx-native-account .vx-account-identity__item > span,
+.vx-native-account .vx-account-identity__telegram > span {
+  display: block;
+  color: #6a6a6a;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-account-identity__item strong {
+  display: block;
+  min-width: 0;
+  margin-top: 6px;
+  overflow: hidden;
+  color: #050505;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-native-account .vx-account-identity__value,
+.vx-native-account .vx-account-identity__telegram > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.vx-native-account .vx-account-identity .vx-stat-code {
+  min-height: 30px;
+  max-width: 100%;
+  border-radius: 8px;
+  background: #f6f6f6;
+  border-color: #e8e8e8;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-native-account .vx-account-identity .vx-icon-button {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+}
+
+.vx-native-account .vx-account-identity .vx-account-secondary {
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.vx-native-account .vx-settings-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 16px;
+}
+
+.vx-native-account .vx-settings-note {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.vx-native-account .vx-settings-note strong {
+  color: #050505;
+  font-size: 0.96rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-settings-note span {
+  color: #4f4f4f;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.vx-native-account .vx-settings-body .vx-profile-form {
+  padding: 0;
+}
+
+.vx-native-account .vx-profile-group {
+  border-color: #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.vx-native-account .vx-profile-group__head strong {
+  color: #050505;
+}
+
+.vx-native-account .vx-profile-group__head span {
+  color: #4f4f4f;
+}
+
+.vx-native-account .vx-settings-body .vx-profile-field input {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.vx-native-account .vx-settings-body .vx-profile-field input:focus {
+  border-color: #050505;
+  box-shadow: none;
+}
+
+.vx-native-account .vx-account-actions--settings {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vx-native-account .vx-field-card--danger {
+  border-color: #ead2d2;
+  background: #fffafa;
+}
+
+.vx-native-account .vx-field-card--danger .vx-button {
+  width: 100%;
+}
+
+.vx-native-account .vx-account-empty--dashboard {
+  display: grid;
+  gap: 8px;
+  border-color: #e8e8e8;
+  background: #ffffff;
+  color: #050505;
+}
+
+.vx-native-account .vx-account-empty--dashboard strong {
+  font-size: 1rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-account-empty--dashboard span {
+  color: #4f4f4f;
+  font-size: 0.92rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.vx-native-account .vx-account-empty__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.vx-native-account .vx-checkout-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 16px;
+}
+
+.vx-native-account .vx-loading-card {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.vx-native-account .vx-loading-body {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.vx-native-account .vx-error-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 14px 16px;
+}
+
+.vx-native-account .vx-account-actions--error {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vx-native-account .vx-account-actions--error > :first-child {
+  grid-column: 1 / -1;
+}
+
+.vx-native-account .vx-loading-status,
+.vx-native-account .vx-checkout-status {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px 14px;
+  text-align: center;
+}
+
+.vx-native-account .vx-loading-status strong,
+.vx-native-account .vx-checkout-status strong {
+  color: #050505;
+  font-size: 1rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-loading-status small,
+.vx-native-account .vx-checkout-status small {
+  max-width: 32rem;
+  color: #4f4f4f;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.vx-native-account .vx-loading-spinner,
+.vx-native-account .vx-checkout-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid #d8d8d8;
+  border-top-color: #050505;
+  border-radius: 50%;
+  animation: vx-checkout-spin 0.8s linear infinite;
+}
+
+.vx-native-account .vx-loading-rows {
+  display: grid;
+  gap: 8px;
+}
+
+.vx-native-account .vx-loading-rows span {
+  min-height: 42px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background:
+    linear-gradient(
+      110deg,
+      rgba(238, 238, 238, 0.92) 8%,
+      rgba(255, 255, 255, 0.98) 18%,
+      rgba(238, 238, 238, 0.92) 33%
+    )
+    0 0 / 220% 100%;
+  animation: vxNativeSkeleton 1.15s linear infinite;
+}
+
+.vx-native-account .vx-checkout-steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vx-native-account .vx-checkout-steps li {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 9px 10px;
+}
+
+.vx-native-account .vx-checkout-steps li > span {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #d8d8d8;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.vx-native-account .vx-checkout-steps li.is-active > span {
+  border-color: #050505;
+  box-shadow: inset 0 0 0 4px #ffffff;
+  background: #050505;
+}
+
+.vx-native-account .vx-checkout-steps strong {
+  min-width: 0;
+  color: #050505;
+  font-size: 0.92rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-checkout-note {
+  display: grid;
+  gap: 4px;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.vx-native-account .vx-checkout-note strong {
+  color: #050505;
+  font-size: 0.94rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-checkout-note span {
+  color: #4f4f4f;
+  font-size: 0.88rem;
+  line-height: 1.42;
+  font-weight: 600;
+}
+
+.vx-native-account .vx-account-actions--checkout {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vx-native-account .vx-config-quick-guide {
+  display: grid;
+  gap: 8px;
+  order: 4;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.vx-native-account .vx-config-quick-guide strong {
+  color: #050505;
+  font-size: 0.98rem;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-config-quick-guide ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #4f4f4f;
+  font-size: 0.9rem;
+  line-height: 1.42;
+  font-weight: 600;
+}
+
+.vx-native-account .vx-config-quick-guide li + li {
+  margin-top: 5px;
+}
+
+.vx-native-account .vx-config-quick-guide__steps {
+  display: grid;
+  gap: 6px;
+  counter-reset: vx-config-step;
+}
+
+.vx-native-account .vx-config-quick-guide__steps span {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: 34px;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid #eeeeee;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #4f4f4f;
+  font-size: 0.88rem;
+  line-height: 1.3;
+  font-weight: 700;
+  counter-increment: vx-config-step;
+}
+
+.vx-native-account .vx-config-quick-guide__steps span::before {
+  content: counter(vx-config-step);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: #050505;
+  color: #ffffff;
+  font-size: 0.76rem;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.vx-native-account .vx-config-quick-guide .vx-inline-link {
+  justify-self: start;
+}
+
+.vx-native-account .vx-account-actions--instructions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vx-native-account .vx-account-actions--instructions > :first-child {
+  grid-column: 1 / -1;
+}
+
+@keyframes vx-checkout-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.vx-native-account .vx-section-card__head,
+.vx-native-account .vx-config-view__head {
+  border-color: #e8e8e8;
+}
+
+.vx-native-account .vx-button,
+.vx-native-account .vx-auth-tab,
+.vx-native-account .vx-device-tab,
+.vx-native-account .vx-icon-button,
+.vx-native-account .vx-rename-input,
+.vx-native-account .vx-auth-form input,
+.vx-native-account .vx-select,
+.vx-native-account .vx-link-code,
+.vx-native-account .vx-hero-metrics > div,
+.vx-native-account .vx-account-actions {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.vx-native-account .vx-button {
+  min-height: 46px;
+  padding: 11px 14px;
+}
+
+.vx-native-account .vx-button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.vx-native-account .vx-button--ghost {
+  color: #050505;
+}
+
+.vx-native-account .vx-account-hero .vx-account-actions,
+.vx-native-account .vx-config-card__actions,
+.vx-native-account .vx-config-view__actions {
+  grid-template-columns: 1fr;
+}
+
+.vx-native-account .vx-dashboard-help__actions,
+.vx-native-account .vx-account-actions--settings,
+.vx-native-account .vx-account-actions--checkout,
+.vx-native-account .vx-account-actions--footer,
+.vx-native-account .vx-account-empty__actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vx-native-account .vx-account-empty__actions > :first-child {
+  grid-column: 1 / -1;
+}
+
+.vx-native-account .vx-auth-card--telegram-first .vx-auth-telegram {
+  border-color: #e8e8e8;
+  background: #ffffff;
+}
+
+.vx-native-account .vx-auth-telegram__status {
+  border-radius: 8px;
+  border-color: #e8e8e8;
+}
+
+.vx-native-account .vx-auth-fallback {
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.vx-native-account .vx-account-actions--support {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.vx-native-account .vx-inline-link,
+.vx-native-account .vx-account-secondary__button {
+  color: #c1121f;
+}
+
+.vx-native-account .vx-device-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: 8px;
+  background: #f6f6f6;
+}
+
+.vx-native-account .vx-device-tab {
+  flex: 1 0 auto;
+  min-width: 94px;
+}
+
+.vx-native-account .vx-status-pill {
+  min-height: 30px;
+  padding: 6px 10px;
+  border-radius: 8px;
+}
+
+@media (max-width: 479px) {
+  .vx-native-account {
+    --vx-title-size: 1.46rem;
+    --vx-subtitle-size: 0.92rem;
+    --vx-section-title-size: 1rem;
+  }
+
+  .vx-native-account .vx-account-app__shell {
+    gap: 8px;
+  }
+
+  .vx-native-account .vx-account-hero,
+  .vx-native-account .vx-section-card,
+  .vx-native-account .vx-auth-card,
+  .vx-native-account .vx-config-view,
+  .vx-native-account .vx-config-card,
+  .vx-native-account .vx-dashboard-help,
+  .vx-native-account .vx-guide-panel,
+  .vx-native-account .vx-guide-access,
+  .vx-native-account .vx-support-note,
+  .vx-native-account .vx-support-id,
+  .vx-native-account .vx-support-contact,
+  .vx-native-account .vx-support-templates {
+    border-radius: 8px;
+  }
+
+  .vx-native-account .vx-account-actions {
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .vx-native-account .vx-account-actions .vx-button {
+    min-height: 44px;
+    border-radius: 8px;
+  }
+
+  .vx-native-account .vx-support-template-list {
+    grid-template-columns: 1fr;
+  }
+
+  .vx-native-account .vx-support-template {
+    text-align: center;
+  }
+
+  .vx-native-account .vx-account-identity__main {
+    grid-template-columns: 1fr;
+  }
+
+  .vx-native-account .vx-account-identity {
+    padding: 10px;
+  }
+
+  .vx-native-account .vx-device-tabs {
+    grid-template-columns: none;
+    padding: 6px;
+  }
+
+  .vx-native-account .vx-device-tab {
+    min-height: 40px;
+    font-size: 13px;
+  }
+
+  .vx-native-account .vx-config-view {
+    padding: 12px;
+  }
+
+  .vx-native-account .vx-config-quick-guide {
+    padding: 10px;
+  }
+
+  .vx-native-account .vx-config-qr {
+    border-radius: 8px;
   }
 }

@@ -96,6 +96,18 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertEqual(payload["support"]["telegram_url"], "https://t.me/vxcloud_test_bot")
         self.assertEqual(payload["support"]["instructions_url"], "/account-app/?view=instructions&embed=1")
 
+    def test_account_state_support_payload_includes_client_code(self):
+        with patch("cabinet.views._resolve_account_bot_user") as resolve_mock:
+            resolve_mock.return_value = (
+                None,
+                SimpleNamespace(id=7, client_code="VX-000007"),
+            )
+            response = self.client.get("/account-app/api/state/?view=support")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["support"]["client_code"], "VX-000007")
+
     def test_account_state_returns_instructions_payload_for_instructions_view(self):
         response = self.client.get("/account-app/api/state/?view=instructions&device=iphone&embed=1")
 
@@ -112,6 +124,32 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         )
         self.assertEqual(payload["instructions"]["dashboard_url"], "/account-app/?embed=1")
         self.assertEqual(payload["instructions"]["support_url"], "/account-app/?view=support&embed=1")
+        self.assertIsNone(payload["instructions"]["primary_subscription"])
+        self.assertEqual(payload["instructions"]["access_count"], 0)
+
+    def test_account_state_instructions_payload_includes_primary_subscription_cta(self):
+        bot_user = SimpleNamespace(id=7, client_code="VX-000007")
+        subscription = SimpleNamespace(
+            id=42,
+            display_name="Phone",
+            expires_at=timezone.now() + timedelta(days=7),
+            is_active=True,
+            revoked_at=None,
+            user=bot_user,
+            vless_url="vless://example",
+            feed_token="feed-token",
+        )
+        with patch("cabinet.views._resolve_account_bot_user", return_value=(None, bot_user)):
+            with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[subscription]):
+                response = self.client.get("/account-app/api/state/?view=instructions&device=android&embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["instructions"]["access_count"], 1)
+        self.assertEqual(payload["instructions"]["primary_subscription"]["id"], 42)
+        self.assertEqual(payload["instructions"]["primary_subscription"]["display_name"], "Phone")
+        self.assertEqual(payload["instructions"]["primary_subscription"]["config_url"], "/account/config/42/")
+        self.assertIn("/account/feed/feed-token/", payload["instructions"]["primary_subscription"]["feed_url"])
 
     def test_account_app_support_view_renders_support_hub(self):
         with patch.dict("os.environ", {"TELEGRAM_BOT_USERNAME": "vxcloud_test_bot"}):
@@ -154,6 +192,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("v2rayNG", html)
         self.assertIn("account-page-shell-instructions", html)
         self.assertIn("account-instructions-device-actions", html)
+        self.assertIn("account-step-list", html)
+        self.assertIn("<li>Откройте свой доступ", html)
         self.assertIn("/account-app/?view=instructions&amp;device=iphone&amp;embed=1", html)
         self.assertNotIn("Кабинет VXcloud", html)
         self.assertNotIn("Ваши доступы", html)
@@ -207,11 +247,20 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
         self.assertIn("Импорт QR", html)
+        self.assertIn("QR и доступ", html)
         self.assertIn("Состояние", html)
+        self.assertIn("Состояние доступа", html)
+        self.assertIn("Все доступы", html)
         self.assertIn("Ссылка подписки", html)
+        self.assertIn("account-page-shell-config", html)
+        self.assertIn("account-config-link-section", html)
+        self.assertIn("account-config-status-section", html)
         self.assertNotIn("QR import", html)
         self.assertNotIn("Subscription URL", html)
         self.assertNotIn("Status", html)
+        self.assertNotIn("Конфиг и QR", html)
+        self.assertNotIn("Состояние конфига", html)
+        self.assertNotIn("Все конфиги", html)
 
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):
         with patch.object(sys.modules["cabinet.views"].settings, "VPN_PUBLIC_HOST", ""), patch.object(
@@ -231,7 +280,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
             target_id, error = _resolve_renew_target_subscription_id(bot_user, None)
 
         self.assertIsNone(target_id)
-        self.assertEqual(error, "Выберите, какой конфиг продлить.")
+        self.assertEqual(error, "Выберите, какой доступ продлить.")
 
     def test_renew_without_selection_allows_single_config(self):
         bot_user = SimpleNamespace(id=7)

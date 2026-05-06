@@ -60,6 +60,11 @@ waiting for free text input:
 When input completes, is empty, or is cancelled by a menu button, restore the
 persistent menu. The bot should also understand old plain labels such as
 "Мой VPN" and "Кабинет" so users with a cached keyboard are not stuck.
+Slash commands that interrupt support, rename, or other text-input states must
+also restore the persistent menu before opening the requested screen.
+Inline buttons from older messages follow the same rule: normal actions cancel
+the text-input state and restore the menu; actions that start another input
+state replace it and keep only `Отмена` visible.
 
 During text input states, show a one-button `Отмена` keyboard instead of a blank
 keyboard. This keeps the full menu hidden while giving users an obvious escape.
@@ -71,7 +76,8 @@ main menu inside inline keyboards.
 
 Good contextual examples:
 
-- 📱 Открыть кабинет
+- 📱 QR и доступ for buttons that open one exact subscription
+- 📱 Кабинет for buttons that open the dashboard or support history
 - QR
 - 🔄 Продлить
 - Скопировать ссылку
@@ -100,12 +106,16 @@ Back/Назад button should be ignored by the bot.
   persistent menu. For example `/myvpn` must use the same My VPN flow instead
   of old active-subscription-only delivery copy. Customer slash commands must
   also clear active text-input states such as support message and rename before
-  opening the requested screen.
+  opening the requested screen. Keep slash command coverage aligned with the
+  main menu: `/myvpn`, `/trial`, `/buy`, `/renew`, `/instructions`, `/support`,
+  and `/app` or `/cabinet`.
 - My VPN: if the user has one subscription, open its card directly. If the
   user has several subscriptions, show a compact list sorted by active and
   nearest expiry first. Status icons are allowed in this list because they help
   users spot active, expiring, and expired devices quickly. The list should show
   a short count summary and put the same status icon on each selector button.
+  Keep this list to one button per device; do not add QR/renew/app action rows
+  below every device. Those actions belong on the selected subscription card.
   Subscription cards contain QR, renew, copy, rename, and delete actions. Do not print long
   subscription or raw connection links in the message body by default; keep them
   inside QR and copy buttons. Delete confirmations should say "device" and
@@ -113,11 +123,12 @@ Back/Назад button should be ignored by the bot.
   Rename input should normalize whitespace and reject overlong names with a
   clear limit instead of silently truncating. Empty My VPN should offer the
   7-day trial first, then card and Stars purchase actions. Expired subscription
-  rows and cards should put `🔄 Продлить` first; active cards can keep cabinet
-  and QR first. Subscription card copy should state the next action for the
-  current state: renew if expired, renew early if close to expiry, otherwise use
-  QR/copy. QR messages for expired devices must warn that renewal is needed and
-  include the same renewal-first action layout.
+  cards should put `🔄 Продлить` first; active cards can keep `📱 QR и доступ`
+  and `QR` first. Subscription card copy should state the next action for the
+  current state: renew if expired, renew early if close to expiry, otherwise
+  "open QR or copy the subscription link". Do not describe the buttons
+  themselves in the message body. QR messages for expired devices must warn
+  that renewal is needed and include the same renewal-first action layout.
 - Trial: visible menu entry, one activation CTA, short one-time-use copy, then
   compact success with expiry plus cabinet, QR, and guide after activation. If
   activation fails, show a clear Russian failure message and a support action;
@@ -132,11 +143,13 @@ Back/Назад button should be ignored by the bot.
   possible.
 - Renew: always target one explicit subscription before showing payment. If
   several subscriptions can be renewed, show the same active/nearest-expiry
-  ordering and status icons as My VPN. Copy should say renewal adds time to
-  the selected device, not that it creates a new access. If there is nothing to
-  renew, offer the 7-day trial first, then card and Stars purchase actions.
+  ordering and status icons as My VPN. Keep the selector to one button per
+  device; do not add cabinet or payment rows until the user selects a device.
+  Copy should say renewal adds time to the selected device, not that it creates
+  a new access. If there is nothing to renew, offer the 7-day trial first, then
+  card and Stars purchase actions.
 - Payment success: compact confirmation only. Do not explain every possible
-  action in prose when the buttons already show cabinet and QR. Do not add an
+  action in prose when the buttons already show QR/access. Do not add an
   "Открыть в боте" button on success screens; the user is already in the bot.
 - Stars invoices: if the bot sends a pre-invoice notice, keep it short and
   specific to buy or renew. Do not add carrier or platform payment advice to
@@ -145,17 +158,17 @@ Back/Назад button should be ignored by the bot.
   CTA buttons should show the price when it is known, for example
   `Купить за Stars · 250 Stars` or `Купить картой · 249 RUB`.
 - Reminders: short expiration notices that name the device and include direct
-  `🔄 Продлить` and `📱 Кабинет` Mini App buttons. Do not use "config" wording
-  in customer reminders.
+  `🔄 Продлить` and `📱 QR и доступ` Mini App buttons. Do not use node, x-ui,
+  inbound, or execution-layer wording in customer reminders.
 - Support: hub first with a short prompt and user ID. The hub should explain
   that the answer comes in Telegram and ask for one useful message: device,
   what does not work, and when it started. Keep two actions: `✍️ Написать в
-  поддержку` and `📱 История обращений`. Writing a message hides the menu until
+  поддержку` and `📱 Поддержка в кабинете`. Writing a message hides the menu until
   submit/cancel. Overlong messages should not create tickets; keep the user in
   input mode, explain the limit, and keep only `Отмена` visible.
   Submitted-ticket confirmation should restore the persistent menu, include the
-  ticket number, and point to `📱 Кабинет` for support history without replacing
-  the menu with inline navigation.
+  ticket number, and point to `📱 Кабинет` -> `Поддержка` for support history
+  without replacing the menu with inline navigation.
 - Instructions: bot shows only device choices and opens Mini App guide pages.
   Copy must say the full guide opens in the cabinet, not in a separate site.
   Legacy cached labels and typed phrases such as "Как подключить" should still
@@ -207,6 +220,12 @@ The editor defaults should match the current bot copy: short Mini App-first
 instructions, compact Stars buy/renew text, and support confirmations with a
 ticket number plus `📱 Кабинет` history pointer. Obsolete site/about and old
 instruction button override keys should be cleared when the editor is saved.
+
+The `/ops/` editor UI itself should use Russian operator labels for the active
+bot concepts: settings title, editable-key status, JSON override fields, Stars
+invoice fields, support ticket subjects, and reminder labels. Avoid mixed
+labels such as "Advanced JSON", "Stars invoice", "Subject", or "Reminder" in
+the visible admin page unless they are part of a product name.
 
 ## Next Safe Steps
 

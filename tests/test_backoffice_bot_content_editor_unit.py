@@ -83,6 +83,28 @@ class BackofficeBotContentEditorUnitTests(unittest.TestCase):
         self.assertNotIn("menu_site", keys)
         self.assertNotIn("back_button", keys)
 
+    def test_bot_content_editor_page_uses_russian_operator_labels(self):
+        response = self.client.get("/ops/bot/content/")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Настройки бота", html)
+        self.assertIn("Всего редактируемых ключей", html)
+        self.assertIn("по умолчанию", html)
+        self.assertIn("Сохранить тексты бота", html)
+        self.assertIn("JSON: кнопки инструкции", html)
+        self.assertIn("Заголовок счёта Stars", html)
+        self.assertIn("Тема нового тикета", html)
+        self.assertIn("Ссылки и напоминания", html)
+        self.assertNotIn("Bot Settings", html)
+        self.assertNotIn("editable keys", html)
+        self.assertNotIn("Advanced JSON", html)
+        self.assertNotIn("Stars invoice", html)
+        self.assertNotIn("Label Stars price", html)
+        self.assertNotIn("Subject нового тикета", html)
+        self.assertNotIn("Ссылки и reminders", html)
+        self.assertNotIn("Сохранить bot content", html)
+
     def test_bot_editor_hides_obsolete_instruction_site_keys(self):
         keys = {item["key"] for item in _bot_content_items()}
 
@@ -114,8 +136,20 @@ class BackofficeBotContentEditorUnitTests(unittest.TestCase):
         self.assertIn("срок обновится автоматически", defaults["stars_renew_notice"])
         self.assertEqual(defaults["invoice_description"], "Покупка доступа VXcloud через Telegram Stars.")
         self.assertEqual(defaults["invoice_renew_description"], "Продление доступа VXcloud через Telegram Stars.")
+        self.assertIn("Мой VPN", defaults["my_configs_list_template"])
+        self.assertIn("{summary}", defaults["my_configs_list_template"])
+        self.assertIn("{status_icon}", defaults["my_configs_item_template"])
+        self.assertIn("Пока нет устройств", defaults["my_configs_empty_message"])
         self.assertIn("Номер обращения: #{ticket_id}", defaults["support_received_message"])
         self.assertIn("📱 Кабинет", defaults["support_received_message"])
+        self.assertIn("Поддержка", defaults["support_received_message"])
+        self.assertIn("Доступ VXcloud истёк", defaults["reminder_expired_message"])
+        self.assertIn("Нажмите «🔄 Продлить»", defaults["reminder_expired_message"])
+        self.assertNotIn("конфиг", defaults["copy_link_hint"].lower())
+        self.assertNotIn("конфиг", defaults["my_configs_list_template"].lower())
+        self.assertNotIn("конфиг", defaults["my_configs_empty_message"].lower())
+        self.assertNotIn("конфиг", defaults["reminder_expired_message"].lower())
+        self.assertNotIn("Используйте /buy", defaults["reminder_expired_message"])
         self.assertNotIn("мобильный баланс", defaults["stars_only_notice"].lower())
         self.assertNotIn("мобильный баланс", defaults["invoice_description"].lower())
 

@@ -11,6 +11,8 @@
     toastTimer: null,
     loadingTimer: null,
     loadToken: 0,
+    telegramSessionSynced: false,
+    telegramSessionSyncing: null,
   };
 
   function escapeHtml(value) {
@@ -51,19 +53,127 @@
     return readCookie("csrftoken");
   }
 
+  function currentReturnTo() {
+    return window.location.pathname + window.location.search + window.location.hash;
+  }
+
+  function telegramWebApp() {
+    return window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+  }
+
+  function syncTelegramWebAppSession() {
+    if (state.telegramSessionSynced) return Promise.resolve(false);
+    if (state.telegramSessionSyncing) return state.telegramSessionSyncing;
+
+    const tg = telegramWebApp();
+    const initData = tg && tg.initData ? String(tg.initData) : "";
+    const endpoint = String(cfg.apiTelegramWebAppAuthUrl || "/api/auth/telegram/webapp");
+    if (!initData || !endpoint) {
+      return Promise.resolve(false);
+    }
+
+    try {
+      if (tg.ready) tg.ready();
+      if (tg.expand) tg.expand();
+    } catch (_error) {}
+
+    const dedupeKey = "vx_account_app_tg_auth_done:" + initData;
+    if (window.sessionStorage && sessionStorage.getItem(dedupeKey) === "1") {
+      state.telegramSessionSynced = true;
+      return Promise.resolve(false);
+    }
+
+    state.telegramSessionSyncing = fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        initData: initData,
+        returnTo: currentReturnTo(),
+      }),
+    })
+      .then(async function (response) {
+        if (!response.ok) {
+          state.telegramSessionSynced = false;
+          return false;
+        }
+        let payload = {};
+        try {
+          payload = await response.json();
+        } catch (_error) {
+          payload = {};
+        }
+        if (window.sessionStorage) sessionStorage.setItem(dedupeKey, "1");
+        state.telegramSessionSynced = true;
+        if (payload && payload.redirect) {
+          const target = new URL(payload.redirect, window.location.origin);
+          const current = new URL(window.location.href);
+          if (target.pathname + target.search !== current.pathname + current.search) {
+            window.history.replaceState({}, "", target.pathname + target.search + target.hash);
+          }
+        }
+        return true;
+      })
+      .catch(function () {
+        state.telegramSessionSynced = false;
+        return false;
+      })
+      .finally(function () {
+        state.telegramSessionSyncing = null;
+      });
+
+    return state.telegramSessionSyncing;
+  }
+
   function normalizePath(path) {
-    let next = String(path || cfg.accountPath || "/account/");
-    if (!next.startsWith("/")) next = "/" + next;
-    return next.endsWith("/") ? next : next + "/";
+    const raw = String(path || cfg.accountPath || "/account/");
+    const parts = raw.match(/^([^?#]*)([?#].*)?$/) || ["", raw, ""];
+    let pathname = parts[1] || "/";
+    const suffix = parts[2] || "";
+    if (!pathname.startsWith("/")) pathname = "/" + pathname;
+    if (!pathname.endsWith("/")) pathname += "/";
+    return pathname + suffix;
+  }
+
+  function accountRouteUrl(params) {
+    const query = new URLSearchParams(params || {});
+    return normalizePath(cfg.accountPath || "/account/") + (query.toString() ? "?" + query.toString() : "");
   }
 
   function currentRoute() {
     const path = window.location.pathname;
     const search = new URLSearchParams(window.location.search || "");
+    const queryView = String(search.get("view") || "").trim().toLowerCase();
+    if (queryView === "instructions") {
+      const device = String(search.get("device") || "").trim().toLowerCase();
+      return {
+        view: "instructions",
+        subscriptionId: null,
+        device: /^(iphone|ios|android|desktop|windows|macos|mac)$/.test(device) ? device : "",
+        path: accountRouteUrl({ view: "instructions", device: device }),
+      };
+    }
+    if (queryView === "support") {
+      return {
+        view: "support",
+        subscriptionId: null,
+        path: accountRouteUrl({ view: "support" }),
+      };
+    }
+    if (queryView === "config") {
+      const subscriptionIdRaw = search.get("subscription_id") || search.get("id") || "";
+      return {
+        view: "config",
+        subscriptionId: /^\d+$/.test(subscriptionIdRaw) ? Number(subscriptionIdRaw) : null,
+        device: "",
+        path: accountRouteUrl({ view: "config", subscription_id: subscriptionIdRaw }),
+      };
+    }
     if (/^\/account\/settings\/?$/i.test(path)) {
       return {
         view: "settings",
         subscriptionId: null,
+        device: "",
         path: normalizePath("/account/settings/"),
       };
     }
@@ -71,6 +181,7 @@
       return {
         view: "link",
         subscriptionId: null,
+        device: "",
         path: normalizePath("/account/link/"),
       };
     }
@@ -78,6 +189,7 @@
       return {
         view: "checkout-buy",
         subscriptionId: null,
+        device: "",
         path: normalizePath("/account/buy/"),
       };
     }
@@ -86,6 +198,7 @@
       return {
         view: "checkout-renew",
         subscriptionId: /^\d+$/.test(subscriptionIdRaw) ? Number(subscriptionIdRaw) : null,
+        device: "",
         path: normalizePath("/account/renew/"),
       };
     }
@@ -94,14 +207,53 @@
       return {
         view: "config",
         subscriptionId: Number(configMatch[1]),
+        device: "",
         path: normalizePath("/account/config/" + configMatch[1]),
       };
     }
     return {
       view: "dashboard",
       subscriptionId: null,
+      device: "",
       path: normalizePath(cfg.accountPath || "/account/"),
     };
+  }
+
+  function updateTelegramBackButton(route) {
+    const tg = telegramWebApp();
+    const backButton = tg && tg.BackButton ? tg.BackButton : null;
+    if (!backButton) return;
+
+    const view = route && route.view ? route.view : "dashboard";
+    const isRootView = view === "dashboard" || view === "auth";
+    try {
+      if (isRootView) {
+        backButton.hide();
+      } else {
+        backButton.show();
+      }
+    } catch (_error) {}
+  }
+
+  function goBackInAccountApp() {
+    const route = currentRoute();
+    if (route.view !== "dashboard" && window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+
+    window.history.pushState({}, "", normalizePath(cfg.accountPath || "/account/"));
+    loadCurrentView();
+  }
+
+  function bindTelegramBackButton() {
+    const tg = telegramWebApp();
+    const backButton = tg && tg.BackButton ? tg.BackButton : null;
+    if (!backButton || !backButton.onClick) return;
+
+    try {
+      backButton.onClick(goBackInAccountApp);
+    } catch (_error) {}
   }
 
   function subscriptionRenameUrl(subscriptionId) {
@@ -152,23 +304,30 @@
     });
   }
 
-  function accessLabel(count) {
+  function legacyAccessLabel(count) {
     const value = Number(count || 0);
     return value + " доступ" + (value === 1 ? "" : value > 1 && value < 5 ? "а" : "ов");
+  }
+
+  function accessLabel(count) {
+    const value = Number(count || 0);
+    const mod10 = Math.abs(value) % 10;
+    const mod100 = Math.abs(value) % 100;
+    const suffix = mod10 === 1 && mod100 !== 11 ? "" : mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14) ? "\u0430" : "\u043e\u0432";
+    return value + " \u0434\u043e\u0441\u0442\u0443\u043f" + suffix;
   }
 
   function renderLoading() {
     mount.className = "vx-native-account is-loading";
     mount.innerHTML = [
-      '<div class="vx-native-account__skeleton" aria-hidden="true">',
-      '<div class="vx-native-account__hero">',
-      '<div class="vx-native-account__line vx-native-account__line-title"></div>',
-      '<div class="vx-native-account__line vx-native-account__line-subtitle"></div>',
-      '<div class="vx-native-account__chips"><span class="vx-native-account__chip"></span><span class="vx-native-account__chip"></span><span class="vx-native-account__chip"></span></div>',
+      '<section class="vx-account-app__shell vx-account-app__shell--loading" aria-live="polite">',
+      '<section class="vx-section-card vx-loading-card">',
+      '<div class="vx-loading-body">',
+      '<div class="vx-loading-status"><span class="vx-loading-spinner" aria-hidden="true"></span><strong>\u0417\u0430\u0433\u0440\u0443\u0436\u0430\u0435\u043c \u043a\u0430\u0431\u0438\u043d\u0435\u0442</strong><small>\u041f\u0440\u043e\u0432\u0435\u0440\u044f\u0435\u043c \u0430\u043a\u043a\u0430\u0443\u043d\u0442, \u0434\u043e\u0441\u0442\u0443\u043f\u044b \u0438 QR.</small></div>',
+      '<div class="vx-loading-rows" aria-hidden="true"><span></span><span></span><span></span></div>',
       "</div>",
-      '<div class="vx-native-account__grid"><div class="vx-native-account__card"></div><div class="vx-native-account__card"></div><div class="vx-native-account__card"></div><div class="vx-native-account__card"></div></div>',
-      '<div class="vx-native-account__panel"></div>',
-      "</div>",
+      "</section>",
+      "</section>",
     ].join("");
   }
 
@@ -185,12 +344,60 @@
     });
   }
 
-  function renderError(message) {
+  function renderLegacyError(message) {
     mount.className = "vx-native-account";
     mount.innerHTML =
       '<section class="vx-account-app__shell"><div class="vx-account-error">' +
       escapeHtml(message || "Не удалось загрузить аккаунт.") +
       "</div></section>";
+  }
+
+  function renderError(message) {
+    const safeMessage = message || "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044c \u0430\u043a\u043a\u0430\u0443\u043d\u0442.";
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--error">',
+      '<section class="vx-section-card vx-error-card">',
+      '<div class="vx-section-card__head"><h1>\u041d\u0443\u0436\u043d\u043e \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c</h1><span>\u041c\u044b \u043d\u0435 \u0441\u043c\u043e\u0433\u043b\u0438 \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u044d\u0442\u043e\u0442 \u044d\u043a\u0440\u0430\u043d.</span></div>',
+      '<div class="vx-error-body">',
+      '<div class="vx-account-error">' + escapeHtml(safeMessage) + "</div>",
+      '<div class="vx-account-actions vx-account-actions--error"><button type="button" class="vx-button vx-button--primary" data-retry-load>\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u044c</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(normalizePath(cfg.accountPath || "/account/")) +
+        '">\u041c\u043e\u0439 VPN</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "support" })) +
+        '">\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430</button></div>',
+      "</div>",
+      "</section>",
+      "</section>",
+    ].join("");
+  }
+
+  function renderCheckoutProgress(route) {
+    const isRenew = route && route.view === "checkout-renew";
+    const title = isRenew ? "\u041e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u043c \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435" : "\u041e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u043c \u043e\u043f\u043b\u0430\u0442\u0443";
+    const subtitle = isRenew
+      ? "\u041f\u043e\u0434\u0433\u043e\u0442\u0430\u0432\u043b\u0438\u0432\u0430\u0435\u043c \u0441\u0447\u0435\u0442 \u0434\u043b\u044f \u0432\u044b\u0431\u0440\u0430\u043d\u043d\u043e\u0433\u043e \u0434\u043e\u0441\u0442\u0443\u043f\u0430."
+      : "\u0421\u0435\u0439\u0447\u0430\u0441 \u043e\u0442\u043a\u0440\u043e\u0435\u0442\u0441\u044f \u0437\u0430\u0449\u0438\u0449\u0435\u043d\u043d\u0430\u044f \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0430 \u043e\u043f\u043b\u0430\u0442\u044b.";
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--checkout">',
+      '<section class="vx-section-card vx-checkout-card">',
+      '<div class="vx-section-card__head"><h1>' + escapeHtml(title) + '</h1><span>' + escapeHtml(subtitle) + "</span></div>",
+      '<div class="vx-checkout-body">',
+      '<div class="vx-checkout-status"><span class="vx-checkout-spinner" aria-hidden="true"></span><strong>\u041f\u0430\u0440\u0443 \u0441\u0435\u043a\u0443\u043d\u0434...</strong><small>\u0415\u0441\u043b\u0438 \u043e\u043f\u043b\u0430\u0442\u0430 \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b\u0430\u0441\u044c, \u0432\u0435\u0440\u043d\u0438\u0442\u0435\u0441\u044c \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442 \u0438 \u043f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435.</small></div>',
+      '<ol class="vx-checkout-steps"><li class="is-active"><span></span><strong>\u0421\u043e\u0437\u0434\u0430\u0435\u043c \u0437\u0430\u043a\u0430\u0437</strong></li><li><span></span><strong>\u041e\u0442\u043a\u0440\u044b\u0432\u0430\u0435\u043c \u0431\u0435\u0437\u043e\u043f\u0430\u0441\u043d\u0443\u044e \u043e\u043f\u043b\u0430\u0442\u0443</strong></li><li><span></span><strong>' +
+        escapeHtml(isRenew ? "\u041f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435 \u043f\u043e\u044f\u0432\u0438\u0442\u0441\u044f \u0432 \u041c\u043e\u0439 VPN" : "\u0414\u043e\u0441\u0442\u0443\u043f \u043f\u043e\u044f\u0432\u0438\u0442\u0441\u044f \u0432 \u041c\u043e\u0439 VPN") +
+        "</strong></li></ol>",
+      '<div class="vx-checkout-note"><strong>\u041f\u043e\u0441\u043b\u0435 \u043e\u043f\u043b\u0430\u0442\u044b</strong><span>\u0417\u0430\u043a\u0440\u043e\u0439\u0442\u0435 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0443 \u0431\u0430\u043d\u043a\u0430 \u0438 \u0432\u0435\u0440\u043d\u0438\u0442\u0435\u0441\u044c \u0432 \u041c\u043e\u0439 VPN. \u041c\u044b \u043e\u0431\u043d\u043e\u0432\u0438\u043c \u0434\u043e\u0441\u0442\u0443\u043f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438.</span></div>',
+      '<div class="vx-account-actions vx-account-actions--checkout"><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(normalizePath(cfg.accountPath || "/account/")) +
+        '">\u041c\u043e\u0439 VPN</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "support" })) +
+        '">\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430</button></div>',
+      "</div>",
+      "</section>",
+      "</section>",
+    ].join("");
   }
 
   function ensureToast() {
@@ -204,9 +411,19 @@
     return toast;
   }
 
-  function showToast(message) {
+  function legacyShowToast(message) {
     const toast = ensureToast();
     toast.textContent = String(message || "Ссылка скопирована");
+    toast.classList.add("is-visible");
+    window.clearTimeout(state.toastTimer);
+    state.toastTimer = window.setTimeout(function () {
+      toast.classList.remove("is-visible");
+    }, 1400);
+  }
+
+  function showToast(message) {
+    const toast = ensureToast();
+    toast.textContent = String(message || "\u0421\u0441\u044b\u043b\u043a\u0430 \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d\u0430");
     toast.classList.add("is-visible");
     window.clearTimeout(state.toastTimer);
     state.toastTimer = window.setTimeout(function () {
@@ -242,6 +459,33 @@
 
   function renderDashboard(model) {
     const subscriptions = Array.isArray(model.subscriptions) ? model.subscriptions : [];
+    const renewableSubscriptions = subscriptions.filter(function (sub) {
+      return !!(sub && sub.can_renew);
+    });
+    const activeCount =
+      model.stats && model.stats.active_configs != null
+        ? Number(model.stats.active_configs)
+        : subscriptions.filter(function (sub) {
+            return !!(sub && sub.is_active);
+          }).length;
+    const inactiveCount =
+      model.stats && model.stats.inactive_configs != null
+        ? Number(model.stats.inactive_configs)
+        : Math.max(0, subscriptions.length - activeCount);
+    const activeSubscription = subscriptions.find(function (sub) {
+      return !!(sub && sub.is_active);
+    });
+    const dashboardTitle = "\u041c\u043e\u0439 VPN";
+    const dashboardSubtitle =
+      activeCount > 0
+        ? "QR, \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435 \u0438 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u0438 \u0440\u044f\u0434\u043e\u043c."
+        : "\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u0441 7 \u0434\u043d\u0435\u0439 \u0431\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e \u0438\u043b\u0438 \u043a\u0443\u043f\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f.";
+    const heroMetricsHtml =
+      '<div class="vx-hero-metrics"><div><span>\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0445</span><strong>' +
+      escapeHtml(String(activeCount)) +
+      '</strong></div><div><span>\u0414\u043e</span><strong>' +
+      escapeHtml(activeSubscription && activeSubscription.expires_at ? activeSubscription.expires_at : "\u2014") +
+      "</strong></div></div>";
     const telegramLinked = model.telegram && model.telegram.linked;
     const telegramPill =
       '<span class="' +
@@ -249,97 +493,81 @@
       '">' +
       escapeHtml(model.telegram && model.telegram.status_text ? model.telegram.status_text : "\u041d\u0435 \u043f\u0440\u0438\u0432\u044f\u0437\u0430\u043d") +
       "</span>";
+    const username = model.user && model.user.username ? model.user.username : "\u2014";
+    const clientCode = model.user && model.user.client_code ? String(model.user.client_code) : "";
+    const clientCodeHtml = clientCode
+      ? '<div class="vx-account-identity__value"><code class="vx-stat-code">' +
+        escapeHtml(clientCode) +
+        '</code><button type="button" class="vx-icon-button" data-copy-text="' +
+        escapeHtml(clientCode) +
+        '" data-copy-toast="ID \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d" aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430">' +
+        iconSvg("copy") +
+        "</button></div>"
+      : '<div class="vx-account-identity__value">\u2014</div>';
+    const telegramDetailHtml =
+      telegramLinked && model.telegram.telegram_id
+        ? '<code class="vx-stat-code">' + escapeHtml(String(model.telegram.telegram_id)) + "</code>"
+        : !telegramLinked && model.telegram && model.telegram.link_url
+          ? '<button type="button" class="vx-inline-link vx-inline-link--button" data-nav="' +
+            escapeHtml(model.telegram.link_url) +
+            '">\u041f\u0440\u0438\u0432\u044f\u0437\u0430\u0442\u044c Telegram</button>'
+          : "";
+    const accountIdentityHtml = [
+      '<section class="vx-account-identity">',
+      '<div class="vx-account-identity__main">',
+      '<div class="vx-account-identity__item"><span>\u0410\u043a\u043a\u0430\u0443\u043d\u0442</span><strong>' +
+        escapeHtml(username) +
+        "</strong></div>",
+      '<div class="vx-account-identity__item"><span>ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430</span>' + clientCodeHtml + "</div>",
+      "</div>",
+      '<div class="vx-account-identity__telegram"><span>Telegram</span><div>' + telegramPill + telegramDetailHtml + "</div></div>",
+      '<div class="vx-account-secondary"><button type="button" class="vx-inline-link vx-inline-link--button" data-nav="/account/settings/">\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438</button><button type="button" class="vx-inline-link vx-inline-link--button" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
+      "</section>",
+    ].join("");
 
-    const summaryHtml = [
-      {
-        label: "\u041f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044c",
-        value: escapeHtml(model.user && model.user.username ? model.user.username : "\u2014"),
-      },
-      {
-        label: "ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430",
-        value:
-          model.user && model.user.client_code
-            ? '<code class="vx-stat-code">' + escapeHtml(model.user.client_code) + "</code>"
-            : "\u2014",
-      },
-      {
-        label: "\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0435",
-        value: escapeHtml(String(model.stats && model.stats.active_configs != null ? model.stats.active_configs : 0)),
-      },
-      {
-        label: "Telegram",
-        value:
-          '<div class="vx-stat-stack">' +
-          telegramPill +
-          (telegramLinked && model.telegram.telegram_id
-            ? '<code class="vx-stat-code">' + escapeHtml(String(model.telegram.telegram_id)) + "</code>"
-            : "") +
-          (!telegramLinked && model.telegram && model.telegram.link_url
-            ? '<button type="button" class="vx-inline-link vx-inline-link--button" data-nav="' + escapeHtml(model.telegram.link_url) + '">\u041f\u0440\u0438\u0432\u044f\u0437\u0430\u0442\u044c</button>'
-            : "") +
-          "</div>",
-      },
-    ]
-      .map(function (item) {
-        return (
-          '<div class="vx-account-summary__item"><div class="vx-account-summary__label">' +
-          item.label +
-          '</div><div class="vx-account-summary__value">' +
-          item.value +
-          "</div></div>"
-        );
-      })
-      .join("");
+    const renewActionHtml =
+      renewableSubscriptions.length === 1
+        ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew" data-subscription-id="' +
+          escapeHtml(String(renewableSubscriptions[0].id || "")) +
+          '">\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c \u00b7 ' +
+          escapeHtml(model.card_price_label || "") +
+          "</button>"
+        : renewableSubscriptions.length > 1
+          ? '<button type="button" class="vx-button vx-button--ghost" data-scroll-renew>\u0412\u044b\u0431\u0440\u0430\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f</button>'
+          : "";
 
     const cardsHtml = subscriptions.length
       ? subscriptions
           .map(function (sub) {
-            const primaryLink = sub.feed_url || sub.subscription_url || sub.vless_url || "";
             return [
               '<article class="vx-config-card">',
               '<div class="vx-config-card__head">',
               '<div class="vx-config-card__header-main">',
               '<div class="vx-config-card__title-row"><div class="vx-config-card__name-group"><h3 class="vx-config-card__title"><span>' +
                 escapeHtml(sub.display_name) +
-                '</span></h3><button type="button" class="vx-title-edit" data-rename-toggle data-target="rename-card-' +
-                escapeHtml(String(sub.id)) +
-                '" aria-expanded="false" aria-label="\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c">' +
-                iconSvg("rename") +
-                '</button></div><span class="' + pillClass(!!sub.is_active) + '">' + escapeHtml(sub.status_text) + "</span></div>",
-              '<div class="vx-config-card__sub">ID: ' + escapeHtml(String(sub.id)) + "</div>",
-              '<form id="rename-card-' +
-                escapeHtml(String(sub.id)) +
-                '" class="vx-rename-panel vx-rename-panel--card" data-rename-form data-subscription-id="' +
-                escapeHtml(String(sub.id)) +
-                '" hidden><div class="vx-rename-row"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="\u0418\u043c\u044f \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430" value="' +
-                escapeHtml(sub.display_name || "") +
-                '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c</button></div></form>',
+                '</span></h3></div><span class="' + pillClass(!!sub.is_active) + '">' + escapeHtml(sub.status_text) + "</span></div>",
               "</div>",
               "</div>",
               '<div class="vx-config-card__meta vx-config-card__meta--single">',
               '<div class="vx-config-meta"><span>\u0414\u043e</span><strong>' + escapeHtml(sub.expires_at || "\u2014") + "</strong></div>",
               "</div>",
-              '<div class="vx-config-card__field"><label>Subscription URL</label><div class="vx-copy-row"><input type="text" readonly value="' +
-                escapeHtml(primaryLink) +
-                '"><button type="button" class="vx-icon-button" data-copy-text="' +
-                escapeHtml(primaryLink) +
-                '" aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443">' +
-                iconSvg("copy") +
-                "</button></div></div>",
-              '<div class="vx-config-card__actions"><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+              '<div class="vx-config-card__actions">' +
+                '<button type="button" class="vx-button vx-button--primary" data-nav="' +
                 escapeHtml(sub.config_url) +
-                '">QR \u0438 \u043a\u043e\u043d\u0444\u0438\u0433</button>' +
-                (sub.can_delete
-                  ? '<button type="button" class="vx-button vx-button--danger" data-delete-subscription="' +
+                '">QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</button>' +
+                (sub.can_renew
+                  ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew" data-subscription-id="' +
                     escapeHtml(String(sub.id)) +
-                    '">\u0423\u0434\u0430\u043b\u0438\u0442\u044c</button>'
+                    '">\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c</button>'
                   : "") +
                 "</div>",
               "</article>",
             ].join("");
           })
           .join("")
-      : '<div class="vx-account-empty">\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445 \u0434\u043e\u0441\u0442\u0443\u043f\u043e\u0432. \u041e\u0444\u043e\u0440\u043c\u0438\u0442\u0435 \u043f\u0435\u0440\u0432\u044b\u0439 \u0434\u043e\u0441\u0442\u0443\u043f, \u0447\u0442\u043e\u0431\u044b \u043e\u043d \u043f\u043e\u044f\u0432\u0438\u043b\u0441\u044f \u0437\u0434\u0435\u0441\u044c.</div>';
+      : '<div class="vx-account-empty vx-account-empty--dashboard"><strong>\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0434\u043e\u0441\u0442\u0443\u043f\u043e\u0432</strong><span>\u041d\u0430\u0447\u043d\u0438\u0442\u0435 \u0441 \u043f\u043e\u043a\u0443\u043f\u043a\u0438 \u0438\u043b\u0438 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u043a\u043e\u0440\u043e\u0442\u043a\u0443\u044e \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044e.</span><div class="vx-account-empty__actions"><button type="button" class="vx-button vx-button--primary" data-checkout="buy">\u041a\u0443\u043f\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "instructions" })) +
+        '">\u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f</button></div></div>';
 
     mount.className = "vx-native-account";
     mount.innerHTML = [
@@ -347,32 +575,32 @@
       '<section class="vx-account-hero">',
       '<div class="vx-account-hero__head">',
       '<div><h1 class="vx-account-title">' +
-        escapeHtml(model.title || "\u041b\u0438\u0447\u043d\u044b\u0439 \u043a\u0430\u0431\u0438\u043d\u0435\u0442") +
+        escapeHtml(dashboardTitle) +
         '</h1><p class="vx-account-subtitle">' +
-        escapeHtml(model.subtitle || "") +
+        escapeHtml(dashboardSubtitle) +
         "</p></div>",
-      '<span class="vx-status-pill is-muted">' + escapeHtml(accessLabel(model.access_count)) + "</span>",
+      heroMetricsHtml,
       "</div>",
       '<div class="vx-account-actions">',
       '<button type="button" class="vx-button vx-button--primary" data-checkout="buy">\u041a\u0443\u043f\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f \u00b7 ' +
         escapeHtml(model.card_price_label || "") +
         "</button>",
-      '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew">\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c \u00b7 ' +
-        escapeHtml(model.card_price_label || "") +
-        "</button>",
+      renewActionHtml,
       "</div>",
       "</section>",
-      '<section class="vx-account-summary"><div class="vx-account-summary__grid">' + summaryHtml + "</div></section>",
       '<section class="vx-section-card"><div class="vx-section-card__head"><h2>\u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430</h2><span>\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0445: ' +
-        escapeHtml(String(model.stats && model.stats.active_configs != null ? model.stats.active_configs : 0)) +
+        escapeHtml(String(activeCount)) +
         ' \u00b7 \u041d\u0435\u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445: ' +
-        escapeHtml(String(model.stats && model.stats.inactive_configs != null ? model.stats.inactive_configs : 0)) +
+        escapeHtml(String(inactiveCount)) +
         '</span></div><div class="vx-config-list">' +
         cardsHtml +
         "</div></section>",
-      '<div class="vx-account-actions vx-account-actions--footer"><a class="vx-button vx-button--ghost" href="' +
-        escapeHtml((model.urls && model.urls.support) || cfg.supportUrl || "/instructions/") +
-        '">\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430</a><button type="button" class="vx-button vx-button--ghost" data-nav="/account/settings/">\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438</button><button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
+      '<section class="vx-dashboard-help"><div class="vx-dashboard-help__copy"><strong>\u041d\u0443\u0436\u043d\u0430 \u043f\u043e\u043c\u043e\u0449\u044c?</strong><span>\u041a\u043e\u0440\u043e\u0442\u043a\u0430\u044f \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f \u0438 \u0447\u0430\u0442 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0438 \u0432\u043d\u0443\u0442\u0440\u0438 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0430.</span></div><div class="vx-dashboard-help__actions"><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "instructions" })) +
+        '">\u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "support" })) +
+        '">\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430</button></div></section>',
+      accountIdentityHtml,
       "</section>",
     ].join("");
   }
@@ -382,25 +610,32 @@
 
     mount.className = "vx-native-account";
     mount.innerHTML = [
-      '<section class="vx-account-app__shell">',
-      '<section class="vx-section-card"><div class="vx-section-card__head"><h2>\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438</h2><span>\u0418\u0437\u043c\u0435\u043d\u044f\u0439\u0442\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430 \u043d\u0430 \u043e\u0442\u0434\u0435\u043b\u044c\u043d\u043e\u0439 \u0441\u0442\u0440\u0430\u043d\u0438\u0446\u0435.</span></div>',
+      '<section class="vx-account-app__shell vx-account-app__shell--settings">',
+      '<section class="vx-section-card vx-settings-card"><div class="vx-section-card__head"><h1>\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430</h1><span>\u041b\u043e\u0433\u0438\u043d \u0438 email \u0434\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442.</span></div>',
+      '<div class="vx-settings-body">',
+      '<div class="vx-settings-note"><strong>\u0427\u0442\u043e \u043c\u0435\u043d\u044f\u0435\u0442\u0441\u044f</strong><span>\u042d\u0442\u0438 \u0434\u0430\u043d\u043d\u044b\u0435 \u043d\u0443\u0436\u043d\u044b \u0434\u043b\u044f \u0432\u0445\u043e\u0434\u0430. \u0414\u043e\u0441\u0442\u0443\u043f\u044b, QR \u0438 \u0441\u0441\u044b\u043b\u043a\u0438 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438 \u043e\u0442 \u044d\u0442\u043e\u0433\u043e \u043d\u0435 \u043c\u0435\u043d\u044f\u044e\u0442\u0441\u044f.</span></div>',
       '<form class="vx-profile-form" data-profile-form>',
+      '<section class="vx-profile-group"><div class="vx-profile-group__head"><strong>\u0412\u0445\u043e\u0434</strong><span>\u041b\u043e\u0433\u0438\u043d \u0438 email \u0434\u043b\u044f \u0432\u0445\u043e\u0434\u0430 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442.</span></div>',
       '<div class="vx-profile-grid">',
       '<label class="vx-profile-field"><span>\u041b\u043e\u0433\u0438\u043d</span><input type="text" name="username" maxlength="150" required value="' + escapeHtml(profile.username || "") + '"></label>',
       '<label class="vx-profile-field"><span>Email</span><input type="email" name="email" maxlength="254" required value="' + escapeHtml(profile.email || "") + '"></label>',
+      "</div></section>",
+      '<section class="vx-profile-group"><div class="vx-profile-group__head"><strong>\u0418\u043c\u044f \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435</strong><span>\u041e\u043f\u0446\u0438\u043e\u043d\u0430\u043b\u044c\u043d\u043e. \u041d\u0430 VPN \u0434\u043e\u0441\u0442\u0443\u043f\u044b \u044d\u0442\u043e \u043d\u0435 \u0432\u043b\u0438\u044f\u0435\u0442.</span></div>',
+      '<div class="vx-profile-grid">',
       '<label class="vx-profile-field"><span>\u0418\u043c\u044f</span><input type="text" name="first_name" maxlength="150" value="' + escapeHtml(profile.first_name || "") + '"></label>',
       '<label class="vx-profile-field"><span>\u0424\u0430\u043c\u0438\u043b\u0438\u044f</span><input type="text" name="last_name" maxlength="150" value="' + escapeHtml(profile.last_name || "") + '"></label>',
-      "</div>",
+      "</div></section>",
       '<div class="vx-profile-actions"><button type="submit" class="vx-button vx-button--primary">\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0434\u0430\u043d\u043d\u044b\u0435</button></div>',
       '<div class="vx-auth-errors vx-profile-errors" data-profile-errors style="display:none"></div>',
       "</form>",
-      '<div class="vx-account-actions vx-account-actions--footer"><button type="button" class="vx-button vx-button--ghost" data-nav="' + escapeHtml((model.urls && model.urls.dashboard) || (cfg.accountUrl || "/account/")) + '">\u041d\u0430\u0437\u0430\u0434 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442</button><button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
+      '<div class="vx-account-actions vx-account-actions--settings"><button type="button" class="vx-button vx-button--ghost" data-nav="' + escapeHtml((model.urls && model.urls.dashboard) || (cfg.accountUrl || "/account/")) + '">\u041c\u043e\u0439 VPN</button><button type="button" class="vx-button vx-button--ghost" data-logout>\u0412\u044b\u0439\u0442\u0438</button></div>',
+      "</div>",
       "</section>",
       "</section>",
     ].join("");
   }
 
-  function renderLink(model) {
+  function renderLegacyLink(model) {
     const hasBotLink = !!(model && model.deep_link);
     const linkedBlock =
       model && model.linked && model.linked_telegram_id
@@ -408,9 +643,9 @@
         : "";
     const primaryAction = hasBotLink
       ? '<a class="vx-button vx-button--primary vx-button--block" href="' + escapeHtml(model.deep_link || "") + '" target="_blank" rel="noopener">Открыть бота и привязать</a>'
-      : '<div class="vx-account-empty">Не задан TELEGRAM_BOT_USERNAME. Временно отправьте боту команду <code>/start link_' + escapeHtml(model.link_code || "") + "</code>.</div>";
+      : '<div class="vx-account-empty">Не удалось открыть кнопку Telegram. Скопируйте код привязки и отправьте его боту VXcloud.</div>';
     const helperText = hasBotLink
-      ? '<p class="vx-field-hint">Если кнопка не сработала, отправьте боту команду: <code>/start link_' + escapeHtml(model.link_code || "") + "</code></p>"
+      ? '<p class="vx-field-hint">Если кнопка не открылась, скопируйте код ниже и отправьте его боту VXcloud.</p>'
       : "";
 
     mount.className = "vx-native-account";
@@ -423,14 +658,67 @@
       '<div class="vx-field-card"><label>Код привязки</label><div class="vx-link-code"><code>' + escapeHtml((model && model.link_code) || "") + '</code></div><p class="vx-field-hint">Код действует до: ' + escapeHtml((model && model.expires_at) || "—") + "</p></div>",
       primaryAction,
       helperText,
-      '<div class="vx-account-actions vx-account-actions--footer"><button type="button" class="vx-button vx-button--ghost" data-link-regenerate>Новый код</button><button type="button" class="vx-button vx-button--ghost" data-nav="' + escapeHtml((model && model.dashboard_url) || (cfg.accountUrl || "/account/")) + '">Назад в кабинет</button></div>',
+      '<div class="vx-account-actions vx-account-actions--footer"><button type="button" class="vx-button vx-button--ghost" data-link-regenerate>Новый код</button><button type="button" class="vx-button vx-button--ghost" data-nav="' + escapeHtml((model && model.dashboard_url) || (cfg.accountUrl || "/account/")) + '">Мой VPN</button></div>',
       "</div>",
       "</section>",
       "</section>",
     ].join("");
   }
 
-  function renderConfig(model) {
+  function renderLink(model) {
+    const linkCode = (model && model.link_code) || "";
+    const expiresAt = (model && model.expires_at) || "\u2014";
+    const hasBotLink = !!(model && model.deep_link);
+    const linkedBlock =
+      model && model.linked && model.linked_telegram_id
+        ? '<div class="vx-status-banner is-success">\u0421\u0435\u0439\u0447\u0430\u0441 \u043f\u0440\u0438\u0432\u044f\u0437\u0430\u043d Telegram ID: <code>' +
+          escapeHtml(String(model.linked_telegram_id)) +
+          "</code></div>"
+        : "";
+    const primaryAction = hasBotLink
+      ? '<a class="vx-button vx-button--primary vx-button--block" href="' +
+        escapeHtml(model.deep_link || "") +
+        '" target="_blank" rel="noopener">\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0431\u043e\u0442\u0430 \u0438 \u043f\u0440\u0438\u0432\u044f\u0437\u0430\u0442\u044c</a>'
+      : '<div class="vx-account-empty">\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043a\u043d\u043e\u043f\u043a\u0443 Telegram. \u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u043a\u043e\u0434 \u043f\u0440\u0438\u0432\u044f\u0437\u043a\u0438 \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u044c\u0442\u0435 \u0435\u0433\u043e \u0431\u043e\u0442\u0443 VXcloud.</div>';
+    const helperText = hasBotLink
+      ? '<p class="vx-field-hint">\u0415\u0441\u043b\u0438 \u043a\u043d\u043e\u043f\u043a\u0430 \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b\u0430\u0441\u044c, \u0441\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u043a\u043e\u0434 \u043d\u0438\u0436\u0435 \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u044c\u0442\u0435 \u0435\u0433\u043e \u0431\u043e\u0442\u0443 VXcloud.</p>'
+      : "";
+
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--link">',
+      '<section class="vx-section-card vx-link-card">',
+      '<div class="vx-section-card__head"><h1>' +
+        escapeHtml((model && model.title) || "\u041f\u0440\u0438\u0432\u044f\u0437\u043a\u0430 Telegram") +
+        '</h1><span>' +
+        escapeHtml(
+          (model && model.subtitle) ||
+            "\u041f\u0440\u0438\u0432\u044f\u0436\u0438\u0442\u0435 Telegram, \u0447\u0442\u043e\u0431\u044b \u0431\u043e\u0442 \u0432\u0438\u0434\u0435\u043b \u0432\u0430\u0448\u0438 \u0434\u043e\u0441\u0442\u0443\u043f\u044b \u0438 \u043e\u043f\u043b\u0430\u0442\u044b."
+        ) +
+        "</span></div>",
+      '<div class="vx-link-body">',
+      linkedBlock,
+      '<div class="vx-field-card"><label>\u041a\u043e\u0434 \u043f\u0440\u0438\u0432\u044f\u0437\u043a\u0438</label><div class="vx-link-code"><code>' +
+        escapeHtml(linkCode) +
+        '</code><button type="button" class="vx-icon-button" data-copy-text="link_' +
+        escapeHtml(linkCode) +
+        '" data-copy-toast="\u041a\u043e\u0434 \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d" aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u043a\u043e\u0434 \u043f\u0440\u0438\u0432\u044f\u0437\u043a\u0438">' +
+        iconSvg("copy") +
+        '</button></div><p class="vx-field-hint">\u041a\u043e\u0434 \u0434\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u0434\u043e: ' +
+        escapeHtml(expiresAt) +
+        "</p></div>",
+      primaryAction,
+      helperText,
+      '<div class="vx-account-actions vx-account-actions--footer"><button type="button" class="vx-button vx-button--ghost" data-link-regenerate>\u041d\u043e\u0432\u044b\u0439 \u043a\u043e\u0434</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml((model && model.dashboard_url) || (cfg.accountUrl || "/account/")) +
+        '">\u041c\u043e\u0439 VPN</button></div>',
+      "</div>",
+      "</section>",
+      "</section>",
+    ].join("");
+  }
+
+  function renderLegacyConfig(model) {
     const switchHtml = Array.isArray(model.subscriptions)
       ? model.subscriptions
           .map(function (item) {
@@ -445,12 +733,12 @@
       '<section class="vx-config-view">',
       '<div class="vx-config-view__main">',
       '<div class="vx-config-view__head">',
-      '<div><h1 class="vx-account-title">Конфиг и QR</h1><p class="vx-account-subtitle vx-account-subtitle--config-name"><span>' +
+      '<div><h1 class="vx-account-title">QR и доступ</h1><p class="vx-account-subtitle vx-account-subtitle--config-name"><span>' +
         escapeHtml(model.display_name || "") +
         "</span></p></div>",
       '<span class="' + pillClass(!!model.is_active) + '">' + escapeHtml(model.status_text || "") + "</span>",
       "</div>",
-      '<div class="vx-config-qr"><img src="' + escapeHtml(model.qr_image_data_url || "") + '" alt="QR конфиг"></div>',
+      '<div class="vx-config-qr"><img src="' + escapeHtml(model.qr_image_data_url || "") + '" alt="QR доступа"></div>',
       '<div class="vx-config-view__actions">',
       '<button type="button" class="vx-button vx-button--primary" data-copy-text="' +
         escapeHtml(model.copy_text || "") +
@@ -462,7 +750,7 @@
         : "") +
       '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
         escapeHtml(model.dashboard_url || cfg.accountUrl) +
-        '">Назад в кабинет</button>',
+        '">Мой VPN</button>',
       "</div>",
       "</div>",
       '<aside class="vx-config-view__side">',
@@ -480,11 +768,11 @@
         "</div></article>",
       "</div>",
       (switchHtml
-        ? '<div class="vx-field-card"><label for="vx-config-switch">Все конфиги</label><select id="vx-config-switch" class="vx-select">' +
+        ? '<div class="vx-field-card"><label for="vx-config-switch">Все доступы</label><select id="vx-config-switch" class="vx-select">' +
           switchHtml +
           "</select></div>"
         : ""),
-      '<div class="vx-field-card"><label>Ссылка конфигурации</label><div class="vx-copy-row"><input type="text" readonly value="' +
+      '<div class="vx-field-card"><label>Ссылка подписки</label><div class="vx-copy-row"><input type="text" readonly value="' +
         escapeHtml(model.copy_text || "") +
         '"><button type="button" class="vx-icon-button" data-copy-text="' +
         escapeHtml(model.copy_text || "") +
@@ -503,8 +791,398 @@
         escapeHtml(String(model.id || "")) +
         '" hidden><div class="vx-rename-row"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="Имя устройства" value="' +
         escapeHtml(model.display_name || "") +
-        '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">Сохранить</button></div></form><p class="vx-field-hint">Измените название, чтобы проще различать конфиги в кабинете.</p></div>',
+        '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">Сохранить</button></div></form><p class="vx-field-hint">Измените название, чтобы проще различать доступы в кабинете.</p></div>',
       "</aside>",
+      "</section>",
+      "</section>",
+    ].join("");
+  }
+
+  function renderConfig(model) {
+    const switchHtml = Array.isArray(model.subscriptions)
+      ? model.subscriptions
+          .map(function (item) {
+            return '<option value="' + escapeHtml(item.url) + '"' + (item.selected ? " selected" : "") + ">" + escapeHtml(item.label) + "</option>";
+          })
+          .join("")
+      : "";
+    const dashboardUrl = model.dashboard_url || cfg.accountUrl || "/account/";
+    const copyText = model.copy_text || "";
+    const guideUrl = accountRouteUrl({ view: "instructions" });
+    const renewButtonHtml = model.can_renew
+      ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew" data-subscription-id="' +
+        escapeHtml(String(model.id || "")) +
+        '">\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c</button>'
+      : "";
+    const deleteButtonHtml = model.can_delete
+      ? '<div class="vx-field-card vx-field-card--danger"><label>\u0423\u0434\u0430\u043b\u0435\u043d\u0438\u0435</label><p class="vx-field-hint">\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u043c\u043e\u0436\u043d\u043e \u0442\u043e\u043b\u044c\u043a\u043e \u043d\u0435\u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0439 \u0434\u043e\u0441\u0442\u0443\u043f. \u0414\u0435\u0439\u0441\u0442\u0432\u0443\u044e\u0449\u0438\u0435 QR \u0438 \u0441\u0441\u044b\u043b\u043a\u0438 \u043f\u0440\u043e\u043f\u0430\u0434\u0443\u0442.</p><button type="button" class="vx-button vx-button--danger" data-delete-subscription="' +
+        escapeHtml(String(model.id || "")) +
+        '">\u0423\u0434\u0430\u043b\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f</button></div>'
+      : "";
+
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--config">',
+      '<section class="vx-config-view">',
+      '<div class="vx-config-view__main">',
+      '<div class="vx-config-view__head">',
+      '<div><h1 class="vx-account-title">QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</h1><p class="vx-account-subtitle vx-account-subtitle--config-name"><span>' +
+        escapeHtml(model.display_name || "") +
+        "</span></p></div>",
+      '<span class="' + pillClass(!!model.is_active) + '">' + escapeHtml(model.status_text || "") + "</span>",
+      "</div>",
+      '<div class="vx-config-qr"><img src="' +
+        escapeHtml(model.qr_image_data_url || "") +
+        '" alt="QR \u0434\u043e\u0441\u0442\u0443\u043f\u0430"><span class="vx-config-qr__hint">\u0421\u043a\u0430\u043d\u0438\u0440\u0443\u0439\u0442\u0435 QR \u0432 VPN \u043a\u043b\u0438\u0435\u043d\u0442\u0435</span></div>',
+      '<div class="vx-config-view__actions">',
+      '<button type="button" class="vx-button vx-button--primary" data-copy-text="' +
+        escapeHtml(copyText) +
+        '">\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443</button>',
+      renewButtonHtml,
+      '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(dashboardUrl) +
+        '">\u041c\u043e\u0439 VPN</button>',
+      "</div>",
+      '<div class="vx-config-quick-guide"><strong>\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435</strong><div class="vx-config-quick-guide__steps"><span>\u041e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 VPN \u043a\u043b\u0438\u0435\u043d\u0442</span><span>\u0421\u043a\u0430\u043d\u0438\u0440\u0443\u0439\u0442\u0435 QR \u0438\u043b\u0438 \u0441\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443</span><span>\u041d\u0443\u0436\u043d\u044b \u0448\u0430\u0433\u0438? \u041e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044e</span></div><button type="button" class="vx-inline-link vx-inline-link--button" data-nav="' +
+        escapeHtml(guideUrl) +
+        '">\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044e</button></div>',
+      "</div>",
+      '<aside class="vx-config-view__side">',
+      '<div class="vx-config-info-grid">',
+      '<article class="vx-info-card"><div class="vx-stat-label">\u0421\u0442\u0430\u0442\u0443\u0441</div><div class="vx-stat-value"><span class="' +
+        pillClass(!!model.is_active) +
+        '">' +
+        escapeHtml(model.status_text || "") +
+        "</span></div></article>",
+      '<article class="vx-info-card"><div class="vx-stat-label">\u0414\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u0434\u043e</div><div class="vx-stat-value">' +
+        escapeHtml(model.expires_at || "\u2014") +
+        "</div></article>",
+      '<article class="vx-info-card vx-info-card--wide"><div class="vx-stat-label">ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430</div><div class="vx-stat-value">' +
+        (model.client_code ? '<code class="vx-stat-code">' + escapeHtml(model.client_code) + "</code>" : "\u2014") +
+        "</div></article>",
+      "</div>",
+      switchHtml
+        ? '<div class="vx-field-card"><label for="vx-config-switch">\u0412\u0441\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u044b</label><select id="vx-config-switch" class="vx-select">' +
+          switchHtml +
+          "</select></div>"
+        : "",
+      '<div class="vx-field-card"><label>\u0421\u0441\u044b\u043b\u043a\u0430 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438</label><div class="vx-copy-row"><input type="text" readonly value="' +
+        escapeHtml(copyText) +
+        '"><button type="button" class="vx-icon-button" data-copy-text="' +
+        escapeHtml(copyText) +
+        '" aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443">' +
+        iconSvg("copy") +
+        '</button></div><p class="vx-field-hint">\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443 \u0438 \u0438\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 \u0435\u0435 \u0432 \u043a\u043b\u0438\u0435\u043d\u0442 VPN.</p></div>',
+      '<div class="vx-field-card"><div class="vx-field-card__head"><label>\u0418\u043c\u044f \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430</label></div><div class="vx-field-value-row"><div class="vx-field-value">' +
+        escapeHtml(model.display_name || "") +
+        '</div><button type="button" class="vx-title-edit" data-rename-toggle data-target="rename-config-' +
+        escapeHtml(String(model.id || "")) +
+        '" aria-expanded="false" aria-label="\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c">' +
+        iconSvg("rename") +
+        '</button></div><form id="rename-config-' +
+        escapeHtml(String(model.id || "")) +
+        '" class="vx-rename-panel" data-rename-form data-subscription-id="' +
+        escapeHtml(String(model.id || "")) +
+        '" hidden><div class="vx-rename-row"><input type="text" class="vx-rename-input" name="display_name" maxlength="80" placeholder="\u0418\u043c\u044f \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u0430" value="' +
+        escapeHtml(model.display_name || "") +
+        '"><button type="submit" class="vx-button vx-button--ghost vx-button--compact">\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c</button></div></form><p class="vx-field-hint">\u0418\u0437\u043c\u0435\u043d\u0438\u0442\u0435 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u0435, \u0447\u0442\u043e\u0431\u044b \u043f\u0440\u043e\u0449\u0435 \u0440\u0430\u0437\u043b\u0438\u0447\u0430\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f\u044b \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435.</p></div>',
+      deleteButtonHtml,
+      "</aside>",
+      "</section>",
+      "</section>",
+    ].join("");
+  }
+
+  function renderLegacyInstructions(model) {
+    const selected = String((model && model.device) || "");
+    const deviceCopy = {
+      iphone: {
+        title: "iPhone",
+        app: "V2Box \u0438\u043b\u0438 Streisand",
+        text: "\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438 \u0438\u043b\u0438 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 QR \u0438\u0437 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0438 \u0434\u043e\u0441\u0442\u0443\u043f\u0430.",
+      },
+      android: {
+        title: "Android",
+        app: "v2rayNG",
+        text: "\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443 \u0447\u0435\u0440\u0435\u0437 QR \u0438\u043b\u0438 \u0441\u0441\u044b\u043b\u043a\u0443 \u0438\u0437 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0430.",
+      },
+      desktop: {
+        title: "Windows/macOS",
+        app: "Hiddify \u0438\u043b\u0438 Nekoray",
+        text: "\u0412\u0441\u0442\u0430\u0432\u044c\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438 \u0432 \u043a\u043b\u0438\u0435\u043d\u0442 VPN \u0438 \u0432\u043a\u043b\u044e\u0447\u0438\u0442\u0435 \u043f\u0440\u043e\u0444\u0438\u043b\u044c.",
+      },
+    };
+    const current = deviceCopy[selected] || {
+      title: "\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u0441\u0442\u0430\u0440\u0442",
+      app: "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e",
+      text: "\u041f\u043e\u0441\u043b\u0435 \u0432\u044b\u0431\u043e\u0440\u0430 \u043f\u043e\u043a\u0430\u0436\u0435\u043c \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 \u043f\u043e\u0440\u044f\u0434\u043e\u043a \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f.",
+    };
+    const deviceButtons = [
+      { key: "iphone", label: "iPhone" },
+      { key: "android", label: "Android" },
+      { key: "desktop", label: "Windows/macOS" },
+    ]
+      .map(function (device) {
+        const classes = "vx-device-tab" + (device.key === selected ? " is-active" : "");
+        return (
+          '<button type="button" class="' +
+          classes +
+          '" data-nav="' +
+          escapeHtml(accountRouteUrl({ view: "instructions", device: device.key })) +
+          '">' +
+          escapeHtml(device.label) +
+          "</button>"
+        );
+      })
+      .join("");
+    const primarySub = (model && model.primary_subscription) || null;
+    const hasAccess = !!(primarySub && primarySub.config_url);
+    const accessHintHtml = hasAccess
+      ? '<div class="vx-guide-access"><span>Ваш доступ</span><strong>' +
+        escapeHtml(primarySub.display_name || "Мой VPN") +
+        '</strong><small>' +
+        escapeHtml(primarySub.expires_at ? "действует до " + primarySub.expires_at : "откройте QR или ссылку подписки") +
+        "</small></div>"
+      : '<div class="vx-guide-access is-empty"><span>Доступ</span><strong>Пока нет активного доступа</strong><small>Сначала активируйте пробный период или купите доступ.</small></div>';
+    const primaryAccessButton = hasAccess
+      ? '<button type="button" class="vx-button vx-button--primary" data-nav="' +
+        escapeHtml(primarySub.config_url) +
+        '">Открыть QR и доступ</button>'
+      : '<button type="button" class="vx-button vx-button--primary" data-nav="' +
+        escapeHtml(normalizePath(cfg.accountPath || "/account/")) +
+        '">Мой VPN</button>';
+
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--instructions">',
+      '<section class="vx-section-card vx-instructions-card">',
+      '<div class="vx-section-card__head"><h1>' +
+        escapeHtml((model && model.title) || "\u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f \u043f\u043e \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044e") +
+        '</h1><span>' +
+        escapeHtml((model && model.subtitle) || "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e \u0438 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 QR \u0438\u043b\u0438 \u0441\u0441\u044b\u043b\u043a\u0443 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435.") +
+        "</span></div>",
+      '<div class="vx-instructions-body">',
+      '<div class="vx-device-tabs">' + deviceButtons + "</div>",
+      accessHintHtml,
+      '<article class="vx-guide-panel"><div class="vx-guide-panel__head"><div><h2>' +
+        escapeHtml(current.title) +
+        '</h2><p>' +
+        escapeHtml(current.app) +
+        "</p></div></div>",
+      '<ol class="vx-guide-steps vx-guide-steps--cards"><li><strong>\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u043a\u043b\u0438\u0435\u043d\u0442</strong><span>' +
+        escapeHtml(current.app) +
+        '</span></li><li><strong>\u041e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</strong><span>\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043a\u043d\u043e\u043f\u043a\u0443 \u043d\u0438\u0436\u0435, \u0437\u0430\u0442\u0435\u043c \u0441\u043a\u0430\u043d\u0438\u0440\u0443\u0439\u0442\u0435 QR \u0438\u043b\u0438 \u0441\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443.</span></li><li><strong>\u0418\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 VPN</strong><span>' +
+        escapeHtml(current.text) +
+        "</span></li></ol>",
+      '<div class="vx-account-actions vx-account-actions--instructions">' +
+        primaryAccessButton +
+        '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "support" })) +
+        '">Помощь</button></div>',
+      "</article>",
+      "</div>",
+      "</section>",
+      "</section>",
+    ].join("");
+  }
+
+  function renderInstructions(model) {
+    const selected = String((model && model.device) || "");
+    const deviceCopy = {
+      iphone: {
+        title: "iPhone",
+        app: "V2Box \u0438\u043b\u0438 Streisand",
+        text: "\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438 \u0438\u043b\u0438 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 QR \u0438\u0437 \u043a\u0430\u0440\u0442\u043e\u0447\u043a\u0438 \u0434\u043e\u0441\u0442\u0443\u043f\u0430.",
+      },
+      android: {
+        title: "Android",
+        app: "v2rayNG",
+        text: "\u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0443 \u0447\u0435\u0440\u0435\u0437 QR \u0438\u043b\u0438 \u0441\u0441\u044b\u043b\u043a\u0443 \u0438\u0437 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0430.",
+      },
+      desktop: {
+        title: "Windows/macOS",
+        app: "Hiddify \u0438\u043b\u0438 Nekoray",
+        text: "\u0412\u0441\u0442\u0430\u0432\u044c\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438 \u0432 \u043a\u043b\u0438\u0435\u043d\u0442 VPN \u0438 \u0432\u043a\u043b\u044e\u0447\u0438\u0442\u0435 \u043f\u0440\u043e\u0444\u0438\u043b\u044c.",
+      },
+    };
+    const current = deviceCopy[selected] || {
+      title: "\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u0441\u0442\u0430\u0440\u0442",
+      app: "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e",
+      text: "\u041f\u043e\u0441\u043b\u0435 \u0432\u044b\u0431\u043e\u0440\u0430 \u043f\u043e\u043a\u0430\u0436\u0435\u043c \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0439 \u043f\u043e\u0440\u044f\u0434\u043e\u043a \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f.",
+    };
+    const deviceButtons = [
+      { key: "iphone", label: "iPhone" },
+      { key: "android", label: "Android" },
+      { key: "desktop", label: "Windows/macOS" },
+    ]
+      .map(function (device) {
+        const classes = "vx-device-tab" + (device.key === selected ? " is-active" : "");
+        return (
+          '<button type="button" class="' +
+          classes +
+          '" data-nav="' +
+          escapeHtml(accountRouteUrl({ view: "instructions", device: device.key })) +
+          '">' +
+          escapeHtml(device.label) +
+          "</button>"
+        );
+      })
+      .join("");
+    const primarySub = (model && model.primary_subscription) || null;
+    const hasAccess = !!(primarySub && primarySub.config_url);
+    const accessHintHtml = hasAccess
+      ? '<div class="vx-guide-access"><span>\u0412\u0430\u0448 \u0434\u043e\u0441\u0442\u0443\u043f</span><strong>' +
+        escapeHtml(primarySub.display_name || "\u041c\u043e\u0439 VPN") +
+        '</strong><small>' +
+        escapeHtml(
+          primarySub.expires_at
+            ? "\u0434\u0435\u0439\u0441\u0442\u0432\u0443\u0435\u0442 \u0434\u043e " + primarySub.expires_at
+            : "\u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 QR \u0438\u043b\u0438 \u0441\u0441\u044b\u043b\u043a\u0443 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438"
+        ) +
+        "</small></div>"
+      : '<div class="vx-guide-access is-empty"><span>\u0414\u043e\u0441\u0442\u0443\u043f</span><strong>\u041f\u043e\u043a\u0430 \u043d\u0435\u0442 \u0430\u043a\u0442\u0438\u0432\u043d\u043e\u0433\u043e \u0434\u043e\u0441\u0442\u0443\u043f\u0430</strong><small>\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0430\u043a\u0442\u0438\u0432\u0438\u0440\u0443\u0439\u0442\u0435 \u043f\u0440\u043e\u0431\u043d\u044b\u0439 \u043f\u0435\u0440\u0438\u043e\u0434 \u0438\u043b\u0438 \u043a\u0443\u043f\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f.</small></div>';
+    const primaryAccessButton = hasAccess
+      ? '<button type="button" class="vx-button vx-button--primary" data-nav="' +
+        escapeHtml(primarySub.config_url) +
+        '">\u041e\u0442\u043a\u0440\u044b\u0442\u044c QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</button>'
+      : '<button type="button" class="vx-button vx-button--primary" data-nav="' +
+        escapeHtml(normalizePath(cfg.accountPath || "/account/")) +
+        '">\u041c\u043e\u0439 VPN</button>';
+
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--instructions">',
+      '<section class="vx-section-card vx-instructions-card">',
+      '<div class="vx-section-card__head"><h1>' +
+        escapeHtml((model && model.title) || "\u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f \u043f\u043e \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044e") +
+        '</h1><span>' +
+        escapeHtml((model && model.subtitle) || "\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e \u0438 \u043e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 QR \u0438\u043b\u0438 \u0441\u0441\u044b\u043b\u043a\u0443 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0438 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435.") +
+        "</span></div>",
+      '<div class="vx-instructions-body">',
+      '<div class="vx-device-tabs">' + deviceButtons + "</div>",
+      accessHintHtml,
+      '<article class="vx-guide-panel"><div class="vx-guide-panel__head"><div><h2>' +
+        escapeHtml(current.title) +
+        '</h2><p>' +
+        escapeHtml(current.app) +
+        "</p></div></div>",
+      '<ol class="vx-guide-steps vx-guide-steps--cards"><li><strong>\u0423\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u043a\u043b\u0438\u0435\u043d\u0442</strong><span>' +
+        escapeHtml(current.app) +
+        '</span></li><li><strong>\u041e\u0442\u043a\u0440\u043e\u0439\u0442\u0435 QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</strong><span>\u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043a\u043d\u043e\u043f\u043a\u0443 \u043d\u0438\u0436\u0435, \u0437\u0430\u0442\u0435\u043c \u0441\u043a\u0430\u043d\u0438\u0440\u0443\u0439\u0442\u0435 QR \u0438\u043b\u0438 \u0441\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0441\u044b\u043b\u043a\u0443.</span></li><li><strong>\u0418\u043c\u043f\u043e\u0440\u0442\u0438\u0440\u0443\u0439\u0442\u0435 VPN</strong><span>' +
+        escapeHtml(current.text) +
+        "</span></li></ol>",
+      '<div class="vx-account-actions vx-account-actions--instructions">' +
+        primaryAccessButton +
+        '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "support" })) +
+        '">\u041f\u043e\u043c\u043e\u0449\u044c</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(normalizePath(cfg.accountPath || "/account/")) +
+        '">\u041c\u043e\u0439 VPN</button></div>',
+      "</article>",
+      "</div>",
+      "</section>",
+      "</section>",
+    ].join("");
+  }
+
+  function renderLegacySupport(model) {
+    const telegramUrl = (model && model.telegram_url) || "";
+    const clientCode = (model && model.client_code) || "";
+    const clientCodeHtml = clientCode
+      ? '<div class="vx-support-id"><span>ID клиента</span><code>' + escapeHtml(clientCode) + "</code></div>"
+      : "";
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--support">',
+      '<section class="vx-section-card vx-support-card">',
+      '<div class="vx-section-card__head"><h1>' +
+        escapeHtml((model && model.title) || "\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430") +
+        '</h1><span>' +
+        escapeHtml((model && model.subtitle) || "\u0415\u0441\u043b\u0438 \u043d\u0443\u0436\u043d\u0430 \u043f\u043e\u043c\u043e\u0449\u044c, \u043d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u0432 Telegram.") +
+        "</span></div>",
+      '<div class="vx-support-body">',
+      clientCodeHtml,
+      '<div class="vx-support-note"><strong>\u0427\u0442\u043e \u043d\u0430\u043f\u0438\u0441\u0430\u0442\u044c</strong><span>\u041e\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c: \u0447\u0442\u043e \u043d\u0435 \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442, \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e, \u0438 \u043a\u043e\u0433\u0434\u0430 \u043d\u0430\u0447\u0430\u043b\u0430\u0441\u044c \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0430.</span></div>',
+      '<div class="vx-account-actions">',
+      telegramUrl
+        ? '<a class="vx-button vx-button--primary" href="' + escapeHtml(telegramUrl) + '" target="_blank" rel="noopener">\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432 Telegram</a>'
+        : "",
+      '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "instructions" })) +
+        '">\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044e</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(normalizePath(cfg.accountPath || "/account/")) +
+        '">\u041c\u043e\u0439 VPN</button></div>',
+      "</div>",
+      "</section>",
+      "</section>",
+    ].join("");
+  }
+
+  function renderSupport(model) {
+    const telegramUrl = (model && model.telegram_url) || "";
+    const clientCode = (model && model.client_code) || "";
+    const clientCodeHtml = clientCode
+      ? '<div class="vx-support-id"><span>ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430</span><div class="vx-support-id__row"><code>' +
+        escapeHtml(clientCode) +
+        '</code><button type="button" class="vx-icon-button" data-copy-text="' +
+        escapeHtml(clientCode) +
+        '" data-copy-toast="ID \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d" aria-label="\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430">' +
+        iconSvg("copy") +
+        "</button></div></div>"
+      : "";
+    const supportContactHtml = telegramUrl
+      ? '<div class="vx-support-contact"><div class="vx-support-contact__copy"><strong>\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u043e\u043f\u0435\u0440\u0430\u0442\u043e\u0440\u0443</strong><span>\u041e\u0442\u043a\u0440\u043e\u0435\u0442\u0441\u044f Telegram. \u0414\u043e\u0431\u0430\u0432\u044c\u0442\u0435 ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430 \u0438 \u043a\u043e\u0440\u043e\u0442\u043a\u043e \u043e\u043f\u0438\u0448\u0438\u0442\u0435 \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0443.</span></div><a class="vx-button vx-button--primary" href="' +
+        escapeHtml(telegramUrl) +
+        '" target="_blank" rel="noopener">\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432 Telegram</a></div>'
+      : '<div class="vx-support-contact"><div class="vx-support-contact__copy"><strong>Telegram \u043d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d</strong><span>\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 ID \u0438 \u0448\u0430\u0431\u043b\u043e\u043d, \u0437\u0430\u0442\u0435\u043c \u043d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u0432 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0443 \u0438\u0437 \u0431\u043e\u0442\u0430.</span></div></div>';
+    const supportIdPrefix = clientCode ? "ID " + clientCode + ". " : "";
+    const supportTemplatesHtml = [
+      {
+        label: "\u041d\u0435 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0430\u0435\u0442\u0441\u044f",
+        text: supportIdPrefix + "\u041d\u0435 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0430\u0435\u0442\u0441\u044f VPN. \u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e: . \u041a\u043e\u0433\u0434\u0430 \u043d\u0430\u0447\u0430\u043b\u043e\u0441\u044c: .",
+      },
+      {
+        label: "\u041d\u0435 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044e\u0442\u0441\u044f \u0441\u0430\u0439\u0442\u044b",
+        text: supportIdPrefix + "\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435 \u0435\u0441\u0442\u044c, \u043d\u043e \u0441\u0430\u0439\u0442\u044b \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u0432\u0430\u044e\u0442\u0441\u044f. \u0423\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e: . \u041a\u0430\u043a\u043e\u0439 \u0441\u0430\u0439\u0442: .",
+      },
+      {
+        label: "\u041e\u043f\u043b\u0430\u0442\u0430 \u0438\u043b\u0438 \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435",
+        text: supportIdPrefix + "\u041f\u0440\u043e\u0431\u043b\u0435\u043c\u0430 \u0441 \u043e\u043f\u043b\u0430\u0442\u043e\u0439 \u0438\u043b\u0438 \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u0435\u043c. \u0427\u0442\u043e \u043f\u0440\u043e\u0438\u0437\u043e\u0448\u043b\u043e: .",
+      },
+    ]
+      .map(function (item) {
+        return (
+          '<button type="button" class="vx-support-template" data-copy-text="' +
+          escapeHtml(item.text) +
+          '" data-copy-toast="\u0428\u0430\u0431\u043b\u043e\u043d \u0441\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u043d">' +
+          escapeHtml(item.label) +
+          "</button>"
+        );
+      })
+      .join("");
+    mount.className = "vx-native-account";
+    mount.innerHTML = [
+      '<section class="vx-account-app__shell vx-account-app__shell--support">',
+      '<section class="vx-section-card vx-support-card">',
+      '<div class="vx-section-card__head"><h1>' +
+        escapeHtml((model && model.title) || "\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430") +
+        '</h1><span>' +
+        escapeHtml((model && model.subtitle) || "\u041d\u0430\u043f\u0438\u0448\u0438\u0442\u0435 \u043e\u0434\u043d\u043e \u043a\u043e\u0440\u043e\u0442\u043a\u043e\u0435 \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435. ID \u043a\u043b\u0438\u0435\u043d\u0442\u0430 \u0443\u0436\u0435 \u043d\u0438\u0436\u0435.") +
+      "</span></div>",
+      '<div class="vx-support-body">',
+      clientCodeHtml,
+      supportContactHtml,
+      '<div class="vx-support-templates"><strong>\u0411\u044b\u0441\u0442\u0440\u044b\u0439 \u0448\u0430\u0431\u043b\u043e\u043d</strong><span>\u0421\u043a\u043e\u043f\u0438\u0440\u0443\u0439\u0442\u0435 \u043f\u043e\u0434\u0445\u043e\u0434\u044f\u0449\u0438\u0439 \u0442\u0435\u043a\u0441\u0442 \u0438 \u043e\u0442\u043f\u0440\u0430\u0432\u044c\u0442\u0435 \u0435\u0433\u043e \u0432 Telegram.</span><div class="vx-support-template-list">' +
+        supportTemplatesHtml +
+        "</div></div>",
+      '<div class="vx-support-note"><strong>\u0427\u0442\u043e \u043d\u0430\u043f\u0438\u0441\u0430\u0442\u044c</strong><span>\u041e\u0434\u043d\u0438\u043c \u0441\u043e\u043e\u0431\u0449\u0435\u043d\u0438\u0435\u043c: \u0447\u0442\u043e \u043d\u0435 \u0440\u0430\u0431\u043e\u0442\u0430\u0435\u0442, \u0443\u0441\u0442\u0440\u043e\u0439\u0441\u0442\u0432\u043e, \u0438 \u043a\u043e\u0433\u0434\u0430 \u043d\u0430\u0447\u0430\u043b\u0430\u0441\u044c \u043f\u0440\u043e\u0431\u043b\u0435\u043c\u0430.</span></div>',
+      '<div class="vx-account-actions vx-account-actions--support">',
+      '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(accountRouteUrl({ view: "instructions" })) +
+        '">\u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f</button><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+        escapeHtml(normalizePath(cfg.accountPath || "/account/")) +
+        '">\u041c\u043e\u0439 VPN</button></div>',
+      "</div>",
       "</section>",
       "</section>",
     ].join("");
@@ -514,28 +1192,36 @@
     const isSignup = state.authMode === "signup";
     const telegram = (model && model.telegram) || {};
     const hasTelegram = !!(telegram && telegram.enabled && telegram.bot_username && telegram.auth_url);
+    const helpUrl = cfg.supportTelegramUrl || cfg.supportUrl || "/instructions/";
+    const fallbackTitle = isSignup
+      ? "\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0430\u043a\u043a\u0430\u0443\u043d\u0442 \u043f\u043e email"
+      : "\u0412\u043e\u0439\u0442\u0438 \u043f\u043e email";
+    const fallbackText = hasTelegram
+      ? "\u0418\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435, \u0435\u0441\u043b\u0438 Telegram \u043d\u0435 \u043e\u0442\u043a\u0440\u044b\u043b \u043a\u0430\u0431\u0438\u043d\u0435\u0442 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438."
+      : "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0434\u0430\u043d\u043d\u044b\u0435 \u0430\u043a\u043a\u0430\u0443\u043d\u0442\u0430 VXcloud.";
     mount.className = "vx-native-account";
     mount.innerHTML = [
-      '<section class="vx-account-app__shell">',
-      '<section class="vx-auth-card">',
+      '<section class="vx-account-app__shell vx-account-app__shell--auth">',
+      '<section class="vx-auth-card vx-auth-card--telegram-first">',
       '<div class="vx-auth-card__tabs">',
       '<button type="button" class="vx-auth-tab' +
         (!isSignup ? " is-active" : "") +
-        '" data-auth-tab="login">Вход</button>',
+        '" data-auth-tab="login">\u0412\u0445\u043e\u0434</button>',
       '<button type="button" class="vx-auth-tab' +
         (isSignup ? " is-active" : "") +
-        '" data-auth-tab="signup">Регистрация</button>',
+        '" data-auth-tab="signup">\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044f</button>',
       "</div>",
       '<div class="vx-auth-card__body">',
-      '<h1 class="vx-account-title">' + escapeHtml((model && model.title) || "Вход") + "</h1>",
+      '<h1 class="vx-account-title">' + escapeHtml((model && model.title) || "\u0412\u0445\u043e\u0434") + "</h1>",
       '<p class="vx-account-subtitle">' +
-        escapeHtml((model && model.subtitle) || "Войдите в аккаунт, чтобы управлять доступами и конфигами.") +
+        escapeHtml((model && model.subtitle) || "\u0412\u043e\u0439\u0434\u0438\u0442\u0435 \u0432 \u0430\u043a\u043a\u0430\u0443\u043d\u0442, \u0447\u0442\u043e\u0431\u044b \u0443\u043f\u0440\u0430\u0432\u043b\u044f\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f\u0430\u043c\u0438 \u0438 \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0430\u043c\u0438.") +
         "</p>",
       hasTelegram
         ? [
             '<section class="vx-auth-telegram">',
             '<div class="vx-auth-telegram__eyebrow">\u0412\u0445\u043e\u0434 \u0447\u0435\u0440\u0435\u0437 Telegram</div>',
             '<p class="vx-auth-telegram__copy">\u0412\u043e\u0439\u0434\u0438\u0442\u0435 \u0438\u043b\u0438 \u0441\u043e\u0437\u0434\u0430\u0439\u0442\u0435 \u0430\u043a\u043a\u0430\u0443\u043d\u0442 \u0432 \u043e\u0434\u0438\u043d \u043a\u043b\u0438\u043a \u0447\u0435\u0440\u0435\u0437 Telegram.</p>',
+            '<div class="vx-auth-telegram__status"><strong>Telegram Mini App</strong><span>\u0415\u0441\u043b\u0438 \u043a\u0430\u0431\u0438\u043d\u0435\u0442 \u043e\u0442\u043a\u0440\u044b\u0442 \u0438\u0437 \u0431\u043e\u0442\u0430, \u0432\u0445\u043e\u0434 \u043e\u0431\u044b\u0447\u043d\u043e \u043f\u0440\u043e\u0445\u043e\u0434\u0438\u0442 \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438. \u0415\u0441\u043b\u0438 \u044d\u043a\u0440\u0430\u043d \u043d\u0435 \u043e\u0431\u043d\u043e\u0432\u0438\u043b\u0441\u044f, \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u0443\u0439\u0442\u0435 \u043a\u043d\u043e\u043f\u043a\u0443 Telegram \u043d\u0438\u0436\u0435.</span></div>',
             '<div class="vx-auth-telegram__widget" data-telegram-login-widget data-bot-username="' +
               escapeHtml(telegram.bot_username || "") +
               '" data-auth-url="' +
@@ -545,29 +1231,36 @@
             "</section>",
           ].join("")
         : "",
+      '<section class="vx-auth-fallback">',
+      '<div class="vx-auth-fallback__head"><strong>' +
+        fallbackTitle +
+        "</strong><span>" +
+        fallbackText +
+        "</span></div>",
       '<div class="vx-auth-errors" data-auth-errors></div>',
       !isSignup
         ? [
             '<form class="vx-auth-form" data-auth-form="login">',
-            '<label>Логин или email<input type="text" name="username" autocomplete="username" required></label>',
-            '<label>Пароль<input type="password" name="password" autocomplete="current-password" required></label>',
-            '<button type="submit" class="vx-button vx-button--primary vx-button--block">Войти</button>',
+            '<label>\u041b\u043e\u0433\u0438\u043d \u0438\u043b\u0438 email<input type="text" name="username" autocomplete="username" required></label>',
+            '<label>\u041f\u0430\u0440\u043e\u043b\u044c<input type="password" name="password" autocomplete="current-password" required></label>',
+            '<button type="submit" class="vx-button vx-button--primary vx-button--block">\u0412\u043e\u0439\u0442\u0438</button>',
             "</form>",
           ].join("")
         : [
             '<form class="vx-auth-form" data-auth-form="signup">',
-            '<label>Логин<input type="text" name="username" autocomplete="username" required></label>',
+            '<label>\u041b\u043e\u0433\u0438\u043d<input type="text" name="username" autocomplete="username" required></label>',
             '<label>Email<input type="email" name="email" autocomplete="email" required></label>',
-            '<label>Пароль<input type="password" name="password" autocomplete="new-password" required></label>',
-            '<label>Повторите пароль<input type="password" name="password_confirm" autocomplete="new-password" required></label>',
-            '<button type="submit" class="vx-button vx-button--primary vx-button--block">Создать аккаунт</button>',
+            '<label>\u041f\u0430\u0440\u043e\u043b\u044c<input type="password" name="password" autocomplete="new-password" required></label>',
+            '<label>\u041f\u043e\u0432\u0442\u043e\u0440\u0438\u0442\u0435 \u043f\u0430\u0440\u043e\u043b\u044c<input type="password" name="password_confirm" autocomplete="new-password" required></label>',
+            '<button type="submit" class="vx-button vx-button--primary vx-button--block">\u0421\u043e\u0437\u0434\u0430\u0442\u044c \u0430\u043a\u043a\u0430\u0443\u043d\u0442</button>',
             "</form>",
           ].join(""),
       '<div class="vx-auth-links"><a href="' +
-        escapeHtml(cfg.supportUrl || "/instructions/") +
-        '">Нужна помощь?</a><a href="' +
+        escapeHtml(helpUrl) +
+        '">\u041d\u0430\u043f\u0438\u0441\u0430\u0442\u044c \u0432 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0443</a><a href="' +
         escapeHtml((model && model.password_reset_url) || "/accounts/password_reset/") +
-        '">Забыли пароль?</a></div>',
+        '">\u0417\u0430\u0431\u044b\u043b\u0438 \u043f\u0430\u0440\u043e\u043b\u044c?</a></div>',
+      "</section>",
       "</div>",
       "</section>",
       "</section>",
@@ -607,7 +1300,7 @@
         try {
           await navigator.clipboard.writeText(text);
           markCopySuccess(button);
-          showToast("Ссылка скопирована");
+          showToast(button.getAttribute("data-copy-toast") || "Ссылка скопирована");
         } catch (error) {
           console.debug("copy failed", error);
         }
@@ -618,7 +1311,7 @@
       button.addEventListener("click", async function () {
         const subscriptionId = button.getAttribute("data-delete-subscription") || "";
         if (!subscriptionId || state.pending) return;
-        if (!window.confirm("Удалить этот неактивный конфиг?")) return;
+        if (!window.confirm("Удалить этот неактивный доступ?")) return;
 
         state.pending = true;
         button.setAttribute("disabled", "disabled");
@@ -627,13 +1320,13 @@
             method: "POST",
             body: {},
           });
-          showToast("Конфиг удален");
+          showToast("Доступ удален");
           if (/^\/account\/config\/\d+\/?$/i.test(window.location.pathname)) {
             window.history.pushState({}, "", normalizePath(cfg.accountPath || "/account/"));
           }
           await loadCurrentView();
         } catch (error) {
-          showToast((error.payload && error.payload.error) || "Не удалось удалить конфиг");
+          showToast((error.payload && error.payload.error) || "Не удалось удалить доступ");
         } finally {
           state.pending = false;
           button.removeAttribute("disabled");
@@ -649,15 +1342,23 @@
       });
     });
 
+    mount.querySelectorAll("[data-retry-load]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        loadCurrentView();
+      });
+    });
+
     mount.querySelectorAll("[data-checkout]").forEach(function (button) {
       button.addEventListener("click", async function () {
         const mode = button.getAttribute("data-checkout");
         if (!mode || state.pending) return;
+        const subscriptionId = button.getAttribute("data-subscription-id") || "";
         state.pending = true;
         button.setAttribute("disabled", "disabled");
         try {
           const endpoint = mode === "buy" ? cfg.apiBuyUrl : cfg.apiRenewUrl;
-          const result = await apiFetch(endpoint, { method: "POST", body: {} });
+          const body = mode === "renew" && /^\d+$/.test(subscriptionId) ? { subscription_id: Number(subscriptionId) } : {};
+          const result = await apiFetch(endpoint, { method: "POST", body: body });
           if (result && result.redirect_url) {
             window.location.assign(result.redirect_url);
             return;
@@ -669,11 +1370,22 @@
             return;
           }
           renderError((error.payload && error.payload.error) || "Не удалось открыть оплату.");
+          bindSharedInteractions();
           return;
         } finally {
           state.pending = false;
           button.removeAttribute("disabled");
         }
+      });
+    });
+
+    mount.querySelectorAll("[data-scroll-renew]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        const list = mount.querySelector(".vx-config-list");
+        if (list && typeof list.scrollIntoView === "function") {
+          list.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+        showToast("\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u043e\u0441\u0442\u0443\u043f \u0434\u043b\u044f \u043f\u0440\u043e\u0434\u043b\u0435\u043d\u0438\u044f");
       });
     });
 
@@ -764,7 +1476,7 @@
         renderAuth(
           state.authModel || {
           title: "Вход",
-          subtitle: "Войдите в аккаунт, чтобы управлять доступами и конфигами.",
+          subtitle: "Войдите в аккаунт, чтобы управлять доступами и подписками.",
           password_reset_url: "/accounts/password_reset/",
           }
         );
@@ -886,6 +1598,8 @@
 
   async function loadCurrentView() {
     const loadToken = ++state.loadToken;
+    await syncTelegramWebAppSession();
+    if (loadToken !== state.loadToken) return;
     const route = currentRoute();
     preserveMountHeight();
     window.clearTimeout(state.loadingTimer);
@@ -898,13 +1612,16 @@
     const params = new URLSearchParams();
     params.set("view", route.view);
     if (route.subscriptionId) params.set("subscription_id", String(route.subscriptionId));
+    if (route.device) params.set("device", String(route.device));
 
     try {
       const payload = await apiFetch(cfg.apiStateUrl + "?" + params.toString());
       if (loadToken !== state.loadToken) return;
       window.clearTimeout(state.loadingTimer);
+      updateTelegramBackButton(route);
 
       if (!payload.authenticated) {
+        updateTelegramBackButton({ view: "auth" });
         state.authModel = payload.auth || {};
         renderAuth(state.authModel);
         bindSharedInteractions();
@@ -915,6 +1632,8 @@
       }
 
       if (route.view === "checkout-buy" || route.view === "checkout-renew") {
+        renderCheckoutProgress(route);
+        bindSharedInteractions();
         try {
           const endpoint = route.view === "checkout-buy" ? cfg.apiBuyUrl : cfg.apiRenewUrl;
           const body = route.view === "checkout-renew" && route.subscriptionId ? { subscription_id: route.subscriptionId } : {};
@@ -923,11 +1642,13 @@
             window.location.assign(result.redirect_url);
             return;
           }
-          renderError("Не удалось открыть оплату.");
+          renderError("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043e\u043f\u043b\u0430\u0442\u0443.");
+          bindSharedInteractions();
           releaseMountHeight();
           return;
         } catch (error) {
-          renderError((error.payload && error.payload.error) || "Не удалось открыть оплату.");
+          renderError((error.payload && error.payload.error) || "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043e\u043f\u043b\u0430\u0442\u0443.");
+          bindSharedInteractions();
           releaseMountHeight();
           return;
         }
@@ -939,15 +1660,22 @@
         renderSettings(payload.dashboard || {});
       } else if (payload.view === "link" && payload.link) {
         renderLink(payload.link);
+      } else if (payload.view === "instructions" && payload.instructions) {
+        renderInstructions(payload.instructions);
+      } else if (payload.view === "support" && payload.support) {
+        renderSupport(payload.support);
       } else {
         renderDashboard(payload.dashboard || {});
       }
+      updateTelegramBackButton(route);
       bindSharedInteractions();
       releaseMountHeight();
     } catch (error) {
       if (loadToken !== state.loadToken) return;
       window.clearTimeout(state.loadingTimer);
+      updateTelegramBackButton(route);
       renderError((error.payload && error.payload.error) || "Не удалось загрузить страницу аккаунта.");
+      bindSharedInteractions();
       releaseMountHeight();
     }
   }
@@ -956,5 +1684,6 @@
     loadCurrentView();
   });
 
+  bindTelegramBackButton();
   loadCurrentView();
 })();

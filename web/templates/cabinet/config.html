@@ -1,11 +1,9 @@
 {% extends 'base.html' %}
 {% load cms %}
 
-{% cms_text "cabinet.config.page_title" "Конфиг - VXcloud" as cabinet_config_page_title %}
-{% block title %}{{ cabinet_config_page_title }}{% endblock %}
+{% block title %}QR и доступ - VXcloud{% endblock %}
 
 {% block content %}
-{% cms_text "cabinet.config.heading" "Конфиг и QR" as cabinet_config_heading %}
 {% cms_text "cabinet.config.back_action" "Назад в кабинет" as cabinet_config_back_action %}
 
 <div class="account-page-shell account-page-shell-config">
@@ -21,7 +19,7 @@
       <div class="account-section-head">
         <div>
           <div class="account-eyebrow">Импорт QR</div>
-          <h2 class="account-section-title">{{ cabinet_config_heading }}</h2>
+          <h2 class="account-section-title">QR и доступ</h2>
         </div>
         <div class="account-section-meta">#{{ subscription.id }}</div>
       </div>
@@ -32,11 +30,11 @@
     </article>
 
     <div class="account-config-stack">
-      <article class="account-section">
+      <article class="account-section account-config-status-section">
         <div class="account-section-head">
           <div>
             <div class="account-eyebrow">Состояние</div>
-            <h2 class="account-section-title">Состояние конфига</h2>
+            <h2 class="account-section-title">Состояние доступа</h2>
           </div>
         </div>
 
@@ -65,20 +63,20 @@
       </article>
 
       {% if subscriptions %}
-        <article class="account-section">
-          <div class="account-link-label">Все конфиги</div>
+        <article class="account-section account-config-list-section">
+          <div class="account-link-label">Все доступы</div>
           <div class="account-config-list">
             {% for sub_item in subscriptions %}
               {% if sub_item.id == subscription.id %}
                 <div class="account-config-item account-config-item-current">
                   <span class="account-config-item-id">#{{ sub_item.id }}</span>
-                  <span class="account-config-item-name">{{ sub_item.display_name|default:"Конфиг" }}</span>
+                  <span class="account-config-item-name">{{ sub_item.display_name|default:"Устройство" }}</span>
                   <span class="account-config-item-meta">{% if sub_item.expires_at %}{{ sub_item.expires_at|date:'d.m.Y H:i' }}{% else %}бессрочно{% endif %}</span>
                 </div>
               {% else %}
                 <a class="account-config-item" href="{{ backend_config_prefix }}{{ sub_item.id }}/">
                   <span class="account-config-item-id">#{{ sub_item.id }}</span>
-                  <span class="account-config-item-name">{{ sub_item.display_name|default:"Конфиг" }}</span>
+                  <span class="account-config-item-name">{{ sub_item.display_name|default:"Устройство" }}</span>
                   <span class="account-config-item-meta">{% if sub_item.expires_at %}{{ sub_item.expires_at|date:'d.m.Y H:i' }}{% else %}бессрочно{% endif %}</span>
                 </a>
               {% endif %}
@@ -87,7 +85,7 @@
         </article>
       {% endif %}
 
-      <article class="account-section">
+      <article class="account-section account-config-link-section">
         <label class="account-link-label" for="cfg">Ссылка подписки</label>
         <div class="account-link-row">
           <input id="cfg" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
@@ -95,10 +93,10 @@
             <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
           </button>
         </div>
-        <p class="account-subtle account-subtle-block">Импортируйте эту ссылку один раз. После этого VXcloud сможет менять назначенную ноду за этим адресом без ручной замены конфига.</p>
+        <p class="account-subtle account-subtle-block">Импортируйте эту ссылку один раз. После этого VXcloud сможет менять сервер за этим адресом без ручной замены доступа.</p>
       </article>
 
-      <article class="account-section">
+      <article class="account-section account-config-rename-section">
         <label class="account-link-label" for="cfg-rename">Имя устройства</label>
         <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="account-inline-form">
           {% csrf_token %}

@@ -84,6 +84,15 @@
           <a class="account-secondary-button{% if device.key == instructions_payload.device %} account-secondary-button-current{% endif %}" href="{{ device.url }}">{{ device.label }}</a>
         {% endfor %}
       </div>
+      <div class="account-message account-instructions-access">
+        {% if instructions_payload.primary_subscription %}
+          <strong>{{ instructions_payload.primary_subscription.display_name }}</strong>
+          <span>Откройте QR и ссылку подписки для этого доступа.</span>
+        {% else %}
+          <strong>Пока нет активного доступа</strong>
+          <span>Сначала активируйте пробный период или купите доступ.</span>
+        {% endif %}
+      </div>
       <div class="account-device-grid">
         <article class="account-device-card">
           <div class="account-device-top">
@@ -99,15 +108,21 @@
                 <div class="account-subtle">Установите Hiddify или Nekoray и добавьте ссылку подписки из кабинета.</div>
               {% else %}
                 <div class="account-device-name">Быстрый старт</div>
-                <div class="account-subtle">Сначала выберите устройство выше, затем откройте свой конфиг или QR.</div>
+                <div class="account-subtle">Сначала выберите устройство выше, затем откройте QR или доступ.</div>
               {% endif %}
             </div>
           </div>
-          <div class="account-message">
-            1. Откройте свой доступ в разделе «Мой VPN». 2. Скопируйте ссылку подписки или покажите QR. 3. Импортируйте ее в приложение и включите подключение.
-          </div>
+          <ol class="account-step-list">
+            <li>Откройте свой доступ в разделе «Мой VPN».</li>
+            <li>Скопируйте ссылку подписки или покажите QR.</li>
+            <li>Импортируйте ее в приложение и включите подключение.</li>
+          </ol>
           <div class="account-device-actions">
-            <a class="account-primary-button" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
+            {% if instructions_payload.primary_subscription %}
+              <a class="account-primary-button" href="{{ instructions_payload.primary_subscription.config_url }}">Открыть QR и доступ</a>
+            {% else %}
+              <a class="account-primary-button" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
+            {% endif %}
             <a class="account-secondary-button" href="{{ instructions_payload.support_url }}">Поддержка</a>
           </div>
         </article>

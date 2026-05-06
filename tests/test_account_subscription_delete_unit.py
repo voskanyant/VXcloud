@@ -46,7 +46,7 @@ class AccountSubscriptionDeleteUnitTests(unittest.TestCase):
             patch("cabinet.views.BotSubscription.objects.filter", return_value=filter_mock),
             patch(
                 "cabinet.views._delete_subscription_everywhere",
-                return_value=(False, "Активный конфиг нельзя удалить."),
+                return_value=(False, "Активный доступ нельзя удалить."),
             ),
         ):
             response = self.client.post("/account-app/api/subscriptions/55/delete/", content_type="application/json")

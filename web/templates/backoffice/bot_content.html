@@ -20,7 +20,7 @@
         <h3>Статус</h3>
       </div>
       <div class="bo-info-grid">
-        <div><span>Всего editable keys</span><strong>{{ bot_content_stats.total }}</strong></div>
+        <div><span>Всего редактируемых ключей</span><strong>{{ bot_content_stats.total }}</strong></div>
         <div><span>Переопределено</span><strong>{{ bot_content_stats.overridden }}</strong></div>
         <div><span>По умолчанию</span><strong>{{ bot_content_stats.defaulted }}</strong></div>
       </div>
@@ -44,9 +44,9 @@
               <div class="bo-field-meta">
                 <code>bot.{{ item.key }}</code>
                 {% if item.has_override %}
-                  <span class="badge text-bg-primary">override</span>
+                  <span class="badge text-bg-primary">переопределено</span>
                 {% else %}
-                  <span class="badge text-bg-secondary">default</span>
+                  <span class="badge text-bg-secondary">по умолчанию</span>
                 {% endif %}
               </div>
 
@@ -88,7 +88,7 @@
 
   <section class="bo-panel">
     <div class="d-flex flex-wrap gap-2 justify-content-end">
-      <button type="submit" class="btn btn-dark btn-lg">Сохранить bot content</button>
+      <button type="submit" class="btn btn-dark btn-lg">Сохранить тексты бота</button>
     </div>
   </section>
 </form>

@@ -22,6 +22,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import qrcode
 from PIL import Image
 from telegram import (
+    CallbackQuery,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     KeyboardButton,
@@ -119,6 +120,35 @@ MENU_TEXT_ALIASES = {
     "подключить vpn": "menu_instructions",
     "настроить vpn": "menu_instructions",
 }
+CMS_STALE_TEXT_MARKERS: dict[str, tuple[str, ...]] = {
+    "copy_link_hint": (
+        "нажмите «скопировать ссылку»",
+        "импорт из буфера обмена",
+        "после выдачи конфига",
+    ),
+    "my_configs_list_template": (
+        "ваш доступ vxcloud",
+    ),
+    "my_configs_item_template": (
+        "статус: {status}",
+    ),
+    "my_configs_empty_message": (
+        "список устройств пока пуст",
+    ),
+    "support_received_message": (
+        "историю обращений можно открыть",
+    ),
+    "reminder_expired_message": (
+        "конфиг",
+        "используйте /buy",
+    ),
+    "reminder_1d_message": (
+        "конфиг",
+    ),
+    "reminder_3d_message": (
+        "конфиг",
+    ),
+}
 SUPPORT_MESSAGE_MAX_CHARS = 2000
 SUBSCRIPTION_RENAME_MAX_CHARS = 40
 
@@ -190,9 +220,15 @@ class VPNBot:
         self.app.add_handler(CommandHandler("start", self.start))
         self.app.add_handler(CommandHandler("menu", self.start))
         self.app.add_handler(CommandHandler("buy", self.buy))
+        self.app.add_handler(CommandHandler("trial", self.trial))
         self.app.add_handler(CommandHandler("mysub", self.mysub))
         self.app.add_handler(CommandHandler("myvpn", self.myvpn))
         self.app.add_handler(CommandHandler("renew", self.renew))
+        self.app.add_handler(CommandHandler("instructions", self.instructions))
+        self.app.add_handler(CommandHandler("instruction", self.instructions))
+        self.app.add_handler(CommandHandler("support", self.support))
+        self.app.add_handler(CommandHandler("app", self.open_app))
+        self.app.add_handler(CommandHandler("cabinet", self.open_app))
         self.app.add_handler(CommandHandler("reply", self.reply_support))
         self.app.add_handler(CommandHandler("tickets", self.admin_tickets))
         self.app.add_handler(CommandHandler("ticket", self.admin_ticket))
@@ -249,6 +285,8 @@ class VPNBot:
             return default
         if self._looks_stale_english_cms_text(key, normalized):
             return default
+        if self._looks_stale_known_cms_text(key, normalized):
+            return default
         return value
 
     def _button_label(self, key: str, default: str) -> str:
@@ -291,11 +329,57 @@ class VPNBot:
             return False
         return any(word not in CMS_ALLOWED_LATIN_WORDS for word in words)
 
+    @staticmethod
+    def _looks_stale_known_cms_text(key: str, value: str) -> bool:
+        markers = CMS_STALE_TEXT_MARKERS.get(key)
+        if not markers:
+            return False
+        normalized = " ".join(value.lower().split())
+        return any(marker in normalized for marker in markers)
+
     async def _has_active_subscription(self, user_id: int) -> bool:
         return await self.db.get_active_subscription(user_id) is not None
 
     async def _menu_keyboard_for_user(self, user_id: int) -> ReplyKeyboardMarkup:
         return self._menu_keyboard(has_active_subscription=await self._has_active_subscription(user_id))
+
+    async def _restore_menu_after_command_input_cancel(
+        self,
+        update: Update,
+        context: ContextTypes.DEFAULT_TYPE,
+        user_id: int,
+    ) -> bool:
+        if not self._clear_text_input_state(context):
+            return False
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None:
+            return True
+        await message.reply_text(
+            self._content_text(
+                "input_cancelled_by_command_message",
+                "Ввод отменен. Открываю выбранный раздел.",
+            ),
+            reply_markup=await self._menu_keyboard_for_user(user_id),
+        )
+        return True
+
+    async def _restore_menu_after_inline_input_cancel(
+        self,
+        query: CallbackQuery,
+        context: ContextTypes.DEFAULT_TYPE,
+        user_id: int,
+    ) -> bool:
+        if not self._clear_text_input_state(context):
+            return False
+        if query.message is not None:
+            await query.message.reply_text(
+                self._content_text(
+                    "input_cancelled_by_inline_message",
+                    "Ввод отменен. Открываю выбранное действие.",
+                ),
+                reply_markup=await self._menu_keyboard_for_user(user_id),
+            )
+        return True
 
     def _display_tz(self) -> ZoneInfo:
         try:
@@ -713,7 +797,7 @@ class VPNBot:
     def _trial_active_access_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("📱 Открыть кабинет", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
                 [
                     InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
                     self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}"),
@@ -724,7 +808,7 @@ class VPNBot:
     def _trial_success_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("📱 Открыть кабинет", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
                 [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
                 [InlineKeyboardButton(text="📖 Как подключить", callback_data="nav|menu_instructions|_")],
             ]
@@ -734,7 +818,7 @@ class VPNBot:
         return (
             "7 дней бесплатно активированы\n"
             f"Действует до: {self._format_local_dt(expires_at)}\n\n"
-            "Откройте кабинет, QR или инструкцию."
+            "Откройте QR и доступ или инструкцию."
         )
 
     async def _buy_offer_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
@@ -775,7 +859,7 @@ class VPNBot:
     def _post_payment_ready_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("📱 Открыть кабинет", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
                 [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
             ]
         )
@@ -827,7 +911,7 @@ class VPNBot:
         return InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(text="✍️ Написать в поддержку", callback_data="act|support_start|_")],
-                [self._mini_app_button("📱 История обращений", "/account/?view=support")],
+                [self._mini_app_button("📱 Поддержка в кабинете", "/account/?view=support")],
             ]
         )
 
@@ -859,7 +943,7 @@ class VPNBot:
                 "Сообщение отправлено\n\n"
                 "Номер обращения: #{ticket_id}\n"
                 "Ответ придет сюда в Telegram.\n\n"
-                "Историю обращений можно открыть через «📱 Кабинет».\n"
+                "История обращений: «📱 Кабинет» → «Поддержка».\n"
                 "Ваш ID: {client_code}",
             )
             .replace("{ticket_id}", str(ticket_id))
@@ -882,7 +966,7 @@ class VPNBot:
     def _renew_success_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("📱 Открыть кабинет", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
                 [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
             ]
         )
@@ -891,8 +975,8 @@ class VPNBot:
     def _payment_success_text(*, is_renew: bool, expiry_text: str | None = None) -> str:
         if is_renew:
             suffix = f"\nДействует до: {expiry_text}" if expiry_text else ""
-            return f"Доступ продлён{suffix}\n\nОткройте кабинет или QR."
-        return "Новый доступ готов\n\nОткройте кабинет или QR."
+            return f"Доступ продлён{suffix}\n\nОткройте QR и доступ."
+        return "Новый доступ готов\n\nОткройте QR и доступ."
 
     def _stars_notice_text(self, *, is_renew: bool) -> str:
         if is_renew:
@@ -922,7 +1006,7 @@ class VPNBot:
         return InlineKeyboardMarkup(
             [
                 [self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")],
-                [self._mini_app_button("📱 Кабинет", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
             ]
         )
 
@@ -941,7 +1025,6 @@ class VPNBot:
                     )
                 ]
             )
-        rows.append([self._mini_app_button("📱 Кабинет", "/account/renew/")])
         return InlineKeyboardMarkup(rows)
 
     def _renew_select_text(self, subscriptions: list[dict[str, object]]) -> str:
@@ -1409,16 +1492,6 @@ class VPNBot:
                     )
                 ]
             )
-            cabinet_button = self._mini_app_button("📱 Кабинет", f"/account/config/{sub_id}/")
-            qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{sub_id}|_")
-            renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={sub_id}")
-            if self._subscription_needs_renewal(sub):
-                action_row = [renew_button, cabinet_button, qr_button]
-            else:
-                action_row = [cabinet_button, qr_button, renew_button]
-            rows.append(
-                action_row
-            )
         if not subscriptions:
             rows.append([InlineKeyboardButton(text="🎁 7 дней бесплатно", callback_data="act|start_trial|_")])
             rows.append([self._mini_app_button(self._with_card_price("💳 Купить картой"), "/account/buy/")])
@@ -1434,7 +1507,7 @@ class VPNBot:
         can_delete: bool,
         renewal_first: bool = False,
     ) -> InlineKeyboardMarkup:
-        cabinet_button = self._mini_app_button("📱 Открыть кабинет", f"/account/config/{subscription_id}/")
+        cabinet_button = self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")
         qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")
         renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")
         copy_row = [InlineKeyboardButton(text="Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
@@ -1485,9 +1558,9 @@ class VPNBot:
             access_hint = "Доступ скоро закончится. Продлите заранее, чтобы VPN не отключился."
         else:
             access_hint = (
-                "QR и кнопка «Скопировать ссылку» используют подписку VXcloud."
+                "Для подключения откройте QR или скопируйте ссылку подписки."
                 if feed_url
-                else "QR и кнопка «Скопировать ссылку» используют ссылку подключения."
+                else "Для подключения откройте QR или скопируйте ссылку."
             )
         text = (
             f"Устройство: {self._subscription_name(sub)}\n\n"
@@ -1527,9 +1600,9 @@ class VPNBot:
             LOGGER.exception("Failed to record bot event '%s' user_id=%s", event_name, user_id)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        self._clear_text_input_state(context)
         user_id = await self._ensure_user(update)
         await self._refresh_cms()
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
         await self._track_event(user_id, "start", update)
         start_arg = (context.args[0].strip() if context.args else "")
         if start_arg.startswith("link_"):
@@ -1772,34 +1845,72 @@ class VPNBot:
         )
 
     async def buy(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        self._clear_text_input_state(context)
         await self._refresh_cms()
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
         user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
         await self._track_event(user_id, "buy_clicked", update)
         await self._show_buy_offer(message, user_id)
 
     async def trial(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        self._clear_text_input_state(context)
         await self._refresh_cms()
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
         user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
         await self._show_trial_offer(message, user_id)
 
     async def renew(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        self._clear_text_input_state(context)
         await self._refresh_cms()
         user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
         await self._show_renew_offer(message, user_id, context)
         target_subscription_id, _target_sub = await self._resolve_renew_target(user_id, context)
         await self._track_event(user_id, "renew_clicked", update, subscription_id=target_subscription_id)
+
+    async def instructions(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        await self._refresh_cms()
+        user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None:
+            return
+        await message.reply_text(
+            text=self._node_response_text("menu_instructions"),
+            reply_markup=self._node_inline_keyboard("menu_instructions"),
+        )
+
+    async def support(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        await self._refresh_cms()
+        user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None:
+            return
+        await self._show_support_hub(message, user_id)
+
+    async def open_app(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        await self._refresh_cms()
+        user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
+        message = update.message or (update.callback_query.message if update.callback_query else None)
+        if message is None:
+            return
+        account_url = await self._account_url(user_id)
+        await self._track_event(user_id, "open_app", update, metadata={"source": "slash_command"})
+        await message.reply_text(
+            self._content_text(
+                "menu_open_app_response",
+                "Откройте кабинет VXcloud внутри Telegram. Если он не откроется, используйте браузер.",
+            ),
+            reply_markup=self._open_app_fallback_markup(account_url),
+        )
 
     async def admin_reload(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.effective_user or update.effective_user.id != self.settings.telegram_admin_id:
@@ -2056,6 +2167,14 @@ class VPNBot:
             return
 
         kind, target, parent = parts
+        if kind in {"nav", "msg", "act"}:
+            starts_text_input = kind == "act" and (target == "support_start" or target.startswith("cfg_rename:"))
+            user_id_for_cancel = await self._ensure_user(update)
+            if starts_text_input:
+                self._clear_text_input_state(context)
+            else:
+                await self._restore_menu_after_inline_input_cancel(query, context, user_id_for_cancel)
+
         if kind == "nav":
             text = self._node_response_text(target)
             parent_key = None if parent == "_" else parent
@@ -2552,12 +2671,12 @@ class VPNBot:
 
 
     async def mysub(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        self._clear_text_input_state(context)
         await self._refresh_cms()
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
         user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
         await self._send_mysub_for_message(message, user_id, context)
 
     async def _restore_xui_profile_for_subscription(
@@ -2877,9 +2996,9 @@ class VPNBot:
             )
 
     async def myvpn(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-        self._clear_text_input_state(context)
         await self._refresh_cms()
         user_id = await self._ensure_user(update)
+        await self._restore_menu_after_command_input_cancel(update, context, user_id)
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
@@ -3124,7 +3243,7 @@ class VPNBot:
         copy_label = "Скопировать ссылку подписки" if subscription_url else "Скопировать ссылку"
         buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
-            buttons.append([self._mini_app_button("📱 Открыть кабинет", f"/account/config/{subscription_id}/")])
+            buttons.append([self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")])
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
             buttons.append([self._mini_app_button("🔄 Продлить", renew_path)])
         else:
@@ -3148,7 +3267,7 @@ class VPNBot:
         resolved_client_code = client_code or (f"VX-{user_id}" if user_id is not None else "")
         text = self._content_text(
             "menu_mysub_response",
-            "Доступ готов\n\nДействует до: {expires_at}\nID: {client_code}\n\nQR уже выше. Для подключения откройте кабинет или скопируйте ссылку.",
+            "Доступ готов\n\nДействует до: {expires_at}\nID: {client_code}\n\nQR уже выше. Для подключения откройте QR и доступ или скопируйте ссылку.",
         )
         text = (
             text.replace("{expires_at}", self._format_local_dt(expires_at))

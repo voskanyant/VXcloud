@@ -276,6 +276,9 @@ function vx_site_account_app_config() {
     $options = vx_site_get_options();
     $account_url = vx_site_build_shell_url((string) ($options['django_account_url'] ?: '/account/'));
     $account_path = rtrim((string) wp_parse_url($account_url, PHP_URL_PATH), '/') . '/';
+    $telegram_bot_username = trim((string) getenv('TELEGRAM_BOT_USERNAME'));
+    $telegram_bot_username = ltrim($telegram_bot_username, '@');
+    $support_telegram_url = $telegram_bot_username !== '' ? 'https://t.me/' . $telegram_bot_username : '';
 
     return array(
         'accountUrl' => esc_url_raw($account_url),
@@ -289,11 +292,20 @@ function vx_site_account_app_config() {
         'apiBuyUrl' => esc_url_raw(home_url('/account-app/api/buy/')),
         'apiRenewUrl' => esc_url_raw(home_url('/account-app/api/renew/')),
         'apiSubscriptionBaseUrl' => esc_url_raw(home_url('/account-app/api/subscriptions/')),
+        'apiTelegramWebAppAuthUrl' => esc_url_raw(home_url('/api/auth/telegram/webapp')),
         'supportUrl' => esc_url_raw(home_url('/instructions/')),
+        'supportTelegramUrl' => esc_url_raw($support_telegram_url),
     );
 }
 
 function vx_site_enqueue_account_app_assets() {
+    wp_enqueue_script(
+        'telegram-web-app',
+        'https://telegram.org/js/telegram-web-app.js',
+        array(),
+        null,
+        false
+    );
     wp_enqueue_style(
         'vx-site-account-app',
         VX_SITE_INTEGRATION_URL . 'assets/account-app.css',

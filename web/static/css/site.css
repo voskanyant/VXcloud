@@ -3168,6 +3168,36 @@ body.vx-account-shell #footer {
   border-color: var(--account-line);
 }
 
+.account-instructions-access {
+  display: grid;
+  gap: 6px;
+}
+
+.account-instructions-access strong,
+.account-instructions-access span {
+  min-width: 0;
+}
+
+.account-instructions-access span {
+  color: var(--account-muted);
+}
+
+.account-step-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 14px 16px 14px 38px;
+  color: var(--account-ink);
+  background: #ffffff;
+  border: 1px solid var(--account-hairline);
+  border-radius: 0;
+}
+
+.account-step-list li {
+  padding-left: 2px;
+  line-height: 1.45;
+}
+
 .account-config-layout {
   grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
 }
@@ -3426,6 +3456,7 @@ body.vx-account-embed .account-page-shell {
 }
 
 body.vx-account-embed .account-hero {
+  order: 1;
   padding: 2px 0 8px;
   border-bottom: 0;
 }
@@ -3490,6 +3521,7 @@ body.vx-account-embed .account-button strong {
 }
 
 body.vx-account-embed .account-summary {
+  order: 3;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
@@ -3528,6 +3560,10 @@ body.vx-account-embed .account-section-meta {
 body.vx-account-embed .account-section {
   padding: 10px 0 0;
   border: 0;
+}
+
+body.vx-account-embed #account-subscriptions {
+  order: 2;
 }
 
 body.vx-account-embed .account-section-head {
@@ -3595,6 +3631,59 @@ body.vx-account-embed #account-subscriptions .account-device-actions form {
   grid-column: 1 / -1;
 }
 
+body.vx-account-embed .account-page-shell-config {
+  padding-top: 12px;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-layout {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+body.vx-account-embed .account-page-shell-config .account-section-qr {
+  order: 1;
+  padding: 10px 0 0;
+  border: 0;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-link-section {
+  order: 1;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-status-section {
+  order: 2;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-list-section {
+  order: 3;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-rename-section {
+  order: 4;
+}
+
+body.vx-account-embed .account-page-shell-config .auth-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.vx-account-embed .account-page-shell-config .account-qr-frame {
+  min-height: auto;
+  padding: 12px;
+  border-radius: var(--account-mini-radius);
+}
+
+body.vx-account-embed .account-page-shell-config .account-qr-image {
+  width: min(100%, 240px);
+}
+
 body.vx-account-embed .account-page-shell-instructions {
   gap: 12px;
   padding-top: 12px;
@@ -3623,6 +3712,17 @@ body.vx-account-embed #account-instructions .account-message {
   border-radius: var(--account-mini-radius);
   font-size: 14px;
   line-height: 1.45;
+}
+
+body.vx-account-embed #account-instructions .account-instructions-access {
+  background: #f7fafc;
+}
+
+body.vx-account-embed #account-instructions .account-step-list {
+  gap: 8px;
+  padding: 12px 12px 12px 34px;
+  border-radius: var(--account-mini-radius);
+  font-size: 14px;
 }
 
 body.vx-account-embed .account-instructions-device-actions {

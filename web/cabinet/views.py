@@ -446,7 +446,7 @@ def _serialize_subscription_row(request: HttpRequest, row: dict[str, object]) ->
 def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
     empty_payload = {
         "title": "Личный кабинет",
-        "subtitle": "Управляйте доступами, конфигами и подключением в одном месте.",
+        "subtitle": "Управляйте доступами, QR и подключением в одном месте.",
         "card_price_label": _format_minor_amount_rub(settings.CARD_PAYMENT_AMOUNT_MINOR),
         "access_count": 0,
         "user": {
@@ -525,10 +525,22 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
 
 
 def _build_support_payload(request: HttpRequest) -> dict[str, object]:
+    client_code = ""
+    try:
+        _linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
+        client_code = getattr(bot_user, "client_code", "") or ""
+    except Exception as exc:
+        LOGGER.warning(
+            "account_support_resolve_bot_user_failed",
+            extra={
+                "django_user_id": int(getattr(request.user, "id", 0) or 0),
+                "error": str(exc),
+            },
+        )
     return {
         "title": "Поддержка",
         "subtitle": "Напишите в Telegram для помощи по аккаунту или откройте инструкцию по подключению.",
-        "client_code": "",
+        "client_code": client_code,
         "telegram_url": _telegram_bot_url(),
         "instructions_url": _account_backend_url(request, "?view=instructions"),
         "dashboard_url": _account_frontend_url(),
@@ -548,9 +560,26 @@ def _normalize_instruction_device(value: str | None) -> str:
 
 def _build_instructions_payload(request: HttpRequest, *, device: str = "") -> dict[str, object]:
     selected_device = _normalize_instruction_device(device)
+    primary_subscription: dict[str, object] | None = None
+    access_count = 0
+    try:
+        _linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
+        rows, _active_configs, _inactive_configs = _build_subscription_rows(bot_user)
+        access_count = len(rows)
+        selected_row = next((row for row in rows if bool(row.get("is_active"))), rows[0] if rows else None)
+        if selected_row:
+            primary_subscription = _serialize_subscription_row(request, selected_row)
+    except Exception as exc:
+        LOGGER.warning(
+            "account_instructions_access_lookup_failed",
+            extra={
+                "django_user_id": int(getattr(request.user, "id", 0) or 0),
+                "error": str(exc),
+            },
+        )
     return {
         "title": "Инструкция по подключению",
-        "subtitle": "Выберите устройство и откройте QR или subscription URL в своем кабинете.",
+        "subtitle": "Выберите устройство, затем откройте QR и ссылку подписки прямо здесь.",
         "device": selected_device,
         "devices": [
             {"key": "iphone", "label": "iPhone", "url": _account_backend_url(request, "?view=instructions&device=iphone")},
@@ -563,6 +592,8 @@ def _build_instructions_payload(request: HttpRequest, *, device: str = "") -> di
         ],
         "dashboard_url": _account_backend_url(request),
         "support_url": _account_backend_url(request, "?view=support"),
+        "primary_subscription": primary_subscription,
+        "access_count": access_count,
     }
 
 
@@ -615,7 +646,7 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
         row_map = {int(row["id"]): row for row in rows}
         current_row = row_map.get(int(subscription_id))
         if current_row is None:
-            return None, "Конфиг не найден."
+            return None, "Доступ не найден."
 
         sub = current_row["obj"]
         raw_vless_url = str(getattr(sub, "vless_url", "") or "").strip()
@@ -784,20 +815,20 @@ def _resolve_renew_target_subscription_id(
         requested_id = int(requested_subscription_id)
         if any(int(item.id) == requested_id for item in subscriptions):
             return requested_id, None
-        return None, "Конфиг для продления не найден."
+        return None, "Доступ для продления не найден."
 
     if len(subscriptions) == 1:
         return int(subscriptions[0].id), None
     if len(subscriptions) > 1:
-        return None, "Выберите, какой конфиг продлить."
-    return None, "Нет конфигов, которые можно продлить."
+        return None, "Выберите, какой доступ продлить."
+    return None, "Нет доступов, которые можно продлить."
 
 
 def _subscription_display_name(subscription: BotSubscription) -> str:
     value = (getattr(subscription, "display_name", "") or "").strip()
     if value:
         return value
-    return f"Конфиг #{subscription.id}"
+    return f"Устройство #{subscription.id}"
 
 
 def _subscription_state(subscription: BotSubscription | None, *, now: datetime | None = None) -> dict[str, object]:
@@ -1117,7 +1148,7 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
     if subscription_id is not None:
         selected = next((s for s in subscriptions if int(s.id) == int(subscription_id)), None)
         if selected is None:
-            messages.error(request, "Конфиг не найден")
+            messages.error(request, "Доступ не найден")
             return _account_redirect(request)
         sub = selected
         has_active = bool(sub.is_active and sub.expires_at > timezone.now())
@@ -1397,7 +1428,7 @@ def account_api_state(request: HttpRequest) -> JsonResponse:
         payload["view"] = "auth"
         payload["auth"] = {
             "title": "Вход",
-            "subtitle": "Войдите в аккаунт, чтобы управлять доступами и конфигами.",
+            "subtitle": "Войдите в аккаунт, чтобы управлять доступами и подписками.",
             "login_label": "Войти",
             "signup_label": "Регистрация",
             "forgot_password_label": "Забыли пароль?",
@@ -1587,7 +1618,7 @@ def account_api_rename_subscription(request: HttpRequest, subscription_id: int) 
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
-        return _json_error("Конфиг не найден.", status=404)
+        return _json_error("Доступ не найден.", status=404)
 
     data = _json_body(request)
     new_name = str(data.get("display_name") or "").strip()
@@ -1609,7 +1640,7 @@ def account_api_rename_subscription(request: HttpRequest, subscription_id: int) 
 def _delete_subscription_everywhere(subscription: BotSubscription) -> tuple[bool, str | None]:
     state = _subscription_state(subscription)
     if bool(state["is_active"]):
-        return False, "Активный конфиг нельзя удалить. Сначала дождитесь окончания срока действия."
+        return False, "Активный доступ нельзя удалить. Сначала дождитесь окончания срока действия."
 
     try:
         from backoffice.views import (  # type: ignore
@@ -1641,7 +1672,7 @@ def _delete_subscription_everywhere(subscription: BotSubscription) -> tuple[bool
             "account_subscription_delete_xui_failed",
             extra={"subscription_id": int(subscription.id)},
         )
-        return False, "Не удалось удалить конфиг. Попробуйте ещё раз позже."
+        return False, "Не удалось удалить доступ. Попробуйте ещё раз позже."
 
     with transaction.atomic():
         try:
@@ -1666,11 +1697,11 @@ def account_api_delete_subscription(request: HttpRequest, subscription_id: int) 
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
-        return _json_error("Конфиг не найден.", status=404)
+        return _json_error("Доступ не найден.", status=404)
 
     deleted, error_message = _delete_subscription_everywhere(subscription)
     if not deleted:
-        return _json_error(error_message or "Не удалось удалить конфиг.", status=400)
+        return _json_error(error_message or "Не удалось удалить доступ.", status=400)
     return JsonResponse({"ok": True, "subscription_id": int(subscription_id)})
 
 
@@ -1684,18 +1715,18 @@ def rename_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
-        messages.error(request, "Конфиг не найден.")
+        messages.error(request, "Доступ не найден.")
         return _redirect_after_account_post(request)
 
     new_name = (request.POST.get("display_name") or "").strip()
     if not new_name:
-        messages.error(request, "Введите имя конфига.")
+        messages.error(request, "Введите имя устройства.")
         return _redirect_after_account_post(request)
 
     subscription.display_name = new_name[:80]
     subscription.updated_at = timezone.now()
     subscription.save(update_fields=["display_name", "updated_at"])
-    messages.success(request, "Имя конфига обновлено.")
+    messages.success(request, "Имя устройства обновлено.")
     return _redirect_after_account_post(request)
 
 
@@ -1709,7 +1740,7 @@ def revoke_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
-        messages.error(request, "Конфиг не найден.")
+        messages.error(request, "Доступ не найден.")
         return _account_redirect(request)
 
     now = timezone.now()
@@ -1717,7 +1748,7 @@ def revoke_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
     subscription.revoked_at = now
     subscription.updated_at = now
     subscription.save(update_fields=["is_active", "revoked_at", "updated_at"])
-    messages.success(request, "Конфиг отключен.")
+    messages.success(request, "Доступ отключен.")
     return _account_redirect(request)
 
 
@@ -1731,15 +1762,15 @@ def delete_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
 
     subscription = BotSubscription.objects.filter(id=subscription_id, user_id=bot_user.id).first()
     if not subscription:
-        messages.error(request, "Конфиг не найден.")
+        messages.error(request, "Доступ не найден.")
         return _redirect_after_account_post(request)
 
     deleted, error_message = _delete_subscription_everywhere(subscription)
     if not deleted:
-        messages.error(request, error_message or "Не удалось удалить конфиг.")
+        messages.error(request, error_message or "Не удалось удалить доступ.")
         return _redirect_after_account_post(request)
 
-    messages.success(request, "Конфиг удален.")
+    messages.success(request, "Доступ удален.")
     return _redirect_after_account_post(request)
 
 
