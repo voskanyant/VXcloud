@@ -42,6 +42,14 @@ class FakeDB:
         del user_id
         return self.subscriptions.get(subscription_id)
 
+    async def ensure_subscription_feed_token(self, subscription_id: int):
+        sub = self.subscriptions.get(subscription_id)
+        if not sub:
+            return ""
+        token = str(sub.get("feed_token") or f"feed-{subscription_id}")
+        sub["feed_token"] = token
+        return token
+
     async def upsert_user(self, telegram_id, username, first_name):
         del telegram_id, username, first_name
         return 123
@@ -377,6 +385,23 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[3][0].callback_data, "nav|menu_instructions|_")
         self.assertEqual(len(markup.inline_keyboard), 4)
 
+    async def test_send_config_fallback_connection_link_label_is_russian(self):
+        bot = make_bot()
+        message = FakeMessage()
+
+        await bot._send_config(
+            update=None,
+            vless_url="vless://11111111-1111-4111-8111-111111111111@example.test:443?type=tcp#VXcloud",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            subscription_url=None,
+            subscription_id=42,
+            user_id=123,
+            message=message,
+        )
+
+        self.assertIn("\u0421\u0441\u044b\u043b\u043a\u0430 \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f:", message.replies[-1][0])
+        self.assertNotIn("Connection link", message.replies[-1][0])
+
     async def test_trial_success_markup_uses_mini_app_config_first(self):
         bot = make_bot()
 
@@ -513,6 +538,34 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(bot.xui.deleted, [])
         self.assertIn("\u0423\u0434\u0430\u043b\u0438\u0442\u044c Old phone?", query.edits[-1][0])
         self.assertEqual(query.edits[-1][1].inline_keyboard[0][0].callback_data, "act|cfg_delete_confirm:42|_")
+
+    async def test_delete_cancel_answer_is_russian(self):
+        db = FakeDB()
+        db.subscriptions[42] = expired_subscription()
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|cfg_delete_cancel:42|_")
+
+        await bot.inline_callback(make_callback_update(query), SimpleNamespace(user_data={}))
+
+        self.assertEqual(query.answers[-1], ("\u0423\u0434\u0430\u043b\u0435\u043d\u0438\u0435 \u043e\u0442\u043c\u0435\u043d\u0435\u043d\u043e", False))
+
+    async def test_active_delete_rejection_answer_is_russian(self):
+        db = FakeDB()
+        db.subscriptions[42] = {
+            **expired_subscription(),
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=10),
+            "is_active": True,
+        }
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|cfg_delete_request:42|_")
+
+        await bot.inline_callback(make_callback_update(query), SimpleNamespace(user_data={}))
+
+        self.assertEqual(
+            query.answers[-1],
+            ("\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0439 \u043a\u043e\u043d\u0444\u0438\u0433 \u0443\u0434\u0430\u043b\u0438\u0442\u044c \u043d\u0435\u043b\u044c\u0437\u044f", True),
+        )
+        self.assertEqual(db.deleted, [])
 
     async def test_delete_confirm_removes_subscription_after_confirmation(self):
         db = FakeDB()
@@ -701,7 +754,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("support_wait_message", context.user_data)
         self.assertEqual(db.support_messages, [])
         self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
-        self.assertIn("Input cancelled", message.replies[0][0])
+        self.assertIn("\u0412\u0432\u043e\u0434 \u043e\u0442\u043c\u0435\u043d\u0435\u043d", message.replies[0][0])
         self.assertIn("VX-000123", message.replies[-1][0])
         self.assertIn("Mini App", message.replies[-1][0])
 
@@ -770,7 +823,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("rename_wait_subscription_id", context.user_data)
         self.assertEqual(db.renamed, [])
         self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
-        self.assertIn("Input cancelled", message.replies[0][0])
+        self.assertIn("\u0412\u0432\u043e\u0434 \u043e\u0442\u043c\u0435\u043d\u0435\u043d", message.replies[0][0])
         self.assertIn("Mini App", message.replies[-1][0])
 
 

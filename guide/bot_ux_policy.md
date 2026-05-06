@@ -97,6 +97,8 @@ The 2026-05-06 cleanup did three things:
 - changed bot default labels from English to Russian
 - reduced noisy duplicate inline rows on config and payment success cards
 - kept Mini App as the primary account surface, with limited browser fallback
+- cleaned remaining English fallback labels in input cancellation, delete alerts,
+  and raw connection-link messages
 
 It also added a 3x-ui client update fallback for panels that reject wrapped
 `updateClient` payloads with `empty client ID`.

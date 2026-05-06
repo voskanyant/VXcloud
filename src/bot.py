@@ -1192,7 +1192,7 @@ class VPNBot:
             text += f"\n\nПодписка: {feed_url}"
             text += "\nПосле импорта VXcloud сможет менять ноду без ручной замены конфига."
         elif raw_vless_url:
-            text += f"\n\nConnection link: {raw_vless_url}"
+            text += f"\n\nСсылка подключения: {raw_vless_url}"
         return text, primary_link, raw_vless_url
 
     async def _ensure_user(self, update: Update) -> int:
@@ -1298,7 +1298,7 @@ class VPNBot:
             context.user_data.pop("support_wait_message", None)
             context.user_data.pop("rename_wait_subscription_id", None)
             await update.message.reply_text(
-                self._content_text("input_cancelled_by_menu_message", "Input cancelled. Use the main menu below."),
+                self._content_text("input_cancelled_by_menu_message", "Ввод отменен. Используйте главное меню ниже."),
                 reply_markup=menu_keyboard,
             )
 
@@ -2083,15 +2083,15 @@ class VPNBot:
                 try:
                     subscription_id = int(target.split(":", 1)[1])
                 except (IndexError, ValueError):
-                    await query.answer("Invalid device", show_alert=True)
+                    await query.answer("Некорректное устройство", show_alert=True)
                     return
                 sub = await self.db.get_subscription(user_id, subscription_id)
                 if not sub:
-                    await query.answer("Device not found", show_alert=True)
+                    await query.answer("Устройство не найдено", show_alert=True)
                     return
                 client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
                 text, primary_link, _raw_vless_url = await self._config_card_text(user_id, sub, client_code=client_code)
-                await query.answer("Delete cancelled")
+                await query.answer("Удаление отменено")
                 if query.message is not None:
                     await query.edit_message_text(
                         text=text,
@@ -2108,14 +2108,14 @@ class VPNBot:
                 try:
                     subscription_id = int(target.split(":", 1)[1])
                 except (IndexError, ValueError):
-                    await query.answer("Invalid device", show_alert=True)
+                    await query.answer("Некорректное устройство", show_alert=True)
                     return
                 sub = await self.db.get_subscription(user_id, subscription_id)
                 if not sub:
-                    await query.answer("Device not found", show_alert=True)
+                    await query.answer("Устройство не найдено", show_alert=True)
                     return
                 if not self._subscription_can_delete(sub):
-                    await query.answer("Active configs cannot be deleted", show_alert=True)
+                    await query.answer("Активный конфиг удалить нельзя", show_alert=True)
                     return
                 await query.answer()
                 if query.message is not None:
@@ -2833,7 +2833,7 @@ class VPNBot:
         if subscription_url and "{subscription_url}" not in text:
             text += f"\nПодписка VXcloud: {subscription_url}"
         elif vless_url and "{vless_url}" not in text:
-            text += f"\nConnection link: {vless_url}"
+            text += f"\nСсылка подключения: {vless_url}"
         if "Способ оплаты:" not in text:
             text += f"\nСпособ оплаты: {self._format_payment_method(last_payment_method)}"
         copy_link_hint = self._content_text(
