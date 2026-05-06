@@ -296,9 +296,16 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         renew_markup = bot._renew_success_markup(42, account_url)
 
         self.assertEqual(paid_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(paid_markup.inline_keyboard[1][0].text, "Open in bot")
+        self.assertEqual(paid_markup.inline_keyboard[1][0].callback_data, "act|cfg_open:42|_")
+        self.assertEqual(paid_markup.inline_keyboard[1][1].text, "QR")
+        self.assertEqual(paid_markup.inline_keyboard[-1][0].text, "My VPN")
         self.assertEqual(paid_markup.inline_keyboard[-1][1].text, "Open in browser")
         self.assertEqual(paid_markup.inline_keyboard[-1][1].url, account_url)
         self.assertEqual(renew_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(renew_markup.inline_keyboard[1][0].text, "Open in bot")
+        self.assertEqual(renew_markup.inline_keyboard[1][1].text, "QR")
+        self.assertEqual(renew_markup.inline_keyboard[-1][0].text, "My VPN")
         self.assertEqual(renew_markup.inline_keyboard[-1][1].text, "Open in browser")
 
     async def test_send_config_actions_are_mini_app_first(self):
@@ -336,6 +343,16 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
         self.assertEqual(markup.inline_keyboard[2][1].callback_data, "act|start_mysub|_")
+
+    async def test_trial_offer_markup_uses_clean_contextual_actions(self):
+        bot = make_bot()
+
+        markup = bot._trial_offer_markup()
+
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Activate 7 days")
+        self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|trial_activate|_")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "How to connect")
+        self.assertEqual(markup.inline_keyboard[1][1].text, "Back")
 
     async def test_trial_used_state_is_app_first_buy(self):
         db = FakeDB()

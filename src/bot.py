@@ -592,10 +592,10 @@ class VPNBot:
     def _trial_offer_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(text="🎁 Активировать 7 дней", callback_data="act|trial_activate|_")],
+                [InlineKeyboardButton(text="Activate 7 days", callback_data="act|trial_activate|_")],
                 [
-                    InlineKeyboardButton(text="💬 Как это работает", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="⬅️ Назад", callback_data="act|start_back|_"),
+                    InlineKeyboardButton(text="How to connect", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="Back", callback_data="act|start_back|_"),
                 ],
             ]
         )
@@ -672,11 +672,11 @@ class VPNBot:
             [
                 [self._mini_app_button("Open app", f"/account/config/{subscription_id}/")],
                 [
-                    InlineKeyboardButton(text="🚀 Открыть", callback_data=f"act|cfg_open:{subscription_id}|_"),
-                    InlineKeyboardButton(text="📷 QR-код", callback_data=f"act|cfg_qr:{subscription_id}|_"),
+                    InlineKeyboardButton(text="Open in bot", callback_data=f"act|cfg_open:{subscription_id}|_"),
+                    InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
                 ],
                 [
-                    InlineKeyboardButton(text="📊 Мой доступ", callback_data="act|start_mysub|_"),
+                    InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_"),
                     InlineKeyboardButton(text="Open in browser", url=account_url),
                 ],
             ]
@@ -766,11 +766,11 @@ class VPNBot:
             [
                 [self._mini_app_button("Open app", f"/account/config/{subscription_id}/")],
                 [
-                    InlineKeyboardButton(text="🚀 Открыть", callback_data=f"act|cfg_open:{subscription_id}|_"),
-                    InlineKeyboardButton(text="📷 QR-код", callback_data=f"act|cfg_qr:{subscription_id}|_"),
+                    InlineKeyboardButton(text="Open in bot", callback_data=f"act|cfg_open:{subscription_id}|_"),
+                    InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
                 ],
                 [
-                    InlineKeyboardButton(text="📊 Мой доступ", callback_data="act|start_mysub|_"),
+                    InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_"),
                     InlineKeyboardButton(text="Open in browser", url=account_url),
                 ],
             ]
