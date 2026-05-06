@@ -111,7 +111,18 @@ def _subscription_feed_url(request: HttpRequest, subscription: BotSubscription) 
 
 
 def _account_embed_mode(request: HttpRequest) -> bool:
-    return (request.GET.get("embed") or "").strip() == "1"
+    path = str(getattr(request, "path", "") or "")
+    next_value = str(request.GET.get("next", "") or "")
+    return_to = str(request.GET.get("return_to", "") or "")
+    if (request.GET.get("embed") or "").strip() == "1":
+        return True
+    if path.startswith("/account-app/"):
+        return True
+    if path.startswith("/accounts/") and next_value.startswith("/account-app/"):
+        return True
+    return path.startswith("/auth/telegram/login/") and (
+        next_value.startswith("/account-app/") or return_to.startswith("/account-app/")
+    )
 
 
 def _account_backend_base(request: HttpRequest) -> str:
@@ -309,6 +320,16 @@ def _telegram_login_auth_url_for_return_to(request: HttpRequest, return_to: str 
 
 def _account_template_urls(request: HttpRequest) -> dict[str, object]:
     telegram_login_bot_username = _telegram_login_bot_username()
+    telegram_login_auth_url = _telegram_login_auth_url(request) if telegram_login_bot_username else ""
+    telegram_login_auth_popup_url = (
+        _telegram_login_auth_url_for_return_to(
+            request,
+            request.GET.get("next") or request.get_full_path(),
+            popup=True,
+        )
+        if telegram_login_bot_username
+        else ""
+    )
     return {
         "embed_mode": _account_embed_mode(request),
         "frontend_dashboard_url": _account_frontend_url(),
@@ -322,7 +343,8 @@ def _account_template_urls(request: HttpRequest) -> dict[str, object]:
         "support_telegram_url": _telegram_bot_url(),
         "telegram_login_enabled": bool(telegram_login_bot_username),
         "telegram_login_bot_username": telegram_login_bot_username,
-        "telegram_login_auth_url": _telegram_login_auth_url(request) if telegram_login_bot_username else "",
+        "telegram_login_auth_url": telegram_login_auth_url,
+        "telegram_login_auth_popup_url": telegram_login_auth_popup_url,
     }
 
 

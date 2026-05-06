@@ -27,6 +27,7 @@ django.setup()
 from unittest.mock import patch
 
 from cabinet.views import (
+    _account_template_urls,
     _telegram_login_auth_url,
     _verify_telegram_login_payload,
     telegram_login,
@@ -63,6 +64,13 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
         self.assertIn("data-account-authenticated", template)
         self.assertIn("returnTo: currentUrl.pathname + currentUrl.search + currentUrl.hash", template)
 
+    def test_telegram_widget_uses_server_callback_url(self):
+        template = (WEB_ROOT / "templates" / "partials" / "_telegram_auth_widget.html").read_text(encoding="utf-8")
+
+        self.assertIn("data-auth-url=", template)
+        self.assertIn("telegram_login_auth_popup_url", template)
+        self.assertNotIn("data-onauth=", template)
+
     def test_telegram_login_widget_url_uses_same_window_callback(self):
         request = self.factory.get("/accounts/login/")
         request.META["HTTP_HOST"] = "vxcloud.ru"
@@ -78,6 +86,22 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
         self.assertEqual(parsed.path, "/auth/telegram/login/")
         self.assertEqual(query.get("return_to"), ["/account/"])
         self.assertNotIn("popup", query)
+
+    def test_telegram_login_widget_popup_url_targets_account_app_from_embed_login(self):
+        request = self.factory.get("/accounts/login/?next=/account-app/%3Fembed%3D1")
+        request.META["HTTP_HOST"] = "vxcloud.ru"
+
+        with patch.dict(os.environ, {"TELEGRAM_BOT_USERNAME": "vxcloud_login_bot"}):
+            context = _account_template_urls(request)
+
+        parsed = urlparse(str(context["telegram_login_auth_popup_url"]))
+        query = parse_qs(parsed.query)
+
+        self.assertEqual(parsed.path, "/auth/telegram/login/")
+        self.assertEqual(query.get("popup"), ["1"])
+        self.assertEqual(query.get("embed"), ["1"])
+        self.assertEqual(query.get("return_to"), ["/account-app/?embed=1"])
+        self.assertEqual(query.get("next"), ["/account-app/?embed=1"])
 
     def test_verify_telegram_login_payload_accepts_valid_signature(self):
         auth_date = "1712430000"
@@ -200,6 +224,43 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
             first_name="VX",
             last_name="Cloud",
         )
+        login_mock.assert_called_once_with(
+            request,
+            user,
+            backend="django.contrib.auth.backends.ModelBackend",
+        )
+
+    def test_telegram_login_popup_renders_completion_page_for_account_app(self):
+        payload = {
+            "id": "777000",
+            "first_name": "VX",
+            "last_name": "Cloud",
+            "username": "vxcloud_user",
+            "auth_date": "1712430000",
+        }
+        bot_token = "telegram-bot-token"
+        signed_payload = dict(payload)
+        signed_payload["hash"] = _sign_telegram_login_payload(payload, bot_token)
+        signed_payload["next"] = "/account-app/?embed=1"
+        signed_payload["return_to"] = "/account-app/?embed=1"
+        signed_payload["popup"] = "1"
+
+        request = self.factory.get("/auth/telegram/login/", data=signed_payload)
+        user = object()
+
+        with override_settings(
+            TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_LOGIN_BOT_TOKEN=bot_token,
+            TELEGRAM_LOGIN_AUTH_MAX_AGE_SECONDS=10**9,
+            ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"],
+        ):
+            with patch("cabinet.views.transaction.atomic", return_value=nullcontext()):
+                with patch("cabinet.views._get_or_create_user_for_telegram", return_value=user):
+                    with patch("cabinet.views.login") as login_mock:
+                        response = telegram_login(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b"/account-app/?embed=1", response.content)
         login_mock.assert_called_once_with(
             request,
             user,
