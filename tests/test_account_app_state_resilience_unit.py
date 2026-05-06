@@ -204,6 +204,30 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertNotIn("Ваши доступы", html)
         self.assertNotIn("Open full guide", html)
 
+    def test_account_app_instructions_view_has_copy_link_cta_when_access_exists(self):
+        bot_user = SimpleNamespace(id=7, client_code="VX-000007")
+        subscription = SimpleNamespace(
+            id=42,
+            display_name="Phone",
+            expires_at=timezone.now() + timedelta(days=7),
+            is_active=True,
+            revoked_at=None,
+            user=bot_user,
+            vless_url="vless://example",
+            feed_token="feed-token",
+        )
+        with patch("cabinet.views._resolve_account_bot_user", return_value=(None, bot_user)):
+            with patch("cabinet.views._get_subscription_snapshot_for_bot_user", return_value=(subscription, True, None)):
+                with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[subscription]):
+                    response = self.client.get("/account-app/?view=instructions&device=iphone&embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Скопировать ссылку", html)
+        self.assertIn("js-copy-config", html)
+        self.assertIn("/account/feed/feed-token/", html)
+        self.assertIn("data-copy-text=", html)
+
     def test_account_app_dashboard_copy_is_localized(self):
         bot_user = SimpleNamespace(id=7, client_code="VX-000007")
         subscription = SimpleNamespace(

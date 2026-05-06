@@ -1,39 +1,53 @@
 {% extends 'base.html' %}
-{% load cms %}
 
 {% block title %}Доступ - VXcloud{% endblock %}
 
 {% block content %}
-{% cms_text "cabinet.config.back_action" "Назад в кабинет" as cabinet_config_back_action %}
-
 <div class="account-page-shell account-page-shell-config">
-  <section class="account-config-layout">
-    <article class="account-section account-section-qr">
-      <div class="auth-actions">
-        <a class="account-secondary-button" href="{{ backend_dashboard_url }}">{{ cabinet_config_back_action }}</a>
-        {% if can_renew %}
-          <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
-        {% endif %}
-      </div>
+  <section class="account-config-hero">
+    <div>
+      <p class="account-kicker">Доступ</p>
+      <h1 class="account-title account-title-compact">{{ display_name }}</h1>
+      <p class="account-intro">Основной способ подключения — ссылка подписки. Скопируйте ее и импортируйте в VPN-приложение. QR оставлен как запасной вариант.</p>
+    </div>
+    <div class="account-config-hero-actions">
+      <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
+      {% if can_renew %}
+        <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+      {% endif %}
+    </div>
+  </section>
 
-      <div class="account-section-head">
-        <div>
-          <div class="account-eyebrow">QR</div>
-          <h2 class="account-section-title">QR для импорта</h2>
+  <section class="account-config-layout account-config-layout-redesigned">
+    <div class="account-config-main">
+      <article class="account-section account-config-link-section">
+        <div class="account-section-head">
+          <div>
+            <p class="account-kicker">Подключение</p>
+            <h2 class="account-section-title">Ссылка подписки</h2>
+          </div>
+          <div class="account-section-meta">#{{ subscription.id }}</div>
         </div>
-        <div class="account-section-meta">#{{ subscription.id }}</div>
-      </div>
 
-      <div class="account-qr-frame">
-        <img id="qr" class="account-qr-image" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
-      </div>
-    </article>
+        <button type="button" class="account-primary-button account-config-copy-main" id="copy-config-main">Скопировать ссылку</button>
+        <div class="account-link-row">
+          <input id="cfg" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
+          <button type="button" class="account-icon-button" id="copy-config-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+            <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
+          </button>
+        </div>
 
-    <div class="account-config-stack">
+        <ol class="account-mini-steps account-config-mini-steps">
+          <li>Скопируйте ссылку.</li>
+          <li>Откройте Streisand, V2Box, v2rayNG, Hiddify или Nekoray.</li>
+          <li>Нажмите «+» и выберите импорт из буфера.</li>
+        </ol>
+      </article>
+
       <article class="account-section account-config-status-section">
         <div class="account-section-head">
           <div>
-            <div class="account-eyebrow">Состояние</div>
+            <p class="account-kicker">Состояние</p>
             <h2 class="account-section-title">Состояние доступа</h2>
           </div>
         </div>
@@ -64,7 +78,12 @@
 
       {% if subscriptions %}
         <article class="account-section account-config-list-section">
-          <div class="account-link-label">Все доступы</div>
+          <div class="account-section-head">
+            <div>
+              <p class="account-kicker">Доступы</p>
+              <h2 class="account-section-title">Все доступы</h2>
+            </div>
+          </div>
           <div class="account-config-list">
             {% for sub_item in subscriptions %}
               {% if sub_item.id == subscription.id %}
@@ -85,35 +104,38 @@
         </article>
       {% endif %}
 
-      <article class="account-section account-config-link-section">
-        <label class="account-link-label" for="cfg">Ссылка подписки</label>
-        <button type="button" class="account-primary-button account-config-copy-main" id="copy-config-main">Скопировать ссылку</button>
-        <div class="account-link-row">
-          <input id="cfg" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
-          <button type="button" class="account-icon-button" id="copy-config-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
-            <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
-          </button>
-        </div>
-        <p class="account-subtle account-subtle-block">Основной способ подключения — ссылка подписки. QR используйте только если приложение не умеет импорт из буфера.</p>
-        <ol class="account-mini-steps account-config-mini-steps">
-          <li>Скопируйте ссылку.</li>
-          <li>Откройте Streisand, V2Box или v2rayNG.</li>
-          <li>Нажмите «+» и выберите импорт из буфера.</li>
-        </ol>
-      </article>
-
       <article class="account-section account-config-rename-section">
-        <label class="account-link-label" for="cfg-rename">Имя устройства</label>
+        <div class="account-section-head">
+          <div>
+            <p class="account-kicker">Настройки</p>
+            <h2 class="account-section-title">Название доступа</h2>
+          </div>
+        </div>
         <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="account-inline-form">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-          <input id="cfg-rename" type="text" class="account-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Имя устройства" />
+          <input id="cfg-rename" type="text" class="account-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Название доступа" />
           <button type="submit" class="account-icon-button" title="Переименовать" aria-label="Переименовать">
             <span class="account-icon-glyph" aria-hidden="true">&#9998;</span>
           </button>
         </form>
       </article>
     </div>
+
+    <aside class="account-config-side">
+      <article class="account-section account-section-qr" id="qr">
+        <div class="account-section-head">
+          <div>
+            <p class="account-kicker">QR</p>
+            <h2 class="account-section-title">QR для импорта</h2>
+          </div>
+        </div>
+        <div class="account-qr-frame">
+          <img class="account-qr-image" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
+        </div>
+        <p class="account-subtle account-subtle-block">Сканируйте QR только если приложение не умеет импортировать ссылку из буфера.</p>
+      </article>
+    </aside>
   </section>
 </div>
 

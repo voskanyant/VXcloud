@@ -19,6 +19,11 @@ fallback and can use a wider layout.
 
 - Telegram opens the Django `/account-app/` pages. WordPress account shortcode
   styles do not control the Mini App dashboard.
+- Customer account templates live in `web/templates/cabinet/dashboard.html` and
+  `web/templates/cabinet/config.html`; the matching account CSS lives in
+  `web/static/css/site.css`.
+- Do not edit WordPress header/footer to fix account body layout. The account
+  body should fit under the inherited WordPress shell.
 - The embedded dashboard is a separate mobile-first account surface, not the
   desktop account page squeezed into Telegram.
 - The first dashboard screen is link-first: `Мой VPN`, `Ваши доступы`, and
@@ -142,6 +147,26 @@ fallback and can use a wider layout.
   primary detail screen: QR hint and quick guide near the QR, delete in the
   lower management block, and `Название доступа` for rename fields.
 - The desktop browser fallback can keep the wider two-column layout.
+
+## Account Page Redesign Notes
+
+- The public `/account/` page and the native `/account-app/` dashboard share the
+  same customer priorities: copy the subscription link first, then show QR as a
+  fallback, then expose renewal and management actions.
+- The public account page may use a wider two-column layout with a quiet account
+  sidebar, but it must still stay mobile-first. On phones, the first screen
+  should show `Мой VPN`, the primary buy/renew/instruction actions, and the
+  start of `Ваши доступы`.
+- The Mini App dashboard must not be a squeezed desktop page. It uses compact
+  rounded blocks, a short identity line, link-first access cards, and one-tap
+  `Скопировать ссылку` actions.
+- The access detail page should read as a setup page: heading, copy-link CTA,
+  subscription URL field, short import steps, status, then QR fallback.
+- The instruction page must include a direct copy-link CTA when an active access
+  exists. It should not force the user to go back to the dashboard only to copy
+  the subscription link.
+- Every account surface should be checked with fresh screenshots at phone,
+  Mini App, and desktop sizes before pushing UI changes.
 
 ## Support Rules
 

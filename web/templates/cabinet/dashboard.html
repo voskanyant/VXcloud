@@ -1,17 +1,8 @@
 {% extends 'base.html' %}
-{% load cms %}
 
-{% cms_text "cabinet.dashboard.page_title" "Личный кабинет - VXcloud" as cabinet_page_title %}
-{% block title %}{{ cabinet_page_title }}{% endblock %}
+{% block title %}Мой VPN - VXcloud{% endblock %}
 
 {% block content %}
-{% cms_text "cabinet.dashboard.heading" "Личный кабинет" as cabinet_heading %}
-{% cms_text "cabinet.dashboard.buy_new_action" "Купить доступ" as cabinet_buy_new_action %}
-{% cms_text "cabinet.dashboard.renew_action_short" "Продлить" as cabinet_renew_action_short %}
-{% cms_text "cabinet.dashboard.support_action" "Поддержка" as cabinet_support_action %}
-{% cms_text "cabinet.empty_configs" "Пока нет активных доступов. Оформите первый доступ, чтобы он появился здесь." as cabinet_empty_configs %}
-{% cms_text "cabinet.error_loading" "Не удалось загрузить данные аккаунта. Попробуйте обновить страницу." as cabinet_error_loading %}
-
 {% if embed_mode and not support_view and not instructions_view %}
 <div class="account-page-shell account-page-shell-mini">
   <section class="account-mini-hero">
@@ -35,7 +26,7 @@
     {% if renewable_configs == 1 and single_renew_url %}
       <a class="account-secondary-button" href="{{ single_renew_url }}" target="_top">Продлить</a>
     {% elif renewable_configs > 1 %}
-      <a class="account-secondary-button" href="#account-subscriptions">Выбрать для продления</a>
+      <a class="account-secondary-button" href="#account-subscriptions">Продлить</a>
     {% else %}
       <a class="account-secondary-button" href="{{ backend_instructions_url }}">Инструкция</a>
     {% endif %}
@@ -111,105 +102,78 @@
 </div>
 {% else %}
 
-<div class="account-page-shell{% if instructions_view %} account-page-shell-instructions{% endif %}">
-  {% if not instructions_view %}
-  <section class="account-hero">
-    <div class="account-hero-copy">
-      <div class="account-eyebrow">Кабинет VXcloud</div>
-      <h1 class="account-title">{{ cabinet_heading }}</h1>
-      <p class="account-intro">Все доступы, ссылки подписки и действия собраны в одном месте.</p>
-      <div class="account-hero-actions">
-        <a class="account-button account-button-primary" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>
-          <span>{{ cabinet_buy_new_action }}</span>
-          <strong>{{ card_price_label }}</strong>
-        </a>
-        {% if renewable_configs == 1 and single_renew_url %}
-          <a class="account-button" href="{{ single_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>
-            <span>{{ cabinet_renew_action_short }}</span>
-            <strong>{{ card_price_label }}</strong>
-          </a>
-        {% elif renewable_configs > 1 %}
-          <a class="account-button" href="#account-subscriptions">
-            <span>Выбрать доступ</span>
-            <strong>{{ cabinet_renew_action_short }}</strong>
-          </a>
-        {% endif %}
-        <a class="account-button" href="{{ support_url }}">
-          <span>{{ cabinet_support_action }}</span>
-          <strong>24/7</strong>
-        </a>
-      </div>
-    </div>
-  </section>
-  {% endif %}
-
+<div class="account-page-shell{% if instructions_view %} account-page-shell-instructions{% endif %}{% if support_view %} account-page-shell-support{% endif %}">
   {% if support_view %}
-    <section class="account-section" id="account-support">
-      <div class="account-section-head">
-        <div>
-          <div class="account-eyebrow">Поддержка</div>
-          <h2 class="account-section-title">Поддержка VXcloud</h2>
-        </div>
+    <section class="account-surface account-support-layout" id="account-support">
+      <div class="account-surface-main">
+        <p class="account-kicker">Поддержка</p>
+        <h1 class="account-title">Поддержка VXcloud</h1>
+        <p class="account-intro">Опишите проблему одним сообщением: устройство, что не открывается и когда началось. Так мы быстрее найдем причину.</p>
+      </div>
+      <div class="account-support-card">
         {% if support_client_code %}
-          <div class="account-section-meta">{{ support_client_code }}</div>
+          <div class="account-support-id">
+            <span>ID клиента</span>
+            <strong>{{ support_client_code }}</strong>
+          </div>
         {% endif %}
-      </div>
-      <div class="account-message">
-        Напишите одно сообщение в Telegram, если нужна помощь по аккаунту. Для настройки устройства откройте инструкцию.
-      </div>
-      <div class="account-device-actions">
-        {% if support_telegram_url %}
-          <a class="account-primary-button" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Написать в Telegram</a>
-        {% endif %}
-        <a class="account-secondary-button" href="{{ backend_instructions_url }}">Открыть инструкцию</a>
-        <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
+        <div class="account-device-actions">
+          {% if support_telegram_url %}
+            <a class="account-primary-button" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Написать в Telegram</a>
+          {% endif %}
+          <a class="account-secondary-button" href="{{ backend_instructions_url }}">Открыть инструкцию</a>
+          <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
+        </div>
       </div>
     </section>
-  {% endif %}
 
-  {% if instructions_view %}
-    <section class="account-section account-instructions-section" id="account-instructions">
-      <div class="account-section-head">
+  {% elif instructions_view %}
+    <section class="account-surface account-instructions-section" id="account-instructions">
+      <div class="account-section-head account-section-head-large">
         <div>
-          <div class="account-eyebrow">Инструкция</div>
-          <h2 class="account-section-title">{{ instructions_payload.title }}</h2>
+          <p class="account-kicker">Инструкция</p>
+          <h1 class="account-title">{{ instructions_payload.title }}</h1>
+          <p class="account-intro">{{ instructions_payload.subtitle }}</p>
         </div>
       </div>
-      <div class="account-message">
-        {{ instructions_payload.subtitle }}
-      </div>
+
       <div class="account-device-actions account-instructions-device-actions">
         {% for device in instructions_payload.devices %}
           <a class="account-secondary-button{% if device.key == instructions_payload.device %} account-secondary-button-current{% endif %}" href="{{ device.url }}">{{ device.label }}</a>
         {% endfor %}
       </div>
-      <div class="account-message account-instructions-access">
-        {% if instructions_payload.primary_subscription %}
-          <strong>{{ instructions_payload.primary_subscription.display_name }}</strong>
-          <span>Скопируйте ссылку подписки для этого доступа. QR — запасной способ.</span>
-        {% else %}
-          <strong>Пока нет активного доступа</strong>
-          <span>Сначала активируйте пробный период или купите доступ.</span>
-        {% endif %}
-      </div>
-      <div class="account-device-grid">
-        <article class="account-device-card">
-          <div class="account-device-top">
-            <div class="account-device-headline">
-              {% if instructions_payload.device == 'iphone' %}
-                <div class="account-device-name">iPhone</div>
-                <div class="account-subtle">Установите Streisand или V2Box, затем добавьте подписку через импорт из буфера.</div>
-              {% elif instructions_payload.device == 'android' %}
-                <div class="account-device-name">Android</div>
-                <div class="account-subtle">Установите v2rayNG, нажмите «+» и импортируйте ссылку из буфера.</div>
-              {% elif instructions_payload.device == 'desktop' %}
-                <div class="account-device-name">Windows/macOS</div>
-                <div class="account-subtle">Установите Hiddify или Nekoray и добавьте профиль из буфера обмена.</div>
-              {% else %}
-                <div class="account-device-name">Быстрый старт</div>
-                <div class="account-subtle">Сначала выберите устройство выше, затем скопируйте ссылку подписки.</div>
-              {% endif %}
-            </div>
+
+      <div class="account-instruction-grid">
+        <article class="account-message account-instructions-access">
+          {% if instructions_payload.primary_subscription %}
+            <strong>{{ instructions_payload.primary_subscription.display_name }}</strong>
+            <span>Скопируйте ссылку подписки для этого доступа. QR — запасной способ.</span>
+            <button
+              type="button"
+              class="account-primary-button js-copy-config"
+              data-copy-text="{{ instructions_payload.primary_subscription.feed_url|default:instructions_payload.primary_subscription.vless_url|default:'' }}"
+            >Скопировать ссылку</button>
+          {% else %}
+            <strong>Пока нет активного доступа</strong>
+            <span>Сначала активируйте пробный период или купите доступ.</span>
+          {% endif %}
+        </article>
+
+        <article class="account-device-card account-guide-card">
+          <div class="account-device-headline">
+            {% if instructions_payload.device == 'iphone' %}
+              <div class="account-device-name">iPhone</div>
+              <div class="account-subtle">Установите Streisand или V2Box, затем добавьте подписку через импорт из буфера.</div>
+            {% elif instructions_payload.device == 'android' %}
+              <div class="account-device-name">Android</div>
+              <div class="account-subtle">Установите v2rayNG, нажмите «+» и импортируйте ссылку из буфера.</div>
+            {% elif instructions_payload.device == 'desktop' %}
+              <div class="account-device-name">Windows/macOS</div>
+              <div class="account-subtle">Установите Hiddify или Nekoray и добавьте профиль из буфера обмена.</div>
+            {% else %}
+              <div class="account-device-name">Быстрый старт</div>
+              <div class="account-subtle">Выберите устройство выше, затем скопируйте ссылку подписки.</div>
+            {% endif %}
           </div>
           <ol class="account-step-list">
             <li>Откройте свой доступ в разделе «Мой VPN».</li>
@@ -227,143 +191,157 @@
         </article>
       </div>
     </section>
-  {% endif %}
 
-  {% if not instructions_view %}
-  {% if not bot_user %}
-    <section class="account-section">
-      <div class="account-message account-message-error">{{ cabinet_error_loading }}</div>
-    </section>
   {% else %}
-    <section class="account-summary">
-      <article class="account-summary-card">
-        <div class="account-summary-label">Аккаунт</div>
-        <div class="account-summary-main">
-          <strong>{{ request.user.username }}</strong>
-          <div class="account-summary-note">
-            {% if bot_user and bot_user.client_code %}
-              {{ bot_user.client_code }}
+    <section class="account-dashboard-shell">
+      <div class="account-dashboard-main">
+        <section class="account-hero account-hero-redesigned">
+          <div class="account-hero-copy">
+            <p class="account-kicker">Кабинет VXcloud</p>
+            <h1 class="account-title">Мой VPN</h1>
+            <p class="account-intro">
+              Все доступы, ссылки подписки, продление и помощь собраны здесь. Основной способ подключения — скопировать ссылку подписки и импортировать ее в VPN-приложение.
+            </p>
+            <div class="account-hero-actions">
+              <a class="account-primary-button account-primary-button-large" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+              {% if renewable_configs == 1 and single_renew_url %}
+                <a class="account-secondary-button account-secondary-button-large" href="{{ single_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+              {% elif renewable_configs > 1 %}
+                <a class="account-secondary-button account-secondary-button-large" href="#account-subscriptions">Продлить</a>
+              {% endif %}
+              <a class="account-secondary-button account-secondary-button-large" href="{{ backend_instructions_url }}">Инструкция</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="account-section account-access-section" id="account-subscriptions">
+          <div class="account-section-head">
+            <div>
+              <p class="account-kicker">Доступы</p>
+              <h2 class="account-section-title">Ваши доступы</h2>
+            </div>
+            <div class="account-section-meta">Активных: {{ active_configs }} · Неактивных: {{ inactive_configs }}</div>
+          </div>
+
+          {% if not bot_user %}
+            <div class="account-message account-message-error">Не удалось загрузить данные аккаунта. Попробуйте обновить страницу.</div>
+          {% elif subscription_rows %}
+            <div class="account-access-list">
+              {% for row in subscription_rows %}
+                <article class="account-access-card">
+                  <div class="account-access-card-head">
+                    <div>
+                      <h3>{{ row.display_name }}</h3>
+                      <p>
+                        {% if row.expires_at %}
+                          действует до {{ row.expires_at|date:'d.m.Y H:i' }}
+                        {% else %}
+                          бессрочный доступ
+                        {% endif %}
+                      </p>
+                    </div>
+                    <span class="account-status-pill{% if row.is_active %} account-status-pill-active{% endif %}">
+                      {% if row.is_active %}Активен{% else %}Неактивен{% endif %}
+                    </span>
+                  </div>
+
+                  {% if row.is_active %}
+                    <div class="account-connect-panel">
+                      <div>
+                        <strong>Подключение через ссылку</strong>
+                        <span>Скопируйте ссылку, откройте VPN-приложение, нажмите «+» и импортируйте из буфера.</span>
+                      </div>
+                      <button type="button" class="account-primary-button js-copy-config" data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}">Скопировать ссылку</button>
+                    </div>
+                  {% else %}
+                    <div class="account-connect-panel account-connect-panel-muted">
+                      <div>
+                        <strong>Доступ неактивен</strong>
+                        <span>Продлите его, чтобы снова подключаться по ссылке подписки.</span>
+                      </div>
+                    </div>
+                  {% endif %}
+
+                  <div class="account-access-actions">
+                    <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">Открыть доступ</a>
+                    {% if row.can_renew %}
+                      <a class="account-secondary-button" href="{{ row.renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+                    {% endif %}
+                    <a class="account-secondary-button" href="{{ backend_instructions_url }}">Инструкция</a>
+                  </div>
+
+                  <details class="account-access-details">
+                    <summary>Настройки доступа</summary>
+                    <form method="post" action="{{ backend_rename_prefix }}{{ row.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="account-inline-form">
+                      {% csrf_token %}
+                      <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+                      <input type="text" class="account-input" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Название доступа" aria-label="Название доступа" />
+                      <button type="submit" class="account-icon-button" title="Переименовать" aria-label="Переименовать">
+                        <span class="account-icon-glyph" aria-hidden="true">&#9998;</span>
+                      </button>
+                    </form>
+                    {% if row.can_delete %}
+                      <form method="post" action="/account/subscriptions/{{ row.id }}/delete/" class="account-delete-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+                        <button type="submit" class="account-danger-button">Удалить неактивный доступ</button>
+                      </form>
+                    {% endif %}
+                  </details>
+                </article>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="account-empty-panel">
+              <strong>Пока нет доступа</strong>
+              <span>Начните с пробного периода в Telegram или купите доступ картой. После активации ссылка подписки появится в этом разделе.</span>
+              <div class="account-device-actions">
+                <a class="account-primary-button" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+                <a class="account-secondary-button" href="{{ backend_instructions_url }}">Как подключиться</a>
+              </div>
+            </div>
+          {% endif %}
+        </section>
+      </div>
+
+      <aside class="account-dashboard-side">
+        <section class="account-side-card account-side-card-dark">
+          <span>Активные доступы</span>
+          <strong>{{ active_configs }}</strong>
+          <small>Всего {{ subscription_rows|length }}</small>
+        </section>
+
+        <section class="account-side-card">
+          <h2>Аккаунт</h2>
+          <div class="account-side-row">
+            <span>Пользователь</span>
+            <strong>{{ request.user.username }}</strong>
+          </div>
+          <div class="account-side-row">
+            <span>ID клиента</span>
+            <strong>{% if bot_user and bot_user.client_code %}{{ bot_user.client_code }}{% else %}Создается{% endif %}</strong>
+          </div>
+          <div class="account-side-row">
+            <span>Telegram</span>
+            {% if linked %}
+              <strong>Привязан</strong>
             {% else %}
-              ID создается
+              <a class="account-inline-link" href="{{ backend_link_url }}">Привязать</a>
             {% endif %}
           </div>
-        </div>
-      </article>
+        </section>
 
-      <article class="account-summary-card">
-        <div class="account-summary-label">ID клиента</div>
-        <div class="account-summary-main">
-          <strong>
-            {% if bot_user and bot_user.client_code %}
-              {{ bot_user.client_code }}
-            {% else %}
-              &mdash;
-            {% endif %}
-          </strong>
-        </div>
-      </article>
-
-      <article class="account-summary-card">
-        <div class="account-summary-label">Активные подключения</div>
-        <div class="account-summary-main">
-          <strong>{{ active_configs }}</strong>
-          <div class="account-summary-note">Всего {{ subscription_rows|length }}</div>
-        </div>
-      </article>
-
-      <article class="account-summary-card">
-        <div class="account-summary-label">Telegram</div>
-        <div class="account-summary-main">
-          {% if linked %}
-            <strong>Привязан</strong>
-            <div class="account-summary-note">{{ linked.telegram_id }}</div>
-          {% else %}
-            <strong>Не привязан</strong>
-            <a class="account-inline-link" href="{{ backend_link_url }}">Привязать аккаунт</a>
-          {% endif %}
-        </div>
-      </article>
+        <section class="account-side-card">
+          <h2>Быстрый старт</h2>
+          <ol class="account-mini-steps account-sidebar-steps">
+            <li>Откройте доступ.</li>
+            <li>Скопируйте ссылку подписки.</li>
+            <li>Импортируйте ее в VPN-приложение.</li>
+          </ol>
+          <a class="account-secondary-button" href="{{ support_url }}">Поддержка</a>
+        </section>
+      </aside>
     </section>
-  {% endif %}
-
-  <section class="account-section" id="account-subscriptions">
-    <div class="account-section-head">
-      <div>
-        <div class="account-eyebrow">Устройства</div>
-        <h2 class="account-section-title">Ваши доступы</h2>
-      </div>
-      <div class="account-section-meta">Активных: {{ active_configs }} · Неактивных: {{ inactive_configs }}</div>
-    </div>
-
-    {% if subscription_rows %}
-      <div class="account-device-grid">
-        {% for row in subscription_rows %}
-          <article class="account-device-card">
-            <div class="account-device-top">
-              <div class="account-device-headline">
-                <div class="account-device-name">{{ row.display_name }}</div>
-                <div class="account-subtle">
-                  {% if row.expires_at %}
-                    действует до {{ row.expires_at|date:'d.m.Y H:i' }}
-                  {% else %}
-                    бессрочный доступ
-                  {% endif %}
-                </div>
-              </div>
-              <div class="account-device-status">{% if row.is_active %}Активен{% else %}Неактивен{% endif %}</div>
-            </div>
-
-            <form method="post" action="{{ backend_rename_prefix }}{{ row.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="account-inline-form">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-              <input type="text" class="account-input" name="display_name" value="{{ row.display_name }}" maxlength="80" placeholder="Имя устройства" aria-label="Имя устройства" />
-              <button type="submit" class="account-icon-button js-rename-icon" title="Переименовать" aria-label="Переименовать">
-                <span class="account-icon-glyph" aria-hidden="true">&#9998;</span>
-              </button>
-            </form>
-
-            <div class="account-device-meta">
-              <div class="account-meta-box">
-                <span>ID</span>
-                <strong>{{ row.id }}</strong>
-              </div>
-              <div class="account-meta-box">
-                <span>Режим</span>
-                <strong>{% if row.is_active %}активен{% else %}остановлен{% endif %}</strong>
-              </div>
-            </div>
-
-            <div class="account-link-block">
-              <label class="account-link-label">Ссылка подписки</label>
-              <div class="account-link-row">
-                <input type="text" class="account-input account-link-input" value="{{ row.feed_url|default:row.vless_url|default:'' }}" readonly>
-                <button type="button" class="account-icon-button js-copy-config" data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}" title="Скопировать ссылку" aria-label="Скопировать ссылку">
-                  <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
-                </button>
-              </div>
-            </div>
-
-            <div class="account-device-actions">
-              {% if row.can_renew %}
-                <a class="account-primary-button" href="{{ row.renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
-              {% endif %}
-              <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/#qr">QR</a>
-              <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">{% if row.is_active %}Открыть{% else %}Детали{% endif %}</a>
-              {% if row.can_delete %}
-                <form method="post" action="/account/subscriptions/{{ row.id }}/delete/">
-                  {% csrf_token %}
-                  <input type="hidden" name="next" value="{{ request.get_full_path }}" />
-                  <button type="submit" class="account-danger-button">Удалить</button>
-                </form>
-              {% endif %}
-            </div>
-          </article>
-        {% endfor %}
-      </div>
-    {% else %}
-      <div class="account-message">{{ cabinet_empty_configs }}</div>
-    {% endif %}
-  </section>
   {% endif %}
 </div>
 {% endif %}

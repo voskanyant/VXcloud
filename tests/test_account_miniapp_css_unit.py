@@ -58,6 +58,12 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("body.vx-account-embed .account-page-shell-instructions", self.css)
         self.assertIn("body.vx-account-embed #account-instructions", self.css)
         self.assertIn("body.vx-account-embed .account-instructions-device-actions", self.css)
+        self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr));", self.css)
+        self.assertIn(
+            "body.vx-account-embed .account-instructions-device-actions .account-secondary-button:nth-child(3)",
+            self.css,
+        )
+        self.assertIn("grid-column: 1 / -1;", self.css)
         self.assertIn("body.vx-account-embed .account-secondary-button-current", self.css)
         self.assertIn(".account-step-list", self.css)
         self.assertIn("body.vx-account-embed #account-instructions .account-step-list", self.css)
