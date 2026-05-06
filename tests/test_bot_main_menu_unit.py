@@ -119,6 +119,34 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Fbuy%2F")
 
+    async def test_my_vpn_list_has_direct_subscription_actions(self):
+        bot = make_bot()
+        subscriptions = [{"id": 42, "display_name": "Work laptop"}]
+
+        markup = bot._configs_list_markup(subscriptions)
+
+        self.assertEqual(markup.inline_keyboard[0][0].text, "1. Work laptop")
+        self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|cfg_open:42|_")
+        action_row = markup.inline_keyboard[1]
+        self.assertEqual(action_row[0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(action_row[1].callback_data, "act|cfg_qr:42|_")
+        self.assertEqual(action_row[2].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
+        self.assertEqual(markup.inline_keyboard[-2][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(markup.inline_keyboard[-1][0].callback_data, "act|buy_new|_")
+
+    async def test_instructions_hub_uses_short_webapp_device_choices(self):
+        bot = make_bot()
+
+        markup = bot._node_inline_keyboard("menu_instructions")
+
+        self.assertEqual(bot._node_response_text("menu_instructions"), "How to connect\n\nChoose your device. The full guide opens inside Telegram.")
+        self.assertEqual(markup.inline_keyboard[0][0].text, "iPhone")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/instructions/?device=iphone")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/instructions/?device=android")
+        self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/instructions/?device=desktop")
+        self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/instructions/")
+        self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|start_mysub|_")
+
     async def test_support_message_submission_restores_main_menu(self):
         db = FakeDB()
         bot = make_bot(db)

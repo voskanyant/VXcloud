@@ -259,6 +259,15 @@ class VPNBot:
     def _mini_app_button(self, text: str, next_path: str | None = None) -> InlineKeyboardButton:
         return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=self._mini_app_url(next_path)))
 
+    def _site_web_app_url(self, path: str) -> str:
+        site = urlsplit(self._site_url().rstrip("/") or "https://vxcloud.ru")
+        parsed = urlsplit((path or "/").strip() or "/")
+        route = parsed.path if parsed.path.startswith("/") else f"/{parsed.path}"
+        return urlunsplit((site.scheme or "https", site.netloc or "vxcloud.ru", route, parsed.query, parsed.fragment))
+
+    def _site_web_app_button(self, text: str, path: str) -> InlineKeyboardButton:
+        return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=self._site_web_app_url(path)))
+
     async def _mini_app_with_fallback_rows(
         self,
         *,
@@ -364,11 +373,8 @@ class VPNBot:
         legacy_key = f"{node_key.removeprefix('menu_')}_response"
         if node_key == "menu_instructions":
             default = (
-                "Как подключиться\n\n"
-                "Чтобы всё заработало, нужно сделать два шага:\n\n"
-                "1. Установить приложение\n"
-                "2. Оплатить доступ\n\n"
-                "Мы покажем всё по шагам ниже."
+                "How to connect\n\n"
+                "Choose your device. The full guide opens inside Telegram."
             )
             return self._content_text(response_key, self._content_text(legacy_key, default))
         if node_key == "instructions_install":
@@ -409,24 +415,11 @@ class VPNBot:
         if node_key == "menu_instructions":
             return InlineKeyboardMarkup(
                 [
-                    [
-                        InlineKeyboardButton(
-                            text=self._button_label("instructions_install_button", "📱 Установить приложение"),
-                            callback_data="nav|instructions_install|menu_instructions",
-                        )
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            text=self._button_label("instructions_access_button", "📊 Мой доступ"),
-                            callback_data="act|start_mysub|_",
-                        ),
-                    ],
-                    [
-                        InlineKeyboardButton(
-                            text=self._button_label("instructions_support_button", "🆘 Поддержка"),
-                            callback_data="act|support_hub|_",
-                        )
-                    ],
+                    [self._site_web_app_button("iPhone", "/instructions/?device=iphone")],
+                    [self._site_web_app_button("Android", "/instructions/?device=android")],
+                    [self._site_web_app_button("Windows/macOS", "/instructions/?device=desktop")],
+                    [self._site_web_app_button("Open full guide", "/instructions/")],
+                    [InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_")],
                 ]
             )
         if node_key == "instructions_install":
@@ -1064,14 +1057,22 @@ class VPNBot:
                     )
                 ]
             )
+            rows.append(
+                [
+                    self._mini_app_button("Open app", f"/account/config/{sub_id}/"),
+                    InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{sub_id}|_"),
+                    self._mini_app_button("Renew", f"/account/renew/?subscription_id={sub_id}"),
+                ]
+            )
         rows.append(
             [
-                InlineKeyboardButton(
-                    text=self._button_label("buy_new_config_button", "⭐ Купить новый доступ"),
-                    callback_data="act|buy_new|_",
+                self._mini_app_button(
+                    self._button_label("buy_new_config_button", "Buy access"),
+                    "/account/buy/",
                 )
             ]
         )
+        rows.append([InlineKeyboardButton(text="Buy with Telegram Stars", callback_data="act|buy_new|_")])
         return InlineKeyboardMarkup(rows)
 
     async def _config_card_markup(
