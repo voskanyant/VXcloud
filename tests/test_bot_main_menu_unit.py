@@ -413,8 +413,19 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
             can_delete=True,
         )
 
-        self.assertEqual(markup.inline_keyboard[-2][0].text, "Delete")
-        self.assertEqual(markup.inline_keyboard[-2][0].callback_data, "act|cfg_delete_request:42|_")
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Open in Mini App")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "QR")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
+        self.assertEqual(markup.inline_keyboard[1][1].text, "Renew this")
+        self.assertEqual(markup.inline_keyboard[1][1].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "Copy subscription URL")
+        self.assertEqual(markup.inline_keyboard[3][0].text, "Rename")
+        self.assertEqual(markup.inline_keyboard[3][1].text, "Delete")
+        self.assertEqual(markup.inline_keyboard[3][1].callback_data, "act|cfg_delete_request:42|_")
+        self.assertEqual(markup.inline_keyboard[4][0].text, "Open in browser")
+        self.assertEqual(markup.inline_keyboard[4][1].text, "Renew in browser")
+        self.assertEqual(markup.inline_keyboard[-1][0].callback_data, "act|cfg_back|_")
 
     async def test_delete_request_shows_confirmation_without_deleting(self):
         db = FakeDB()

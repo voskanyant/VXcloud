@@ -1171,17 +1171,22 @@ class VPNBot:
         fallback_config_url = await self._account_url(user_id, f"/account/config/{subscription_id}/")
         rows = [
             [self._mini_app_button("Open in Mini App", f"/account/config/{subscription_id}/")],
-            [InlineKeyboardButton(text="Open in browser", url=fallback_config_url)],
-            [InlineKeyboardButton(text="Copy subscription URL", api_kwargs={"copy_text": {"text": copy_text}})],
             [
                 InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
                 self._mini_app_button("Renew this", f"/account/renew/?subscription_id={subscription_id}"),
             ],
-            [InlineKeyboardButton(text="Renew in browser", url=fallback_renew_url)],
-            [InlineKeyboardButton(text="Rename", callback_data=f"act|cfg_rename:{subscription_id}|_")],
+            [InlineKeyboardButton(text="Copy subscription URL", api_kwargs={"copy_text": {"text": copy_text}})],
         ]
+        manage_row = [InlineKeyboardButton(text="Rename", callback_data=f"act|cfg_rename:{subscription_id}|_")]
         if can_delete:
-            rows.append([InlineKeyboardButton(text="Delete", callback_data=f"act|cfg_delete_request:{subscription_id}|_")])
+            manage_row.append(InlineKeyboardButton(text="Delete", callback_data=f"act|cfg_delete_request:{subscription_id}|_"))
+        rows.append(manage_row)
+        rows.append(
+            [
+                InlineKeyboardButton(text="Open in browser", url=fallback_config_url),
+                InlineKeyboardButton(text="Renew in browser", url=fallback_renew_url),
+            ]
+        )
         rows.append([InlineKeyboardButton(text="Back", callback_data="act|cfg_back|_")])
         return InlineKeyboardMarkup(rows)
 
