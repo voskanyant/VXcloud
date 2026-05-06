@@ -99,6 +99,8 @@ The 2026-05-06 cleanup did three things:
 - kept Mini App as the primary account surface, with limited browser fallback
 - cleaned remaining English fallback labels in input cancellation, delete alerts,
   and raw connection-link messages
+- made bot CMS fallback reject mojibake overrides, so broken stored labels do
+  not replace clean Russian defaults
 
 It also added a 3x-ui client update fallback for panels that reject wrapped
 `updateClient` payloads with `empty client ID`.

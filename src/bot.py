@@ -164,8 +164,7 @@ class VPNBot:
         normalized = value.strip()
         if not normalized:
             return default
-        # Guard against mojibake/placeholder content like "?????"
-        if normalized.count("?") >= max(4, len(normalized) // 4):
+        if self._looks_broken_cms_text(normalized, min_question_marks=4):
             return default
         return value
 
@@ -176,9 +175,18 @@ class VPNBot:
         normalized = value.strip()
         if not normalized:
             return default
-        if normalized.count("?") >= max(2, len(normalized) // 3):
+        if self._looks_broken_cms_text(normalized, min_question_marks=2):
             return default
         return value
+
+    @staticmethod
+    def _looks_broken_cms_text(value: str, *, min_question_marks: int) -> bool:
+        normalized = value.strip()
+        if not normalized:
+            return True
+        if normalized.count("?") >= max(min_question_marks, len(normalized) // 4):
+            return True
+        return any(marker in normalized for marker in ("Ð", "Ñ", "Â", "â", "�"))
 
     async def _has_active_subscription(self, user_id: int) -> bool:
         return await self.db.get_active_subscription(user_id) is not None
@@ -1851,11 +1859,11 @@ class VPNBot:
                 try:
                     subscription_id = int(target.split(":", 1)[1])
                 except (IndexError, ValueError):
-                    await query.answer("Invalid subscription", show_alert=True)
+                    await query.answer("Некорректная подписка", show_alert=True)
                     return
                 sub = await self.db.get_subscription(user_id, subscription_id)
                 if not sub or sub.get("revoked_at") is not None:
-                    await query.answer("Subscription not found", show_alert=True)
+                    await query.answer("Подписка не найдена", show_alert=True)
                     return
                 context.user_data["selected_subscription_id"] = subscription_id
                 await self._track_event(

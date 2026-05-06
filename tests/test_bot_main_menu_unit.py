@@ -219,6 +219,14 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(open_app_button.web_app)
         self.assertEqual(open_app_button.web_app.url, "https://vxcloud.ru/account-app/?embed=1")
 
+    async def test_broken_cms_text_and_button_overrides_fall_back_to_defaults(self):
+        bot = make_bot()
+        bot._cms_content["menu_open_app_response"] = "ÐžÑ‚ÐºÑ€Ñ‹Ñ‚ÑŒ Mini App"
+        bot._cms_buttons["menu_open_app"] = "ÐšÐ°Ð±Ð¸Ð½ÐµÑ‚"
+
+        self.assertEqual(bot._content_text("menu_open_app_response", "Чистый текст"), "Чистый текст")
+        self.assertEqual(bot._button_label("menu_open_app", "Кабинет"), "Кабинет")
+
     async def test_start_screen_shows_compact_status_for_active_subscriptions(self):
         db = FakeDB()
         db.subscription_list = [
@@ -634,6 +642,19 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=12&embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c Stars")
         self.assertEqual(markup.inline_keyboard[2][0].text, "\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u0432 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435")
+
+    async def test_renew_select_invalid_answers_are_russian(self):
+        bot = make_bot()
+        bad_query = FakeCallbackQuery("act|renew_select:bad|_")
+
+        await bot.inline_callback(make_callback_update(bad_query), SimpleNamespace(user_data={}))
+
+        self.assertEqual(bad_query.answers[-1], ("\u041d\u0435\u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u0430\u044f \u043f\u043e\u0434\u043f\u0438\u0441\u043a\u0430", True))
+
+        missing_query = FakeCallbackQuery("act|renew_select:999|_")
+        await bot.inline_callback(make_callback_update(missing_query), SimpleNamespace(user_data={}))
+
+        self.assertEqual(missing_query.answers[-1], ("\u041f\u043e\u0434\u043f\u0438\u0441\u043a\u0430 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u0430", True))
 
     async def test_renew_copy_names_mini_app_as_card_checkout_surface(self):
         db = FakeDB()
