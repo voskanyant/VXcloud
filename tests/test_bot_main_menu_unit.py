@@ -330,8 +330,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(markup.inline_keyboard[0][0].web_app)
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "Оплатить Stars")
-        self.assertEqual(markup.inline_keyboard[2][0].text, "Назад")
-        self.assertEqual(len(markup.inline_keyboard), 3)
+        self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_buy_copy_names_mini_app_as_card_checkout_surface(self):
         bot = make_bot()
@@ -366,8 +365,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_existing_renew|_")
         self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|buy_stars_continue|_")
-        self.assertEqual(markup.inline_keyboard[3][0].callback_data, "act|start_back|_")
-        self.assertEqual(len(markup.inline_keyboard), 4)
+        self.assertEqual(len(markup.inline_keyboard), 3)
 
     async def test_legacy_card_markups_keep_mini_app_primary(self):
         bot = make_bot()
@@ -376,11 +374,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         renew_markup = await bot._renew_card_markup(user_id=123, subscription_id=42)
 
         self.assertEqual(buy_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
-        self.assertEqual(buy_markup.inline_keyboard[1][0].callback_data, "act|buy_card_back|_")
-        self.assertEqual(len(buy_markup.inline_keyboard), 2)
+        self.assertEqual(len(buy_markup.inline_keyboard), 1)
         self.assertEqual(renew_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
-        self.assertEqual(renew_markup.inline_keyboard[1][0].callback_data, "act|renew_card_back|_")
-        self.assertEqual(len(renew_markup.inline_keyboard), 2)
+        self.assertEqual(len(renew_markup.inline_keyboard), 1)
 
     async def test_payment_ready_markups_keep_app_primary_and_browser_fallback(self):
         bot = make_bot()
@@ -393,13 +389,11 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(paid_markup.inline_keyboard[1][0].text, "\u0412 \u0431\u043e\u0442\u0435")
         self.assertEqual(paid_markup.inline_keyboard[1][0].callback_data, "act|cfg_open:42|_")
         self.assertEqual(paid_markup.inline_keyboard[1][1].text, "QR")
-        self.assertEqual(paid_markup.inline_keyboard[-1][0].text, "\u041c\u043e\u0439 VPN")
-        self.assertEqual(len(paid_markup.inline_keyboard[-1]), 1)
+        self.assertEqual(len(paid_markup.inline_keyboard), 2)
         self.assertEqual(renew_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
         self.assertEqual(renew_markup.inline_keyboard[1][0].text, "\u0412 \u0431\u043e\u0442\u0435")
         self.assertEqual(renew_markup.inline_keyboard[1][1].text, "QR")
-        self.assertEqual(renew_markup.inline_keyboard[-1][0].text, "\u041c\u043e\u0439 VPN")
-        self.assertEqual(len(renew_markup.inline_keyboard[-1]), 1)
+        self.assertEqual(len(renew_markup.inline_keyboard), 2)
 
     async def test_send_config_actions_are_mini_app_first(self):
         bot = make_bot()
@@ -453,17 +447,17 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].text, "\u041e\u0442\u043a\u0440\u044b\u0442\u044c \u043a\u0430\u0431\u0438\u043d\u0435\u0442")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
-        self.assertEqual(markup.inline_keyboard[2][1].callback_data, "act|start_mysub|_")
+        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "nav|menu_instructions|_")
 
     async def test_trial_offer_markup_uses_clean_contextual_actions(self):
         bot = make_bot()
 
         markup = bot._trial_offer_markup()
 
-        self.assertEqual(markup.inline_keyboard[0][0].text, "\u0410\u043a\u0442\u0438\u0432\u0438\u0440\u043e\u0432\u0430\u0442\u044c 7 \u0434\u043d\u0435\u0439")
-        self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|trial_activate|_")
-        self.assertEqual(markup.inline_keyboard[1][0].text, "\u041d\u0430\u0437\u0430\u0434")
-        self.assertEqual(len(markup.inline_keyboard[1]), 1)
+        self.assertEqual(markup.inline_keyboard[0][0].text, "\u041a\u0443\u043f\u0438\u0442\u044c \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435 \u00b7 249 RUB")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_stars_continue|_")
+        self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_trial_used_state_is_app_first_buy(self):
         db = FakeDB()
@@ -474,14 +468,13 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._show_trial_offer(message, user_id=123)
 
         text = message.replies[-1][0]
-        self.assertIn("Mini App", text)
+        self.assertIn("\u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435", text)
         self.assertIn("Telegram Stars", text)
         markup = message.replies[-1][1]
         self.assertEqual(markup.inline_keyboard[0][0].text, "\u041a\u0443\u043f\u0438\u0442\u044c \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435 \u00b7 249 RUB")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
-        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_new|_")
-        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|start_back|_")
-        self.assertEqual(len(markup.inline_keyboard), 3)
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_stars_continue|_")
+        self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_my_vpn_list_has_direct_subscription_actions(self):
         bot = make_bot()
@@ -532,9 +525,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[3][0].text, "\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c")
         self.assertEqual(markup.inline_keyboard[3][1].text, "\u0423\u0434\u0430\u043b\u0438\u0442\u044c")
         self.assertEqual(markup.inline_keyboard[3][1].callback_data, "act|cfg_delete_request:42|_")
-        self.assertEqual(markup.inline_keyboard[4][0].text, "\u041d\u0430\u0437\u0430\u0434")
-        self.assertEqual(len(markup.inline_keyboard[4]), 1)
-        self.assertEqual(markup.inline_keyboard[-1][0].callback_data, "act|cfg_back|_")
+        self.assertEqual(len(markup.inline_keyboard), 4)
 
     async def test_qr_action_uses_subscription_feed_url_not_raw_vless(self):
         db = FakeDB()
@@ -637,7 +628,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         markup = message.replies[-1][1]
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|renew_select:11|_")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|renew_select:12|_")
-        self.assertEqual(markup.inline_keyboard[-2][0].web_app.url, "https://vxcloud.ru/account-app/renew/?embed=1")
+        self.assertEqual(markup.inline_keyboard[-1][0].web_app.url, "https://vxcloud.ru/account-app/renew/?embed=1")
 
     async def test_renew_without_active_access_is_app_first_buy(self):
         db = FakeDB()
@@ -654,9 +645,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].text, "\u041a\u0443\u043f\u0438\u0442\u044c \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435 \u00b7 249 RUB")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_new|_")
-        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|start_trial|_")
-        self.assertEqual(markup.inline_keyboard[2][1].callback_data, "act|renew_back|_")
-        self.assertEqual(len(markup.inline_keyboard), 3)
+        self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_renew_select_targets_subscription_before_showing_payment_options(self):
         db = FakeDB()
@@ -673,8 +662,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         markup = query.message.replies[-1][1]
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=12&embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "\u041f\u0440\u043e\u0434\u043b\u0438\u0442\u044c Stars")
-        self.assertEqual(markup.inline_keyboard[2][0].text, "\u041d\u0430\u0437\u0430\u0434")
-        self.assertEqual(len(markup.inline_keyboard), 3)
+        self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_renew_select_invalid_answers_are_russian(self):
         bot = make_bot()
@@ -722,7 +710,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&device=android&embed=1")
         self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&device=desktop&embed=1")
         self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&embed=1")
-        self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|start_mysub|_")
+        self.assertEqual(len(markup.inline_keyboard), 4)
 
     async def test_legacy_install_instructions_open_full_guide_in_mini_app(self):
         bot = make_bot()
@@ -736,7 +724,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].text, "\u041f\u043e\u043b\u043d\u0430\u044f \u0438\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&embed=1")
         self.assertIsNone(markup.inline_keyboard[0][0].url)
-        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "nav|menu_instructions|_")
+        self.assertEqual(len(markup.inline_keyboard), 1)
 
     async def test_support_hub_offers_quick_message_and_mini_app(self):
         bot = make_bot()
@@ -747,8 +735,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|support_start|_")
         self.assertEqual(markup.inline_keyboard[1][0].text, "\u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430 \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435")
         self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?view=support&embed=1")
-        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|start_back|_")
-        self.assertEqual(len(markup.inline_keyboard[2]), 1)
+        self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_show_support_hub_uses_contextual_inline_markup(self):
         bot = make_bot()

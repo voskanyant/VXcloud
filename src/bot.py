@@ -452,14 +452,12 @@ class VPNBot:
                     [self._mini_app_button("Android", "/account/?view=instructions&device=android")],
                     [self._mini_app_button("Windows/macOS", "/account/?view=instructions&device=desktop")],
                     [self._mini_app_button("Полная инструкция", "/account/?view=instructions")],
-                    [InlineKeyboardButton(text="Мой VPN", callback_data="act|start_mysub|_")],
                 ]
             )
         if node_key == "instructions_install":
             return InlineKeyboardMarkup(
                 [
                     [self._mini_app_button("Полная инструкция", "/account/?view=instructions")],
-                    [InlineKeyboardButton(text="Назад", callback_data="nav|menu_instructions|_")],
                 ]
             )
         raw = self._cms_content.get(f"{node_key}_buttons")
@@ -523,9 +521,6 @@ class VPNBot:
                             )
                 if row_buttons:
                     rows.append(row_buttons)
-
-        if parent_key:
-            rows.append([InlineKeyboardButton(text="⬅️ Назад", callback_data=f"nav|{parent_key}|_")])
 
         if not rows:
             return None
@@ -599,8 +594,8 @@ class VPNBot:
     def _trial_offer_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton(text="Активировать 7 дней", callback_data="act|trial_activate|_")],
-                [InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")],
+                [self._mini_app_button(self._with_card_price("Купить в кабинете"), "/account/buy/")],
+                [InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_stars_continue|_")],
             ]
         )
 
@@ -614,7 +609,6 @@ class VPNBot:
         rows.extend(
             [
                 [InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_new|_")],
-                [InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")],
             ]
         )
         return InlineKeyboardMarkup(rows)
@@ -624,10 +618,7 @@ class VPNBot:
             [
                 [self._mini_app_button("Открыть кабинет", f"/account/config/{subscription_id}/")],
                 [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
-                [
-                    InlineKeyboardButton(text="Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="Мой VPN", callback_data="act|start_mysub|_"),
-                ],
+                [InlineKeyboardButton(text="Как подключить", callback_data="nav|menu_instructions|_")],
             ]
         )
 
@@ -641,7 +632,6 @@ class VPNBot:
         rows.extend(
             [
                 [InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_stars_continue|_")],
-                [InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")],
             ]
         )
         return InlineKeyboardMarkup(rows)
@@ -653,7 +643,6 @@ class VPNBot:
             web_app_text=self._with_card_price("Картой в кабинете"),
             include_fallback=False,
         )
-        rows.append([InlineKeyboardButton(text="Назад", callback_data="act|buy_card_back|_")])
         return InlineKeyboardMarkup(rows)
 
     async def _renew_card_markup(self, user_id: int | None, subscription_id: int | None = None) -> InlineKeyboardMarkup:
@@ -666,7 +655,6 @@ class VPNBot:
             web_app_text=self._with_card_price("Продлить картой"),
             include_fallback=False,
         )
-        rows.append([InlineKeyboardButton(text="Назад", callback_data="act|renew_card_back|_")])
         return InlineKeyboardMarkup(rows)
 
     def _post_payment_ready_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
@@ -677,7 +665,6 @@ class VPNBot:
                     InlineKeyboardButton(text="В боте", callback_data=f"act|cfg_open:{subscription_id}|_"),
                     InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
                 ],
-                [InlineKeyboardButton(text="Мой VPN", callback_data="act|start_mysub|_")],
             ]
         )
 
@@ -694,7 +681,6 @@ class VPNBot:
         rows.extend(
             [
                 [InlineKeyboardButton(text="Продлить Stars", callback_data="act|renew_stars_continue|_")],
-                [InlineKeyboardButton(text="Назад", callback_data="act|renew_back|_")],
             ]
         )
         return InlineKeyboardMarkup(rows)
@@ -708,7 +694,6 @@ class VPNBot:
         )
         rows.append([InlineKeyboardButton(text="Продлить текущий", callback_data="act|buy_existing_renew|_")])
         rows.append([InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_stars_continue|_")])
-        rows.append([InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")])
         return InlineKeyboardMarkup(rows)
 
     def _support_hub_markup(self) -> InlineKeyboardMarkup:
@@ -716,7 +701,6 @@ class VPNBot:
             [
                 [InlineKeyboardButton(text="Написать в поддержку", callback_data="act|support_start|_")],
                 [self._mini_app_button("Поддержка в кабинете", "/account/?view=support")],
-                [InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")],
             ]
         )
 
@@ -751,12 +735,6 @@ class VPNBot:
             include_fallback=False,
         )
         rows.append([InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_new|_")])
-        rows.append(
-            [
-                InlineKeyboardButton(text="Пробный доступ", callback_data="act|start_trial|_"),
-                InlineKeyboardButton(text="Назад", callback_data="act|renew_back|_"),
-            ]
-        )
         return InlineKeyboardMarkup(rows)
 
     def _renew_success_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
@@ -767,7 +745,6 @@ class VPNBot:
                     InlineKeyboardButton(text="В боте", callback_data=f"act|cfg_open:{subscription_id}|_"),
                     InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
                 ],
-                [InlineKeyboardButton(text="Мой VPN", callback_data="act|start_mysub|_")],
             ]
         )
 
@@ -787,7 +764,6 @@ class VPNBot:
                 ]
             )
         rows.append([self._mini_app_button("Кабинет", "/account/renew/")])
-        rows.append([InlineKeyboardButton(text="Назад", callback_data="act|renew_back|_")])
         return InlineKeyboardMarkup(rows)
 
     def _renew_select_text(self, subscriptions: list[dict[str, object]]) -> str:
@@ -869,7 +845,7 @@ class VPNBot:
             "Подходит, если вы хотите:\n"
             "• подключить ещё одно устройство\n"
             "• получить отдельный доступ\n"
-            "• купить доступ после пробного периода\n\n"
+            "• купить новый доступ\n\n"
             "После оплаты вы сразу получите ссылку для подключения и QR-код.",
             reply_markup=await self._buy_offer_markup(user_id),
         )
@@ -892,26 +868,16 @@ class VPNBot:
 
     async def _show_trial_used(self, message: Message, user_id: int) -> None:
         await message.reply_text(
-            "Пробный доступ уже был использован\n\n"
-            "Вы можете оформить платный доступ в Mini App или оплатить через Telegram Stars.",
+            "Этот раздел отключен.\n\n"
+            "Купить доступ можно в кабинете или через Telegram Stars.",
             reply_markup=await self._trial_used_markup(user_id),
         )
 
     async def _show_trial_offer(self, message: Message, user_id: int) -> None:
-        if await self.db.has_any_subscription(user_id):
-            await self._show_trial_used(message, user_id)
-            return
-
         await self._replace_or_reply(
             message,
-            "Пробный доступ на 7 дней\n\n"
-            "Подходит, если хотите сначала всё проверить.\n\n"
-            "Что получите:\n"
-            "• доступ на 7 дней\n"
-            "• ссылку для подключения\n"
-            "• QR-код\n"
-            "• пошаговую инструкцию\n\n"
-            "Пробный период можно активировать один раз.",
+            "Этот раздел отключен.\n\n"
+            "Купить доступ можно в кабинете или через Telegram Stars.",
             reply_markup=self._trial_offer_markup(),
         )
 
@@ -1189,14 +1155,13 @@ class VPNBot:
         if can_delete:
             manage_row.append(InlineKeyboardButton(text="Удалить", callback_data=f"act|cfg_delete_request:{subscription_id}|_"))
         rows.append(manage_row)
-        rows.append([InlineKeyboardButton(text="Назад", callback_data="act|cfg_back|_")])
         return InlineKeyboardMarkup(rows)
 
     def _delete_subscription_confirm_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(text="Удалить", callback_data=f"act|cfg_delete_confirm:{subscription_id}|_")],
-                [InlineKeyboardButton(text="Назад", callback_data=f"act|cfg_delete_cancel:{subscription_id}|_")],
+                [InlineKeyboardButton(text="Отмена", callback_data=f"act|cfg_delete_cancel:{subscription_id}|_")],
             ]
         )
 
@@ -1449,7 +1414,7 @@ class VPNBot:
             await self.mysub(update, context)
             return
         if selected_menu_key == "menu_trial":
-            await self.trial(update, context)
+            await self.buy(update, context)
             return
         if selected_menu_key == "menu_instructions":
             await self._send_menu_node(update, selected_menu_key)
@@ -1789,7 +1754,7 @@ class VPNBot:
                 await query.answer()
                 if query.message is not None:
                     user_id = await self._ensure_user(update)
-                    await self._show_trial_offer(query.message, user_id)
+                    await self._show_buy_offer(query.message, user_id)
                 return
             if target == "buy_new":
                 await query.answer()
@@ -1921,27 +1886,10 @@ class VPNBot:
                     await self._send_start_screen(query.message, user_id)
                 return
             if target == "trial_activate":
+                await query.answer("Раздел отключен", show_alert=True)
                 if query.message is not None:
-                    if context.user_data.get("trial_activating"):
-                        await query.answer("Пробный доступ уже активируется…")
-                        return
-                    await query.answer()
                     user_id = await self._ensure_user(update)
-                    if await self.db.has_any_subscription(user_id):
-                        await self._show_trial_used(query.message, user_id)
-                    else:
-                        context.user_data["trial_activating"] = True
-                        try:
-                            await query.message.reply_text(
-                                "Активирую пробный доступ...",
-                                reply_markup=await self._menu_keyboard_for_user(user_id),
-                            )
-                            await self._run_user_provision(
-                                user_id,
-                                lambda: self._create_trial_for_user(update, user_id=user_id, days=7),
-                            )
-                        finally:
-                            context.user_data.pop("trial_activating", None)
+                    await self._show_buy_offer(query.message, user_id)
                 return
             if target == "start_back":
                 await query.answer()
@@ -2685,8 +2633,7 @@ class VPNBot:
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is not None:
             await message.reply_text(
-                "Пробный доступ активирован\n\n"
-                "Срок действия: 7 дней\n\n"
+                "Доступ активирован\n\n"
                 "Ниже вы можете сразу открыть доступ, показать QR-код\n"
                 "или перейти к инструкции по подключению.",
                 reply_markup=self._trial_success_markup(subscription_id) if subscription_id else None,

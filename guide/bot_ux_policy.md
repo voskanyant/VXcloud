@@ -112,6 +112,9 @@ The 2026-05-06 cleanup did three things:
 - fixed Mini App Telegram auth handoff to load Telegram WebApp JS, post
   `initData` with the current `/account-app/` return path, and redirect back
   into the embedded account UI after Django creates the session
+- removed visible trial/free-access entrypoints and inline `Back` navigation
+  rows from bot screens; users should use the persistent menu for navigation,
+  while inline buttons stay reserved for immediate contextual actions
 - cleaned remaining English fallback labels in input cancellation, delete alerts,
   and raw connection-link messages
 - made bot CMS fallback reject mojibake overrides, so broken stored labels do
