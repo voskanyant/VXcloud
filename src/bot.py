@@ -592,9 +592,11 @@ class VPNBot:
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Buy access in app"),
         )
+        fallback_row = rows.pop()
         rows.extend(
             [
                 [InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_new|_")],
+                fallback_row,
                 [
                     InlineKeyboardButton(text="How to connect", callback_data="nav|menu_instructions|_"),
                     InlineKeyboardButton(text="Back", callback_data="act|start_back|_"),
@@ -621,9 +623,11 @@ class VPNBot:
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Pay by card in app"),
         )
+        fallback_row = rows.pop()
         rows.extend(
             [
                 [InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_stars_continue|_")],
+                fallback_row,
                 [
                     InlineKeyboardButton(text="How to connect", callback_data="nav|menu_instructions|_"),
                     InlineKeyboardButton(text="Back", callback_data="act|start_back|_"),
@@ -677,9 +681,11 @@ class VPNBot:
             next_path=next_path,
             web_app_text=self._with_card_price("Renew by card in app"),
         )
+        fallback_row = rows.pop()
         rows.extend(
             [
                 [InlineKeyboardButton(text="Renew with Telegram Stars", callback_data="act|renew_stars_continue|_")],
+                fallback_row,
                 [InlineKeyboardButton(text="Back", callback_data="act|renew_back|_")],
             ]
         )
@@ -691,8 +697,10 @@ class VPNBot:
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Buy additional in app"),
         )
+        fallback_row = rows.pop()
         rows.append([InlineKeyboardButton(text="Renew current access", callback_data="act|buy_existing_renew|_")])
         rows.append([InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_stars_continue|_")])
+        rows.append(fallback_row)
         rows.append([InlineKeyboardButton(text="Back", callback_data="act|start_back|_")])
         return InlineKeyboardMarkup(rows)
 
@@ -738,7 +746,9 @@ class VPNBot:
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Buy access in app"),
         )
+        fallback_row = rows.pop()
         rows.append([InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_new|_")])
+        rows.append(fallback_row)
         rows.append(
             [
                 InlineKeyboardButton(text="Start trial", callback_data="act|start_trial|_"),
