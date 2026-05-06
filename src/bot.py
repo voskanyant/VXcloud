@@ -1113,7 +1113,10 @@ class VPNBot:
         if not subscriptions:
             return self._content_text(
                 "my_configs_empty_message",
-                "Ваш доступ VXcloud\n\nID: {client_code}\n\nВаши устройства:\n\nСписок устройств пока пуст.",
+                "Ваш доступ VXcloud\n\n"
+                "ID: {client_code}\n\n"
+                "Устройств пока нет.\n\n"
+                "Купите доступ в Mini App, затем вернитесь сюда: бот покажет QR, ссылку подписки и быстрые действия.",
             ).replace("{client_code}", client_code)
 
         for idx, sub in enumerate(subscriptions, start=1):
@@ -1154,7 +1157,7 @@ class VPNBot:
         rows.append(
             [
                 self._mini_app_button(
-                    self._button_label("buy_new_config_button", "Buy access"),
+                    self._button_label("buy_new_config_button", "Buy access in app"),
                     "/account/buy/",
                 )
             ]

@@ -347,6 +347,20 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[-2][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[-1][0].callback_data, "act|buy_new|_")
 
+    async def test_my_vpn_empty_state_points_to_mini_app_buy(self):
+        bot = make_bot()
+
+        text = bot._configs_list_text(client_code="VX-000123", subscriptions=[])
+        markup = bot._configs_list_markup([])
+
+        self.assertIn("VX-000123", text)
+        self.assertIn("Mini App", text)
+        self.assertIn("QR", text)
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Buy access in app")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Buy with Telegram Stars")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_new|_")
+
     async def test_config_card_delete_uses_confirmation_callback(self):
         bot = make_bot()
 
