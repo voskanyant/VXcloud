@@ -21,7 +21,16 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import qrcode
 from PIL import Image
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, LabeledPrice, Message, ReplyKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
+    LabeledPrice,
+    Message,
+    ReplyKeyboardMarkup,
+    ReplyKeyboardRemove,
+    Update,
+)
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -516,12 +525,10 @@ class VPNBot:
         )
 
     async def _send_start_screen(self, message: Message, user_id: int) -> None:
-        await self._menu_keyboard_for_user(user_id)
-        account_url = await self._account_url(user_id)
         await self._replace_or_reply(
             message,
             self._start_message_text(),
-            reply_markup=self._start_inline_keyboard(account_url),
+            reply_markup=await self._menu_keyboard_for_user(user_id),
         )
 
     def _trial_offer_markup(self) -> InlineKeyboardMarkup:
@@ -1217,7 +1224,7 @@ class VPNBot:
                 )
                 .replace("{ticket_id}", str(ticket_id))
                 .replace("{client_code}", await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"),
-                reply_markup=self._support_sent_markup(),
+                reply_markup=menu_keyboard,
             )
             return
 
@@ -1754,7 +1761,8 @@ class VPNBot:
                         self._content_text(
                             "support_start_message",
                             "Напишите сообщение одним сообщением в этот чат.\n\nМы получим его вместе с вашим ID и данными по доступу.",
-                        )
+                        ),
+                        reply_markup=ReplyKeyboardRemove(),
                     )
                 return
             if target == "cfg_back":
