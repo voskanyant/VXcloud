@@ -195,6 +195,36 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(open_app_button.web_app)
         self.assertEqual(open_app_button.web_app.url, "https://vxcloud.ru/account-app/?embed=1")
 
+    async def test_start_screen_shows_compact_status_for_active_subscriptions(self):
+        db = FakeDB()
+        db.subscription_list = [
+            {
+                "id": 42,
+                "display_name": "Work laptop",
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=2),
+                "is_active": True,
+                "revoked_at": None,
+            },
+            {
+                "id": 43,
+                "display_name": "Old phone",
+                "expires_at": datetime.now(timezone.utc) - timedelta(days=1),
+                "is_active": False,
+                "revoked_at": None,
+            },
+        ]
+        bot = make_bot(db)
+        message = FakeMessage()
+
+        await bot._send_start_screen(message, user_id=123)
+
+        text = message.replies[0][0]
+        self.assertIn("My VPN", text)
+        self.assertIn("Active configs: 1", text)
+        self.assertIn("Next expiry: Work laptop", text)
+        self.assertIn("Expiring soon: 1", text)
+        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
+
     async def test_buy_markup_uses_mini_app_button_and_browser_fallback(self):
         bot = make_bot()
 

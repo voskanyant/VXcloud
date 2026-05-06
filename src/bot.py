@@ -534,21 +534,58 @@ class VPNBot:
             await message.reply_text(text, reply_markup=reply_markup)
 
     @staticmethod
-    def _start_message_text() -> str:
-        return (
+    def _start_message_text(status_summary: str | None = None) -> str:
+        text = (
             "Добро пожаловать в VXcloud\n\n"
             "Здесь можно быстро получить доступ к VPN для работы, общения и повседневных задач.\n\n"
             "Что дальше:\n"
             "• попробуйте 7 дней бесплатно\n"
             "• купите новый доступ\n"
-            "• откройте личный кабинет на сайте\n\n"
+            "• откройте Mini App для управления доступом\n\n"
             "Если для подключения нужно приложение, нажмите «Как подключить»."
         )
+        if status_summary:
+            text = f"{text}\n\n{status_summary}"
+        return text
+
+    def _start_status_summary(self, subscriptions: list[dict[str, object]]) -> str | None:
+        now = datetime.now(timezone.utc)
+        active: list[dict[str, object]] = []
+        for sub in subscriptions:
+            expires_at = sub.get("expires_at")
+            if (
+                sub.get("revoked_at") is None
+                and bool(sub.get("is_active"))
+                and isinstance(expires_at, datetime)
+                and expires_at > now
+            ):
+                active.append(sub)
+        if not active:
+            return None
+
+        next_sub = min(active, key=lambda item: item["expires_at"])
+        next_expires_at = next_sub.get("expires_at")
+        next_expires_text = self._format_local_dt(next_expires_at) if isinstance(next_expires_at, datetime) else "-"
+        expiring_soon = sum(
+            1
+            for sub in active
+            if isinstance(sub.get("expires_at"), datetime)
+            and sub["expires_at"] <= now + timedelta(days=3)
+        )
+        lines = [
+            "My VPN",
+            f"Active configs: {len(active)}",
+            f"Next expiry: {self._subscription_name(next_sub)} - {next_expires_text}",
+        ]
+        if expiring_soon:
+            lines.append(f"Expiring soon: {expiring_soon}")
+        return "\n".join(lines)
 
     async def _send_start_screen(self, message: Message, user_id: int) -> None:
+        subscriptions = await self.db.list_subscriptions(user_id)
         await self._replace_or_reply(
             message,
-            self._start_message_text(),
+            self._start_message_text(self._start_status_summary(subscriptions)),
             reply_markup=await self._menu_keyboard_for_user(user_id),
         )
 
