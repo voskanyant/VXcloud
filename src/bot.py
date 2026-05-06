@@ -722,6 +722,33 @@ class VPNBot:
             ]
         )
 
+    def _renewable_subscriptions(self, subscriptions: list[dict[str, object]]) -> list[dict[str, object]]:
+        return [sub for sub in subscriptions if sub.get("revoked_at") is None]
+
+    def _renew_select_markup(self, subscriptions: list[dict[str, object]]) -> InlineKeyboardMarkup:
+        rows: list[list[InlineKeyboardButton]] = []
+        for idx, sub in enumerate(subscriptions, start=1):
+            subscription_id = int(sub["id"])
+            rows.append(
+                [
+                    InlineKeyboardButton(
+                        text=f"{idx}. {self._subscription_name(sub)}",
+                        callback_data=f"act|renew_select:{subscription_id}|_",
+                    )
+                ]
+            )
+        rows.append([self._mini_app_button("Open app", "/account/renew/")])
+        rows.append([InlineKeyboardButton(text="Back", callback_data="act|renew_back|_")])
+        return InlineKeyboardMarkup(rows)
+
+    def _renew_select_text(self, subscriptions: list[dict[str, object]]) -> str:
+        lines = ["Choose access to renew", "", "Each renewal must target one subscription.", ""]
+        for idx, sub in enumerate(subscriptions, start=1):
+            expires_at = sub.get("expires_at")
+            expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "-"
+            lines.append(f"{idx}. {self._subscription_name(sub)} - {expires_text}")
+        return "\n".join(lines)
+
     async def _resolve_renew_target(
         self, user_id: int, context: ContextTypes.DEFAULT_TYPE
     ) -> tuple[int | None, dict[str, object] | None]:
@@ -730,15 +757,10 @@ class VPNBot:
             selected_id = int(selected_id)
         if isinstance(selected_id, int):
             selected_sub = await self.db.get_subscription(user_id, selected_id)
-            if selected_sub:
+            if selected_sub and selected_sub.get("revoked_at") is None:
                 return selected_id, selected_sub
 
-        active_sub = await self.db.get_active_subscription(user_id)
-        if not active_sub:
-            return None, None
-        target_id = int(active_sub["id"])
-        context.user_data["selected_subscription_id"] = target_id
-        return target_id, active_sub
+        return None, None
 
     async def _show_renew_offer(
         self,
@@ -748,12 +770,25 @@ class VPNBot:
     ) -> None:
         target_subscription_id, target_sub = await self._resolve_renew_target(user_id, context)
         if not target_subscription_id or not target_sub:
-            await message.reply_text(
-                "Сейчас у вас нет активного доступа для продления.\n\n"
-                "Вы можете оформить новый доступ.",
-                reply_markup=self._renew_no_active_markup(),
-            )
-            return
+            subscriptions = self._renewable_subscriptions(await self.db.list_subscriptions(user_id))
+            if len(subscriptions) == 1:
+                target_sub = subscriptions[0]
+                target_subscription_id = int(target_sub["id"])
+                context.user_data["selected_subscription_id"] = target_subscription_id
+            elif len(subscriptions) > 1:
+                await self._replace_or_reply(
+                    message,
+                    self._renew_select_text(subscriptions),
+                    reply_markup=self._renew_select_markup(subscriptions),
+                )
+                return
+            else:
+                await message.reply_text(
+                    "Сейчас у вас нет доступа для продления.\n\n"
+                    "Вы можете оформить новый доступ.",
+                    reply_markup=self._renew_no_active_markup(),
+                )
+                return
 
         expires_at = target_sub.get("expires_at")
         expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "—"
@@ -1419,9 +1454,9 @@ class VPNBot:
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
+        await self._show_renew_offer(message, user_id, context)
         target_subscription_id, _target_sub = await self._resolve_renew_target(user_id, context)
         await self._track_event(user_id, "renew_clicked", update, subscription_id=target_subscription_id)
-        await self._show_renew_offer(message, user_id, context)
 
     async def admin_reload(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         if not update.effective_user or update.effective_user.id != self.settings.telegram_admin_id:
@@ -1711,6 +1746,7 @@ class VPNBot:
                 await query.answer()
                 if query.message is not None:
                     user_id = await self._ensure_user(update)
+                    await self._show_renew_offer(query.message, user_id, context)
                     target_subscription_id, _target_sub = await self._resolve_renew_target(user_id, context)
                     await self._track_event(
                         user_id,
@@ -1719,7 +1755,6 @@ class VPNBot:
                         subscription_id=target_subscription_id,
                         metadata={"source": "inline"},
                     )
-                    await self._show_renew_offer(query.message, user_id, context)
                 return
             if target == "buy_existing_continue":
                 await query.answer()
@@ -1768,7 +1803,7 @@ class VPNBot:
                             query.message,
                             user_id=user_id,
                             mode="renew",
-                            subscription_id=target_subscription_id,
+                            target_subscription_id=target_subscription_id,
                         )
                 return
             if target == "renew_stars_continue":
@@ -1785,6 +1820,29 @@ class VPNBot:
                         mode="renew",
                         target_subscription_id=target_subscription_id,
                     )
+                return
+            if target.startswith("renew_select:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Invalid subscription", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub or sub.get("revoked_at") is not None:
+                    await query.answer("Subscription not found", show_alert=True)
+                    return
+                context.user_data["selected_subscription_id"] = subscription_id
+                await self._track_event(
+                    user_id,
+                    "renew_clicked",
+                    update,
+                    subscription_id=subscription_id,
+                    metadata={"source": "select"},
+                )
+                await query.answer()
+                if query.message is not None:
+                    await self._show_renew_offer(query.message, user_id, context)
                 return
             if target == "renew_card":
                 await query.answer()

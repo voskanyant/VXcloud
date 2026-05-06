@@ -22,6 +22,7 @@ class FakeDB:
         self.events = []
         self.support_messages = []
         self.subscriptions = {}
+        self.subscription_list = []
         self.deleted = []
 
     async def fetch_bot_site_text_overrides(self):
@@ -55,7 +56,7 @@ class FakeDB:
 
     async def list_subscriptions(self, user_id: int):
         del user_id
-        return []
+        return self.subscription_list
 
     async def delete_subscription(self, user_id: int, subscription_id: int):
         self.deleted.append((user_id, subscription_id))
@@ -251,6 +252,40 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(db.deleted, [(123, 42)])
         self.assertEqual(len(bot.xui.deleted), 1)
         self.assertEqual(query.edits[-1][1].inline_keyboard[-1][0].callback_data, "act|buy_new|_")
+
+    async def test_renew_offer_requires_explicit_choice_for_multiple_subscriptions(self):
+        db = FakeDB()
+        db.subscription_list = [
+            {**expired_subscription(11), "display_name": "Phone"},
+            {**expired_subscription(12), "display_name": "Laptop"},
+        ]
+        bot = make_bot(db)
+        message = FakeMessage()
+        context = SimpleNamespace(user_data={})
+
+        await bot._show_renew_offer(message, user_id=123, context=context)
+
+        self.assertNotIn("selected_subscription_id", context.user_data)
+        self.assertIn("Choose access to renew", message.replies[-1][0])
+        markup = message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|renew_select:11|_")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|renew_select:12|_")
+        self.assertEqual(markup.inline_keyboard[-2][0].web_app.url, "https://vxcloud.ru/account-app/renew/?embed=1")
+
+    async def test_renew_select_targets_subscription_before_showing_payment_options(self):
+        db = FakeDB()
+        db.subscriptions[12] = {**expired_subscription(12), "display_name": "Laptop"}
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|renew_select:12|_")
+        context = SimpleNamespace(user_data={})
+
+        await bot.inline_callback(make_callback_update(query), context)
+
+        self.assertEqual(context.user_data["selected_subscription_id"], 12)
+        self.assertEqual(db.events[-1]["event_name"], "renew_clicked")
+        self.assertEqual(db.events[-1]["subscription_id"], 12)
+        markup = query.message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=12&embed=1")
 
     async def test_instructions_hub_uses_short_webapp_device_choices(self):
         bot = make_bot()
