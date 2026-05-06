@@ -214,8 +214,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(reply_markup, ReplyKeyboardMarkup)
         self.assertNotIsInstance(reply_markup, InlineKeyboardMarkup)
         labels = [button.text for row in reply_markup.keyboard for button in row]
-        self.assertEqual(labels, ["Мой VPN", "Купить", "Продлить", "Поддержка", "Кабинет"])
-        open_app_button = reply_markup.keyboard[-1][0]
+        self.assertEqual(labels, ["Мой VPN", "7 дней бесплатно", "Купить", "Продлить", "Поддержка", "Кабинет"])
+        open_app_button = reply_markup.keyboard[-1][1]
         self.assertIsNotNone(open_app_button.web_app)
         self.assertEqual(open_app_button.web_app.url, "https://vxcloud.ru/account-app/?embed=1")
 
@@ -232,6 +232,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         bot._cms_buttons.update(
             {
                 "menu_my_vpn": "My VPN",
+                "menu_trial": "7 days free",
                 "menu_buy_access": "Buy access",
                 "menu_renew_access": "Renew",
                 "menu_support_simple": "Support",
@@ -244,7 +245,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         bot._cms_content["custom_buttons"] = '[{"text": "Open guide", "url": "https://example.test"}]'
 
         labels = [label for _key, label in bot._menu_buttons()]
-        self.assertEqual(labels, ["Мой VPN", "Купить", "Продлить", "Поддержка", "Кабинет"])
+        self.assertEqual(labels, ["Мой VPN", "7 дней бесплатно", "Купить", "Продлить", "Поддержка", "Кабинет"])
         self.assertEqual(
             bot._content_text("menu_open_app_response", "Откройте кабинет."),
             "Откройте кабинет.",
@@ -454,10 +455,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         markup = bot._trial_offer_markup()
 
-        self.assertEqual(markup.inline_keyboard[0][0].text, "\u041a\u0443\u043f\u0438\u0442\u044c \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435 \u00b7 249 RUB")
-        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
-        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_stars_continue|_")
-        self.assertEqual(len(markup.inline_keyboard), 2)
+        self.assertEqual(markup.inline_keyboard[0][0].text, "\u0410\u043a\u0442\u0438\u0432\u0438\u0440\u043e\u0432\u0430\u0442\u044c 7 \u0434\u043d\u0435\u0439")
+        self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|trial_activate|_")
+        self.assertEqual(len(markup.inline_keyboard), 1)
 
     async def test_trial_used_state_is_app_first_buy(self):
         db = FakeDB()
@@ -468,12 +468,12 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._show_trial_offer(message, user_id=123)
 
         text = message.replies[-1][0]
-        self.assertIn("\u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435", text)
+        self.assertIn("\u041f\u0440\u043e\u0431\u043d\u044b\u0439 \u0434\u043e\u0441\u0442\u0443\u043f \u0443\u0436\u0435 \u0431\u044b\u043b \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043d", text)
         self.assertIn("Telegram Stars", text)
         markup = message.replies[-1][1]
         self.assertEqual(markup.inline_keyboard[0][0].text, "\u041a\u0443\u043f\u0438\u0442\u044c \u0432 \u043a\u0430\u0431\u0438\u043d\u0435\u0442\u0435 \u00b7 249 RUB")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
-        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_stars_continue|_")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_new|_")
         self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_my_vpn_list_has_direct_subscription_actions(self):

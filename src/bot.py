@@ -274,6 +274,7 @@ class VPNBot:
         del has_active_subscription
         return [
             ("menu_mysub", self._button_label("menu_my_vpn", "Мой VPN").strip() or "Мой VPN"),
+            ("menu_trial", self._button_label("menu_trial", "7 дней бесплатно").strip() or "7 дней бесплатно"),
             ("menu_buy", self._button_label("menu_buy_access", "Купить").strip() or "Купить"),
             ("menu_renew", self._button_label("menu_renew_access", "Продлить").strip() or "Продлить"),
             ("menu_support", self._button_label("menu_support_simple", "Поддержка").strip() or "Поддержка"),
@@ -594,8 +595,7 @@ class VPNBot:
     def _trial_offer_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button(self._with_card_price("Купить в кабинете"), "/account/buy/")],
-                [InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_stars_continue|_")],
+                [InlineKeyboardButton(text="Активировать 7 дней", callback_data="act|trial_activate|_")],
             ]
         )
 
@@ -868,16 +868,26 @@ class VPNBot:
 
     async def _show_trial_used(self, message: Message, user_id: int) -> None:
         await message.reply_text(
-            "Этот раздел отключен.\n\n"
-            "Купить доступ можно в кабинете или через Telegram Stars.",
+            "Пробный доступ уже был использован\n\n"
+            "Вы можете купить доступ в кабинете или оплатить через Telegram Stars.",
             reply_markup=await self._trial_used_markup(user_id),
         )
 
     async def _show_trial_offer(self, message: Message, user_id: int) -> None:
+        if await self.db.has_any_subscription(user_id):
+            await self._show_trial_used(message, user_id)
+            return
+
         await self._replace_or_reply(
             message,
-            "Этот раздел отключен.\n\n"
-            "Купить доступ можно в кабинете или через Telegram Stars.",
+            "Пробный доступ на 7 дней\n\n"
+            "Подходит, если хотите сначала всё проверить.\n\n"
+            "Что получите:\n"
+            "• доступ на 7 дней\n"
+            "• ссылку для подключения\n"
+            "• QR-код\n"
+            "• пошаговую инструкцию\n\n"
+            "Пробный период можно активировать один раз.",
             reply_markup=self._trial_offer_markup(),
         )
 
@@ -1414,7 +1424,7 @@ class VPNBot:
             await self.mysub(update, context)
             return
         if selected_menu_key == "menu_trial":
-            await self.buy(update, context)
+            await self.trial(update, context)
             return
         if selected_menu_key == "menu_instructions":
             await self._send_menu_node(update, selected_menu_key)
@@ -1754,7 +1764,7 @@ class VPNBot:
                 await query.answer()
                 if query.message is not None:
                     user_id = await self._ensure_user(update)
-                    await self._show_buy_offer(query.message, user_id)
+                    await self._show_trial_offer(query.message, user_id)
                 return
             if target == "buy_new":
                 await query.answer()
@@ -1886,10 +1896,27 @@ class VPNBot:
                     await self._send_start_screen(query.message, user_id)
                 return
             if target == "trial_activate":
-                await query.answer("Раздел отключен", show_alert=True)
                 if query.message is not None:
+                    if context.user_data.get("trial_activating"):
+                        await query.answer("Пробный доступ уже активируется...")
+                        return
+                    await query.answer()
                     user_id = await self._ensure_user(update)
-                    await self._show_buy_offer(query.message, user_id)
+                    if await self.db.has_any_subscription(user_id):
+                        await self._show_trial_used(query.message, user_id)
+                    else:
+                        context.user_data["trial_activating"] = True
+                        try:
+                            await query.message.reply_text(
+                                "Активирую пробный доступ...",
+                                reply_markup=await self._menu_keyboard_for_user(user_id),
+                            )
+                            await self._run_user_provision(
+                                user_id,
+                                lambda: self._create_trial_for_user(update, user_id=user_id, days=7),
+                            )
+                        finally:
+                            context.user_data.pop("trial_activating", None)
                 return
             if target == "start_back":
                 await query.answer()
