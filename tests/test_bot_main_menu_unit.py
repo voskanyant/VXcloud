@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -20,6 +21,8 @@ class FakeDB:
         self.renamed = []
         self.events = []
         self.support_messages = []
+        self.subscriptions = {}
+        self.deleted = []
 
     async def fetch_bot_site_text_overrides(self):
         return {}
@@ -27,6 +30,10 @@ class FakeDB:
     async def get_active_subscription(self, user_id: int):
         del user_id
         return None
+
+    async def get_subscription(self, user_id: int, subscription_id: int):
+        del user_id
+        return self.subscriptions.get(subscription_id)
 
     async def upsert_user(self, telegram_id, username, first_name):
         del telegram_id, username, first_name
@@ -49,6 +56,10 @@ class FakeDB:
     async def list_subscriptions(self, user_id: int):
         del user_id
         return []
+
+    async def delete_subscription(self, user_id: int, subscription_id: int):
+        self.deleted.append((user_id, subscription_id))
+        return True
 
     async def get_latest_paid_order(self, user_id: int):
         del user_id
@@ -89,6 +100,29 @@ class FakeMessage:
         self.replies.append((text, reply_markup))
 
 
+class FakeCallbackQuery:
+    def __init__(self, data, message=None):
+        self.data = data
+        self.message = message or FakeMessage()
+        self.answers = []
+        self.edits = []
+
+    async def answer(self, text=None, show_alert=False):
+        self.answers.append((text, show_alert))
+
+    async def edit_message_text(self, text, reply_markup=None):
+        self.edits.append((text, reply_markup))
+
+
+class FakeXUI:
+    def __init__(self):
+        self.deleted = []
+
+    async def delete_client(self, *args, **kwargs):
+        self.deleted.append((args, kwargs))
+        return "deleted"
+
+
 def make_bot(db=None):
     settings = SimpleNamespace(
         card_payment_amount_minor=24900,
@@ -97,12 +131,14 @@ def make_bot(db=None):
         magic_link_api_timeout_seconds=1,
         telegram_admin_id=0,
         timezone="UTC",
+        max_devices_per_sub=1,
+        vpn_flow="xtls-rprx-vision",
     )
     return VPNBot(
         app=SimpleNamespace(bot=SimpleNamespace()),
         settings=settings,
         db=db or FakeDB(),
-        xui=SimpleNamespace(),
+        xui=FakeXUI(),
     )
 
 
@@ -112,6 +148,29 @@ def make_update(message):
         callback_query=None,
         effective_user=SimpleNamespace(id=999, username="tester", first_name="Test"),
     )
+
+
+def make_callback_update(query):
+    return SimpleNamespace(
+        message=None,
+        callback_query=query,
+        effective_user=SimpleNamespace(id=999, username="tester", first_name="Test"),
+    )
+
+
+def expired_subscription(subscription_id=42):
+    return {
+        "id": subscription_id,
+        "display_name": "Old phone",
+        "expires_at": datetime.now(timezone.utc) - timedelta(days=1),
+        "is_active": False,
+        "revoked_at": None,
+        "inbound_id": 7,
+        "client_uuid": "11111111-1111-4111-8111-111111111111",
+        "client_email": "old-phone@example.test",
+        "alias_fqdn": "",
+        "dns_record_id": "",
+    }
 
 
 class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
@@ -154,6 +213,44 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(action_row[2].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
         self.assertEqual(markup.inline_keyboard[-2][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[-1][0].callback_data, "act|buy_new|_")
+
+    async def test_config_card_delete_uses_confirmation_callback(self):
+        bot = make_bot()
+
+        markup = await bot._config_card_markup(
+            user_id=123,
+            subscription_id=42,
+            copy_text="https://vxcloud.ru/account/feed/token/",
+            can_delete=True,
+        )
+
+        self.assertEqual(markup.inline_keyboard[-2][0].text, "Delete")
+        self.assertEqual(markup.inline_keyboard[-2][0].callback_data, "act|cfg_delete_request:42|_")
+
+    async def test_delete_request_shows_confirmation_without_deleting(self):
+        db = FakeDB()
+        db.subscriptions[42] = expired_subscription()
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|cfg_delete_request:42|_")
+
+        await bot.inline_callback(make_callback_update(query), SimpleNamespace(user_data={}))
+
+        self.assertEqual(db.deleted, [])
+        self.assertEqual(bot.xui.deleted, [])
+        self.assertIn("Delete Old phone?", query.edits[-1][0])
+        self.assertEqual(query.edits[-1][1].inline_keyboard[0][0].callback_data, "act|cfg_delete_confirm:42|_")
+
+    async def test_delete_confirm_removes_subscription_after_confirmation(self):
+        db = FakeDB()
+        db.subscriptions[42] = expired_subscription()
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|cfg_delete_confirm:42|_")
+
+        await bot.inline_callback(make_callback_update(query), SimpleNamespace(user_data={}))
+
+        self.assertEqual(db.deleted, [(123, 42)])
+        self.assertEqual(len(bot.xui.deleted), 1)
+        self.assertEqual(query.edits[-1][1].inline_keyboard[-1][0].callback_data, "act|buy_new|_")
 
     async def test_instructions_hub_uses_short_webapp_device_choices(self):
         bot = make_bot()

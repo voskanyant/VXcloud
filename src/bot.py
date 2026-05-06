@@ -1097,9 +1097,24 @@ class VPNBot:
             [InlineKeyboardButton(text="Rename", callback_data=f"act|cfg_rename:{subscription_id}|_")],
         ]
         if can_delete:
-            rows.append([InlineKeyboardButton(text="Delete", callback_data=f"act|cfg_delete:{subscription_id}|_")])
+            rows.append([InlineKeyboardButton(text="Delete", callback_data=f"act|cfg_delete_request:{subscription_id}|_")])
         rows.append([InlineKeyboardButton(text="Back", callback_data="act|cfg_back|_")])
         return InlineKeyboardMarkup(rows)
+
+    def _delete_subscription_confirm_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(text="Confirm delete", callback_data=f"act|cfg_delete_confirm:{subscription_id}|_")],
+                [InlineKeyboardButton(text="Back", callback_data=f"act|cfg_delete_cancel:{subscription_id}|_")],
+            ]
+        )
+
+    def _delete_subscription_confirm_text(self, sub: dict[str, object]) -> str:
+        return (
+            f"Delete {self._subscription_name(sub)}?\n\n"
+            "This removes the expired or inactive config from VXcloud and the VPN node. "
+            "Active configs cannot be deleted here."
+        )
 
     async def _config_card_text(self, user_id: int, sub: dict[str, object], *, client_code: str) -> tuple[str, str, str]:
         raw_vless_url, feed_url = await self._resolve_subscription_links(user_id, sub)
@@ -1982,7 +1997,53 @@ class VPNBot:
                         reply_markup=ReplyKeyboardRemove(),
                     )
                 return
-            if target.startswith("cfg_delete:"):
+            if target.startswith("cfg_delete_cancel:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Invalid device", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub:
+                    await query.answer("Device not found", show_alert=True)
+                    return
+                client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+                text, primary_link, _raw_vless_url = await self._config_card_text(user_id, sub, client_code=client_code)
+                await query.answer("Delete cancelled")
+                if query.message is not None:
+                    await query.edit_message_text(
+                        text=text,
+                        reply_markup=await self._config_card_markup(
+                            user_id,
+                            subscription_id,
+                            primary_link,
+                            can_delete=self._subscription_can_delete(sub),
+                        ),
+                    )
+                return
+            if target.startswith("cfg_delete_request:") or target.startswith("cfg_delete:"):
+                user_id = await self._ensure_user(update)
+                try:
+                    subscription_id = int(target.split(":", 1)[1])
+                except (IndexError, ValueError):
+                    await query.answer("Invalid device", show_alert=True)
+                    return
+                sub = await self.db.get_subscription(user_id, subscription_id)
+                if not sub:
+                    await query.answer("Device not found", show_alert=True)
+                    return
+                if not self._subscription_can_delete(sub):
+                    await query.answer("Active configs cannot be deleted", show_alert=True)
+                    return
+                await query.answer()
+                if query.message is not None:
+                    await query.edit_message_text(
+                        text=self._delete_subscription_confirm_text(sub),
+                        reply_markup=self._delete_subscription_confirm_markup(subscription_id),
+                    )
+                return
+            if target.startswith("cfg_delete_confirm:"):
                 user_id = await self._ensure_user(update)
                 try:
                     subscription_id = int(target.split(":", 1)[1])
