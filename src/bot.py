@@ -689,7 +689,7 @@ class VPNBot:
         return InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(text="Write message", callback_data="act|support_start|_")],
-                [self._mini_app_button("Open app")],
+                [self._mini_app_button("Open support in app", "/account/?view=support")],
                 [
                     InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_"),
                     InlineKeyboardButton(text="Back", callback_data="act|start_back|_"),

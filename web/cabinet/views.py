@@ -142,6 +142,15 @@ def _account_frontend_renew_url(subscription_id: int) -> str:
     return _account_frontend_url(f"renew/?subscription_id={int(subscription_id)}")
 
 
+def _telegram_bot_username() -> str:
+    return os.getenv("TELEGRAM_BOT_USERNAME", "").strip().lstrip("@")
+
+
+def _telegram_bot_url() -> str:
+    username = _telegram_bot_username()
+    return f"https://t.me/{username}" if username else ""
+
+
 def _normalize_vless_public_endpoint(vless_url: str, *, host: str, port: int, tag: str | None = None) -> str:
     raw = str(vless_url or "").strip()
     if not raw.lower().startswith("vless://"):
@@ -292,7 +301,8 @@ def _account_template_urls(request: HttpRequest) -> dict[str, object]:
         "backend_renew_url": _account_backend_url(request, "renew/"),
         "backend_config_prefix": _account_backend_base(request) + "config/",
         "backend_rename_prefix": _account_backend_base(request) + "subscriptions/",
-        "support_url": "/instructions/",
+        "support_url": _account_backend_url(request, "?view=support"),
+        "support_telegram_url": _telegram_bot_url(),
         "telegram_login_enabled": bool(telegram_login_bot_username),
         "telegram_login_bot_username": telegram_login_bot_username,
         "telegram_login_auth_url": _telegram_login_auth_url(request) if telegram_login_bot_username else "",
@@ -422,7 +432,7 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
             "dashboard": _account_frontend_url(),
             "buy": _account_frontend_url("buy/"),
             "renew": _account_frontend_url("renew/"),
-            "support": "/instructions/",
+            "support": _account_frontend_url("?view=support"),
             "password_reset": "/accounts/password_reset/",
         },
     }
@@ -472,6 +482,17 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
     }
     empty_payload["subscriptions"] = subscriptions_payload
     return empty_payload
+
+
+def _build_support_payload(request: HttpRequest) -> dict[str, object]:
+    return {
+        "title": "Support",
+        "subtitle": "Choose the fastest path for your issue.",
+        "client_code": "",
+        "telegram_url": _telegram_bot_url(),
+        "instructions_url": "/instructions/",
+        "dashboard_url": _account_frontend_url(),
+    }
 
 
 def _build_link_telegram_payload(request: HttpRequest, *, regenerate: bool = False) -> dict[str, object]:
@@ -902,6 +923,7 @@ def signup_view(request: HttpRequest) -> HttpResponse:
 
 @login_required
 def account_dashboard(request: HttpRequest) -> HttpResponse:
+    support_view = (request.GET.get("view") or "").strip().lower() == "support"
     linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
     sub, has_active, last_payment_method = _get_subscription_snapshot_for_bot_user(bot_user)
     subscriptions = _list_subscriptions_for_bot_user(bot_user)
@@ -952,6 +974,8 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
             "inactive_configs": inactive_configs,
             "renewable_configs": renewable_configs,
             "single_renew_url": single_renew_url,
+            "support_view": support_view,
+            "support_client_code": getattr(bot_user, "client_code", "") or "",
             **_account_template_urls(request),
         },
     )
@@ -1316,6 +1340,11 @@ def account_api_state(request: HttpRequest) -> JsonResponse:
     if view_name == "link":
         payload["view"] = "link"
         payload["link"] = _build_link_telegram_payload(request)
+        return JsonResponse(payload)
+
+    if view_name == "support":
+        payload["view"] = "support"
+        payload["support"] = _build_support_payload(request)
         return JsonResponse(payload)
 
     payload["view"] = "dashboard"

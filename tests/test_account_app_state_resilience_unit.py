@@ -80,6 +80,35 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("link_code", payload["link"])
         self.assertIn("https://t.me/vxcloud_test_bot?start=link_", payload["link"]["deep_link"])
 
+    def test_account_state_returns_support_payload_for_support_view(self):
+        with patch.dict("os.environ", {"TELEGRAM_BOT_USERNAME": "vxcloud_test_bot"}):
+            response = self.client.get("/account-app/api/state/?view=support")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["authenticated"])
+        self.assertEqual(payload["view"], "support")
+        self.assertEqual(payload["support"]["telegram_url"], "https://t.me/vxcloud_test_bot")
+        self.assertEqual(payload["support"]["instructions_url"], "/instructions/")
+
+    def test_account_app_support_view_renders_support_hub(self):
+        with patch.dict("os.environ", {"TELEGRAM_BOT_USERNAME": "vxcloud_test_bot"}):
+            with patch("cabinet.views._resolve_account_bot_user") as resolve_mock:
+                resolve_mock.return_value = (
+                    None,
+                    SimpleNamespace(id=7, client_code="VX-000007"),
+                )
+                with patch("cabinet.views._get_subscription_snapshot_for_bot_user", return_value=(None, False, None)):
+                    with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[]):
+                        response = self.client.get("/account-app/?view=support&embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Support hub", html)
+        self.assertIn("VX-000007", html)
+        self.assertIn("https://t.me/vxcloud_test_bot", html)
+
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):
         with patch.object(sys.modules["cabinet.views"].settings, "VPN_PUBLIC_HOST", ""), patch.object(
             sys.modules["cabinet.views"].settings, "VPN_PUBLIC_PORT", ""

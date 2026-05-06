@@ -641,8 +641,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(markup.inline_keyboard[0][0].text, "Write message")
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|support_start|_")
-        self.assertEqual(markup.inline_keyboard[1][0].text, "Open app")
-        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Open support in app")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?view=support&embed=1")
         self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|start_mysub|_")
         self.assertEqual(markup.inline_keyboard[2][1].callback_data, "act|start_back|_")
 
@@ -654,7 +654,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("VX-000123", message.replies[0][0])
         self.assertIsInstance(message.replies[0][1], InlineKeyboardMarkup)
-        self.assertEqual(message.replies[0][1].inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
+        self.assertEqual(message.replies[0][1].inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?view=support&embed=1")
 
     async def test_support_start_hides_main_menu_for_text_input(self):
         bot = make_bot()
