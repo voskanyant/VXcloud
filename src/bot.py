@@ -281,12 +281,13 @@ class VPNBot:
         next_path: str | None,
         web_app_text: str,
         fallback_text: str = "Открыть в браузере",
+        include_fallback: bool = True,
     ) -> list[list[InlineKeyboardButton]]:
-        fallback_url = await self._account_url(user_id, next_path)
-        return [
-            [self._mini_app_button(web_app_text, next_path)],
-            [InlineKeyboardButton(text=fallback_text, url=fallback_url)],
-        ]
+        rows = [[self._mini_app_button(web_app_text, next_path)]]
+        if include_fallback:
+            fallback_url = await self._account_url(user_id, next_path)
+            rows.append([InlineKeyboardButton(text=fallback_text, url=fallback_url)])
+        return rows
 
     async def _subscription_feed_url(self, subscription_id: int, feed_token: str | None = None) -> str | None:
         token = (feed_token or "").strip()
@@ -564,10 +565,7 @@ class VPNBot:
         return InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton(text="Активировать 7 дней", callback_data="act|trial_activate|_")],
-                [
-                    InlineKeyboardButton(text="Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="Назад", callback_data="act|start_back|_"),
-                ],
+                [InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")],
             ]
         )
 
@@ -576,16 +574,12 @@ class VPNBot:
             user_id=user_id,
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Купить в кабинете"),
+            include_fallback=False,
         )
-        fallback_row = rows.pop()
         rows.extend(
             [
                 [InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_new|_")],
-                fallback_row,
-                [
-                    InlineKeyboardButton(text="Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="Назад", callback_data="act|start_back|_"),
-                ],
+                [InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")],
             ]
         )
         return InlineKeyboardMarkup(rows)
@@ -607,16 +601,12 @@ class VPNBot:
             user_id=user_id,
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Картой в кабинете"),
+            include_fallback=False,
         )
-        fallback_row = rows.pop()
         rows.extend(
             [
                 [InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_stars_continue|_")],
-                fallback_row,
-                [
-                    InlineKeyboardButton(text="Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="Назад", callback_data="act|start_back|_"),
-                ],
+                [InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")],
             ]
         )
         return InlineKeyboardMarkup(rows)
@@ -626,6 +616,7 @@ class VPNBot:
             user_id=user_id,
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Картой в кабинете"),
+            include_fallback=False,
         )
         rows.append([InlineKeyboardButton(text="Назад", callback_data="act|buy_card_back|_")])
         return InlineKeyboardMarkup(rows)
@@ -638,6 +629,7 @@ class VPNBot:
             user_id=user_id,
             next_path=next_path,
             web_app_text=self._with_card_price("Продлить картой"),
+            include_fallback=False,
         )
         rows.append([InlineKeyboardButton(text="Назад", callback_data="act|renew_card_back|_")])
         return InlineKeyboardMarkup(rows)
@@ -662,12 +654,11 @@ class VPNBot:
             user_id=user_id,
             next_path=next_path,
             web_app_text=self._with_card_price("Продлить картой"),
+            include_fallback=False,
         )
-        fallback_row = rows.pop()
         rows.extend(
             [
                 [InlineKeyboardButton(text="Продлить Stars", callback_data="act|renew_stars_continue|_")],
-                fallback_row,
                 [InlineKeyboardButton(text="Назад", callback_data="act|renew_back|_")],
             ]
         )
@@ -678,11 +669,10 @@ class VPNBot:
             user_id=user_id,
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Купить еще доступ"),
+            include_fallback=False,
         )
-        fallback_row = rows.pop()
         rows.append([InlineKeyboardButton(text="Продлить текущий", callback_data="act|buy_existing_renew|_")])
         rows.append([InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_stars_continue|_")])
-        rows.append(fallback_row)
         rows.append([InlineKeyboardButton(text="Назад", callback_data="act|start_back|_")])
         return InlineKeyboardMarkup(rows)
 
@@ -723,10 +713,9 @@ class VPNBot:
             user_id=user_id,
             next_path="/account/buy/",
             web_app_text=self._with_card_price("Купить в кабинете"),
+            include_fallback=False,
         )
-        fallback_row = rows.pop()
         rows.append([InlineKeyboardButton(text="Оплатить Stars", callback_data="act|buy_new|_")])
-        rows.append(fallback_row)
         rows.append(
             [
                 InlineKeyboardButton(text="Пробный доступ", callback_data="act|start_trial|_"),
