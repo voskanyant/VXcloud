@@ -93,12 +93,16 @@ class FakeMessage:
     def __init__(self, text=""):
         self.text = text
         self.replies = []
+        self.photos = []
 
     async def edit_text(self, *args, **kwargs):
         raise RuntimeError("incoming user messages are not editable")
 
     async def reply_text(self, text, reply_markup=None):
         self.replies.append((text, reply_markup))
+
+    async def reply_photo(self, photo, caption=None, reply_markup=None):
+        self.photos.append((photo, caption, reply_markup))
 
 
 class FakeCallbackQuery:
@@ -199,6 +203,40 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(markup.inline_keyboard[0][0].web_app)
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Fbuy%2F")
+
+    async def test_payment_ready_markups_keep_app_primary_and_browser_fallback(self):
+        bot = make_bot()
+        account_url = "https://vxcloud.ru/account/"
+
+        paid_markup = bot._post_payment_ready_markup(42, account_url)
+        renew_markup = bot._renew_success_markup(42, account_url)
+
+        self.assertEqual(paid_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(paid_markup.inline_keyboard[-1][1].text, "Open in browser")
+        self.assertEqual(paid_markup.inline_keyboard[-1][1].url, account_url)
+        self.assertEqual(renew_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(renew_markup.inline_keyboard[-1][1].text, "Open in browser")
+
+    async def test_send_config_actions_are_mini_app_first(self):
+        bot = make_bot()
+        message = FakeMessage()
+
+        await bot._send_config(
+            update=None,
+            vless_url="vless://11111111-1111-4111-8111-111111111111@example.test:443?type=tcp#VXcloud",
+            expires_at=datetime.now(timezone.utc) + timedelta(days=30),
+            subscription_url="https://vxcloud.ru/account/feed/token/",
+            subscription_id=42,
+            user_id=123,
+            message=message,
+        )
+
+        self.assertEqual(len(message.photos), 1)
+        markup = message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
+        self.assertEqual(markup.inline_keyboard[3][0].text, "Renew in browser")
+        self.assertEqual(markup.inline_keyboard[-1][0].text, "Open in browser")
 
     async def test_my_vpn_list_has_direct_subscription_actions(self):
         bot = make_bot()

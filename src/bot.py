@@ -516,7 +516,7 @@ class VPNBot:
                 ],
                 [
                     InlineKeyboardButton(text="💬 Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="🌐 Личный кабинет на сайте", url=account_url),
+                    InlineKeyboardButton(text="Open in browser", url=account_url),
                 ],
             ]
         )
@@ -631,7 +631,7 @@ class VPNBot:
                 ],
                 [
                     InlineKeyboardButton(text="📊 Мой доступ", callback_data="act|start_mysub|_"),
-                    InlineKeyboardButton(text="🌐 Личный кабинет на сайте", url=account_url),
+                    InlineKeyboardButton(text="Open in browser", url=account_url),
                 ],
             ]
         )
@@ -717,7 +717,7 @@ class VPNBot:
                 ],
                 [
                     InlineKeyboardButton(text="📊 Мой доступ", callback_data="act|start_mysub|_"),
-                    InlineKeyboardButton(text="🌐 Личный кабинет на сайте", url=account_url),
+                    InlineKeyboardButton(text="Open in browser", url=account_url),
                 ],
             ]
         )
@@ -2776,14 +2776,9 @@ class VPNBot:
         if isinstance(subscription_id, int) and subscription_id > 0:
             buttons.append([self._mini_app_button("Open app", f"/account/config/{subscription_id}/")])
             buttons.append([self._mini_app_button("Renew in app", renew_path)])
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text=self._with_card_price(self._button_label("pay_card_button", "💳 Оплатить картой")),
-                    url=renew_url,
-                )
-            ]
-        )
+            buttons.append([InlineKeyboardButton(text="Renew in browser", url=renew_url)])
+        else:
+            buttons.append([self._mini_app_button("Open app")])
         buttons.append(
             [
                 InlineKeyboardButton(
@@ -2795,7 +2790,7 @@ class VPNBot:
         buttons.append(
             [
                 InlineKeyboardButton(
-                    text=self._button_label("open_account", "🌐 Личный кабинет на сайте"),
+                    text="Open in browser",
                     url=account_url,
                 )
             ]
