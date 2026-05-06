@@ -1,12 +1,15 @@
 import hashlib
 import hmac
+import json
 import os
 import sys
 import unittest
 from contextlib import nullcontext
 from datetime import timedelta
 from pathlib import Path
+from time import time
 from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlencode
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 WEB_ROOT = PROJECT_ROOT / "web"
@@ -23,13 +26,27 @@ django.setup()
 
 from unittest.mock import patch
 
-from cabinet.views import _telegram_login_auth_url, _verify_telegram_login_payload, tg_magic_login, telegram_login
+from cabinet.views import (
+    _telegram_login_auth_url,
+    _verify_telegram_login_payload,
+    telegram_login,
+    telegram_webapp_auth,
+    tg_magic_login,
+)
 
 
 def _sign_telegram_login_payload(payload: dict[str, str], bot_token: str) -> str:
     data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(payload.items()))
     secret_key = hashlib.sha256(bot_token.encode("utf-8")).digest()
     return hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _build_webapp_init_data(payload: dict[str, str], bot_token: str) -> str:
+    data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(payload.items()))
+    secret_key = hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
+    signed = dict(payload)
+    signed["hash"] = hmac.new(secret_key, data_check_string.encode("utf-8"), hashlib.sha256).hexdigest()
+    return urlencode(signed)
 
 
 class TelegramSiteLoginUnitTests(unittest.TestCase):
@@ -282,6 +299,67 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
             backend="django.contrib.auth.backends.ModelBackend",
         )
 
+    def test_telegram_webapp_auth_accepts_valid_init_data(self):
+        bot_token = "telegram-bot-token"
+        user_payload = {"id": 777000, "username": "vxcloud_user", "first_name": "VX"}
+        init_data = _build_webapp_init_data(
+            {
+                "auth_date": str(int(time())),
+                "user": json.dumps(user_payload, separators=(",", ":")),
+            },
+            bot_token,
+        )
+        request = self.factory.post(
+            "/api/auth/telegram/webapp",
+            data=json.dumps({"initData": init_data}),
+            content_type="application/json",
+        )
+        user = object()
+
+        with override_settings(
+            TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_WEBAPP_AUTH_MAX_AGE_SECONDS=600,
+        ):
+            with patch("cabinet.views.transaction.atomic", return_value=nullcontext()):
+                with patch("cabinet.views._get_or_create_user_for_telegram", return_value=user) as user_mock:
+                    with patch("cabinet.views.login") as login_mock:
+                        response = telegram_webapp_auth(request)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.content.decode("utf-8"))["ok"], True)
+        user_mock.assert_called_once()
+        login_mock.assert_called_once_with(
+            request,
+            user,
+            backend="django.contrib.auth.backends.ModelBackend",
+        )
+
+    def test_telegram_webapp_auth_rejects_invalid_signature(self):
+        bot_token = "telegram-bot-token"
+        init_data = _build_webapp_init_data(
+            {
+                "auth_date": str(int(time())),
+                "user": json.dumps({"id": 777000}, separators=(",", ":")),
+            },
+            bot_token,
+        ).replace("777000", "888000")
+        request = self.factory.post(
+            "/api/auth/telegram/webapp",
+            data=json.dumps({"initData": init_data}),
+            content_type="application/json",
+        )
+
+        with override_settings(
+            TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_WEBAPP_AUTH_MAX_AGE_SECONDS=600,
+        ):
+            with patch("cabinet.views.login") as login_mock:
+                response = telegram_webapp_auth(request)
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(json.loads(response.content.decode("utf-8"))["error"], "invalid_signature")
+        login_mock.assert_not_called()
+
     def test_magic_login_links_current_authenticated_user_instead_of_switching_account(self):
         request = self.factory.get("/auth/tg/sampletoken", data={"next": "/account/"})
         request.user = type("User", (), {"is_authenticated": True})()
@@ -306,12 +384,13 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
         )()
         fake_mgr = type("Mgr", (), {"select_for_update": lambda self: fake_qs})()
 
-        with patch("cabinet.views.transaction.atomic", return_value=nullcontext()):
-            with patch("cabinet.views.WebLoginToken.objects", fake_mgr):
-                with patch("cabinet.views._link_site_user_to_telegram", return_value=request.user) as link_mock:
-                    with patch("cabinet.views._get_or_create_user_for_telegram") as get_user_mock:
-                        with patch("cabinet.views.login") as login_mock:
-                            response = tg_magic_login(request, "sampletoken")
+        with override_settings(ALLOWED_HOSTS=["testserver", "localhost", "127.0.0.1"]):
+            with patch("cabinet.views.transaction.atomic", return_value=nullcontext()):
+                with patch("cabinet.views.WebLoginToken.objects", fake_mgr):
+                    with patch("cabinet.views._link_site_user_to_telegram", return_value=request.user) as link_mock:
+                        with patch("cabinet.views._get_or_create_user_for_telegram") as get_user_mock:
+                            with patch("cabinet.views.login") as login_mock:
+                                response = tg_magic_login(request, "sampletoken")
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response["Location"], "/account/")

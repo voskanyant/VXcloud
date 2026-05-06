@@ -30,6 +30,7 @@ from telegram import (
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
     Update,
+    WebAppInfo,
 )
 from telegram.ext import (
     Application,
@@ -147,7 +148,10 @@ class VPNBot:
         rows: list[list[KeyboardButton]] = []
         row: list[KeyboardButton] = []
         for key, label in buttons:
-            row.append(KeyboardButton(label))
+            if key == "menu_open_app":
+                row.append(KeyboardButton(label, web_app=WebAppInfo(url=self._mini_app_url())))
+            else:
+                row.append(KeyboardButton(label))
             if len(row) == 2:
                 rows.append(row)
                 row = []
@@ -219,32 +223,55 @@ class VPNBot:
         return f"{label} · {self._card_price_label()}"
 
     def _menu_buttons(self, has_active_subscription: bool = False) -> list[tuple[str, str]]:
-        buttons: list[tuple[str, str]] = [
-            ("menu_trial", self._button_label("menu_trial", "\U0001f381 \u0411\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e 7\u0434").strip() or "\U0001f381 \u0411\u0435\u0441\u043f\u043b\u0430\u0442\u043d\u043e 7\u0434"),
-            ("menu_buy", self._button_label("menu_buy", "⭐ Купить новый доступ").strip() or "⭐ Купить новый доступ"),
-            ("menu_mysub", self._button_label("menu_mysub", "\U0001f4ca \u041c\u043e\u0439 \u0434\u043e\u0441\u0442\u0443\u043f").strip() or "\U0001f4ca \u041c\u043e\u0439 \u0434\u043e\u0441\u0442\u0443\u043f"),
-            (
-                "menu_instructions",
-                self._button_label("menu_instructions", "\U0001f4ac \u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f").strip() or "\U0001f4ac \u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f",
-            ),
-            (
-                "menu_support",
-                self._button_label("menu_support", "\U0001f198 \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430").strip() or "\U0001f198 \u041f\u043e\u0434\u0434\u0435\u0440\u0436\u043a\u0430",
-            ),
-            (
-                "menu_site",
-                self._button_label("menu_site", "🌐 Личный кабинет на сайте").strip() or "🌐 Личный кабинет на сайте",
-            ),
+        del has_active_subscription
+        return [
+            ("menu_mysub", self._button_label("menu_my_vpn", "My VPN").strip() or "My VPN"),
+            ("menu_buy", self._button_label("menu_buy_access", "Buy access").strip() or "Buy access"),
+            ("menu_renew", self._button_label("menu_renew_access", "Renew").strip() or "Renew"),
+            ("menu_support", self._button_label("menu_support_simple", "Support").strip() or "Support"),
+            ("menu_open_app", self._button_label("menu_open_app", "Open app").strip() or "Open app"),
         ]
-        if has_active_subscription:
-            buttons.insert(2, ("menu_renew", self._button_label("menu_renew", "🔄 Продлить").strip() or "🔄 Продлить"))
-        return buttons
-
     def _site_url(self) -> str:
         return self._content_text("site_url", "https://vxcloud.ru").strip() or "https://vxcloud.ru"
 
     def _account_fallback_url(self) -> str:
         return f"{self._site_url().rstrip('/')}/account/"
+
+    def _mini_app_url(self, next_path: str | None = None) -> str:
+        site = urlsplit(self._site_url().rstrip("/") or "https://vxcloud.ru")
+        raw = (next_path or "/account-app/").strip() or "/account-app/"
+        parsed = urlsplit(raw)
+        path = parsed.path or "/account-app/"
+        if path.startswith("/account/"):
+            path = path.replace("/account/", "/account-app/", 1)
+        elif path == "/account":
+            path = "/account-app/"
+        elif not path.startswith("/account-app/"):
+            path = "/account-app/"
+
+        params = parse_qsl(parsed.query, keep_blank_values=True)
+        if not any(key == "embed" for key, _value in params):
+            params.append(("embed", "1"))
+        return urlunsplit(
+            (site.scheme or "https", site.netloc or "vxcloud.ru", path, urlencode(params), parsed.fragment)
+        )
+
+    def _mini_app_button(self, text: str, next_path: str | None = None) -> InlineKeyboardButton:
+        return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=self._mini_app_url(next_path)))
+
+    async def _mini_app_with_fallback_rows(
+        self,
+        *,
+        user_id: int | None,
+        next_path: str | None,
+        web_app_text: str,
+        fallback_text: str = "Open in browser",
+    ) -> list[list[InlineKeyboardButton]]:
+        fallback_url = await self._account_url(user_id, next_path)
+        return [
+            [self._mini_app_button(web_app_text, next_path)],
+            [InlineKeyboardButton(text=fallback_text, url=fallback_url)],
+        ]
 
     async def _subscription_feed_url(self, subscription_id: int, feed_token: str | None = None) -> str | None:
         token = (feed_token or "").strip()
@@ -489,6 +516,7 @@ class VPNBot:
     def _start_inline_keyboard(self, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
+                [self._mini_app_button(text="Open app")],
                 [
                     InlineKeyboardButton(text="🎁 Попробовать 7 дней", callback_data="act|start_trial|_"),
                     InlineKeyboardButton(text="⭐ Купить новый доступ", callback_data="act|buy_new|_"),
@@ -568,17 +596,21 @@ class VPNBot:
         )
 
     async def _buy_offer_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
-        pay_url = await self._account_url(user_id, "/account/buy/")
-        return InlineKeyboardMarkup(
+        rows = await self._mini_app_with_fallback_rows(
+            user_id=user_id,
+            next_path="/account/buy/",
+            web_app_text=self._with_card_price("Pay by card in app"),
+        )
+        rows.extend(
             [
-                [InlineKeyboardButton(text=self._with_card_price("💳 Оплатить картой"), url=pay_url)],
-                [InlineKeyboardButton(text="⭐ Оплатить через Stars", callback_data="act|buy_stars_continue|_")],
+                [InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_stars_continue|_")],
                 [
-                    InlineKeyboardButton(text="💬 Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="⬅️ Назад", callback_data="act|start_back|_"),
+                    InlineKeyboardButton(text="How to connect", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="Back", callback_data="act|start_back|_"),
                 ],
             ]
         )
+        return InlineKeyboardMarkup(rows)
 
     def _buy_card_markup(self, pay_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
@@ -599,6 +631,7 @@ class VPNBot:
     def _post_payment_ready_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
+                [self._mini_app_button("Open app", f"/account/config/{subscription_id}/")],
                 [
                     InlineKeyboardButton(text="🚀 Открыть", callback_data=f"act|cfg_open:{subscription_id}|_"),
                     InlineKeyboardButton(text="📷 QR-код", callback_data=f"act|cfg_qr:{subscription_id}|_"),
@@ -614,14 +647,18 @@ class VPNBot:
         next_path = "/account/renew/"
         if isinstance(subscription_id, int) and subscription_id > 0:
             next_path = f"{next_path}?subscription_id={subscription_id}"
-        pay_url = await self._account_url(user_id, next_path)
-        return InlineKeyboardMarkup(
+        rows = await self._mini_app_with_fallback_rows(
+            user_id=user_id,
+            next_path=next_path,
+            web_app_text=self._with_card_price("Renew by card in app"),
+        )
+        rows.extend(
             [
-                [InlineKeyboardButton(text=self._with_card_price("💳 Продлить картой"), url=pay_url)],
-                [InlineKeyboardButton(text="⭐ Продлить через Stars", callback_data="act|renew_stars_continue|_")],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|renew_back|_")],
+                [InlineKeyboardButton(text="Renew with Telegram Stars", callback_data="act|renew_stars_continue|_")],
+                [InlineKeyboardButton(text="Back", callback_data="act|renew_back|_")],
             ]
         )
+        return InlineKeyboardMarkup(rows)
 
     def _buy_existing_access_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
@@ -680,6 +717,7 @@ class VPNBot:
     def _renew_success_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
+                [self._mini_app_button("Open app", f"/account/config/{subscription_id}/")],
                 [
                     InlineKeyboardButton(text="🚀 Открыть", callback_data=f"act|cfg_open:{subscription_id}|_"),
                     InlineKeyboardButton(text="📷 QR-код", callback_data=f"act|cfg_qr:{subscription_id}|_"),
@@ -1044,31 +1082,22 @@ class VPNBot:
         *,
         can_delete: bool,
     ) -> InlineKeyboardMarkup:
-        renew_url = await self._account_url(user_id, f"/account/renew/?subscription_id={subscription_id}")
+        fallback_renew_url = await self._account_url(user_id, f"/account/renew/?subscription_id={subscription_id}")
+        fallback_config_url = await self._account_url(user_id, f"/account/config/{subscription_id}/")
         rows = [
+            [self._mini_app_button("Open in Mini App", f"/account/config/{subscription_id}/")],
+            [InlineKeyboardButton(text="Open in browser", url=fallback_config_url)],
+            [InlineKeyboardButton(text="Copy subscription URL", api_kwargs={"copy_text": {"text": copy_text}})],
             [
-                InlineKeyboardButton(
-                    text=self._button_label("config_copy_button", "📋 Скопировать ссылку"),
-                    api_kwargs={"copy_text": {"text": copy_text}},
-                )
+                InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
+                self._mini_app_button("Renew this", f"/account/renew/?subscription_id={subscription_id}"),
             ],
-            [
-                InlineKeyboardButton(text=self._button_label("config_qr_button", "📷 QR-код"), callback_data=f"act|cfg_qr:{subscription_id}|_"),
-                InlineKeyboardButton(text=self._button_label("config_renew_button", "🔄 Продлить"), url=renew_url),
-            ],
-        ]
-        action_row = [
-            InlineKeyboardButton(text=self._button_label("config_rename_button", "✏️ Переименовать"), callback_data=f"act|cfg_rename:{subscription_id}|_"),
+            [InlineKeyboardButton(text="Renew in browser", url=fallback_renew_url)],
+            [InlineKeyboardButton(text="Rename", callback_data=f"act|cfg_rename:{subscription_id}|_")],
         ]
         if can_delete:
-            action_row.append(
-                InlineKeyboardButton(
-                    text=self._button_label("config_delete_button", "🗑️ Удалить"),
-                    callback_data=f"act|cfg_delete:{subscription_id}|_",
-                )
-            )
-        rows.append(action_row)
-        rows.append([InlineKeyboardButton(text=self._button_label("back_button", "⬅️ Назад"), callback_data="act|cfg_back|_")])
+            rows.append([InlineKeyboardButton(text="Delete", callback_data=f"act|cfg_delete:{subscription_id}|_")])
+        rows.append([InlineKeyboardButton(text="Back", callback_data="act|cfg_back|_")])
         return InlineKeyboardMarkup(rows)
 
     async def _config_card_text(self, user_id: int, sub: dict[str, object], *, client_code: str) -> tuple[str, str, str]:
@@ -1285,6 +1314,18 @@ class VPNBot:
             return
         if selected_menu_key == "menu_support":
             await self._show_support_hub(update.message, user_id)
+            return
+        if selected_menu_key == "menu_open_app":
+            account_url = await self._account_url(user_id)
+            await update.message.reply_text(
+                self._content_text("menu_open_app_response", "Open your VXcloud account in Telegram Mini App."),
+                reply_markup=InlineKeyboardMarkup(
+                    [
+                        [self._mini_app_button(self._button_label("menu_open_app", "Open app"))],
+                        [InlineKeyboardButton(text="Open in browser", url=account_url)],
+                    ]
+                ),
+            )
             return
         if selected_menu_key == "menu_site":
             account_url = await self._account_url(user_id)
@@ -1893,7 +1934,10 @@ class VPNBot:
                 context.user_data["rename_wait_subscription_id"] = subscription_id
                 await query.answer()
                 if query.message is not None:
-                    await query.message.reply_text("Отправьте новое имя устройства одним сообщением.")
+                    await query.message.reply_text(
+                        "Отправьте новое имя устройства одним сообщением.",
+                        reply_markup=ReplyKeyboardRemove(),
+                    )
                 return
             if target.startswith("cfg_delete:"):
                 user_id = await self._ensure_user(update)
@@ -2567,6 +2611,9 @@ class VPNBot:
         buttons: list[list[InlineKeyboardButton]] = [
             [InlineKeyboardButton(text="📋 Скопировать ссылку", api_kwargs={"copy_text": {"text": link_for_copy}})],
         ]
+        if isinstance(subscription_id, int) and subscription_id > 0:
+            buttons.append([self._mini_app_button("Open app", f"/account/config/{subscription_id}/")])
+            buttons.append([self._mini_app_button("Renew in app", renew_path)])
         buttons.append(
             [
                 InlineKeyboardButton(
