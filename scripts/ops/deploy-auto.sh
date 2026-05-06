@@ -156,8 +156,10 @@ docker compose --env-file .env up -d db wpdb
 
 echo "[7/11] Start app services..."
 docker compose --env-file .env up -d wordpress web
-echo "Stopping disabled services (haproxy, bot) if they are running..."
-docker compose --env-file .env stop haproxy bot || true
+echo "Stopping disabled HAProxy service if it is running..."
+docker compose --env-file .env stop haproxy || true
+echo "Starting bot service..."
+docker compose --env-file .env --profile bot up -d bot
 start_proxy_with_port_takeover
 
 echo "[8/11] Django migrations + static are handled by web entrypoint..."
