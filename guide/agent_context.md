@@ -68,6 +68,8 @@ Subscriptions keep:
 - `/ops/` may be operational/admin styled.
 - User-facing QR pages should make subscription URL primary and avoid raw VLESS
   as the main artifact.
+- Bot UX rules live in `guide/bot_ux_policy.md`. Keep the bot as a small
+  Russian command/control layer and move full account work into the Mini App.
 
 ## Known Production Risks
 

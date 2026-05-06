@@ -1,4 +1,5 @@
 import asyncio
+import json
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock
@@ -98,6 +99,32 @@ class XUIClientDeleteUnitTests(unittest.TestCase):
         self.assertEqual(rows[0].all_time_bytes, 300)
         self.assertTrue(rows[0].enabled)
         self.assertIsNotNone(rows[0].last_online)
+
+    def test_update_client_retries_direct_settings_for_empty_client_id_panels(self):
+        client = XUIClient("https://panel.local", "user", "pass")
+        client._post = AsyncMock(side_effect=[RuntimeError("Something went wrong (empty client ID\n)"), {"success": True}])
+
+        asyncio.run(
+            client.set_client_enabled(
+                1,
+                "11111111-1111-1111-1111-111111111111",
+                "client@example.com",
+                datetime(2026, 1, 1, tzinfo=timezone.utc),
+                enable=True,
+                limit_ip=0,
+                flow="xtls-rprx-vision",
+                comment="Client",
+            )
+        )
+
+        self.assertEqual(client._post.await_count, 2)
+        first_payload = client._post.await_args_list[0].args[1]
+        second_payload = client._post.await_args_list[1].args[1]
+        self.assertIn("clients", json.loads(first_payload["settings"]))
+        direct_settings = json.loads(second_payload["settings"])
+        self.assertEqual(direct_settings["id"], "11111111-1111-1111-1111-111111111111")
+        self.assertEqual(direct_settings["email"], "client@example.com")
+        self.assertNotIn("clients", direct_settings)
 
 
 if __name__ == "__main__":

@@ -334,6 +334,29 @@ class XUIClient:
             client["comment"] = comment[:64]
         return client
 
+    @staticmethod
+    def _is_empty_client_id_error(exc: Exception) -> bool:
+        return "empty client id" in str(exc).lower()
+
+    @staticmethod
+    def _wrapped_client_settings(client: dict[str, Any]) -> str:
+        return json.dumps({"clients": [client]}, separators=(",", ":"))
+
+    @staticmethod
+    def _direct_client_settings(client: dict[str, Any]) -> str:
+        return json.dumps(client, separators=(",", ":"))
+
+    async def _post_update_client(self, inbound_id: int, client_uuid: str, client: dict[str, Any]) -> None:
+        path = f"/panel/api/inbounds/updateClient/{client_uuid}"
+        payload = {"id": inbound_id, "settings": self._wrapped_client_settings(client)}
+        try:
+            await self._post(path, payload)
+        except Exception as exc:
+            if not self._is_empty_client_id_error(exc):
+                raise
+            fallback_payload = {"id": inbound_id, "settings": self._direct_client_settings(client)}
+            await self._post(path, fallback_payload)
+
     async def add_client(
         self,
         inbound_id: int,
@@ -356,7 +379,7 @@ class XUIClient:
             sub_id=sub_id,
             comment=comment,
         )
-        settings = json.dumps({"clients": [client]}, separators=(",", ":"))
+        settings = self._wrapped_client_settings(client)
         await self._post("/panel/api/inbounds/addClient", {"id": inbound_id, "settings": settings})
 
     async def update_client(
@@ -381,8 +404,7 @@ class XUIClient:
             sub_id=sub_id,
             comment=comment,
         )
-        settings = json.dumps({"clients": [client]}, separators=(",", ":"))
-        await self._post(f"/panel/api/inbounds/updateClient/{client_uuid}", {"id": inbound_id, "settings": settings})
+        await self._post_update_client(inbound_id, client_uuid, client)
 
     async def set_client_enabled(
         self,
@@ -407,8 +429,7 @@ class XUIClient:
             sub_id=sub_id,
             comment=comment,
         )
-        settings = json.dumps({"clients": [client]}, separators=(",", ":"))
-        await self._post(f"/panel/api/inbounds/updateClient/{client_uuid}", {"id": inbound_id, "settings": settings})
+        await self._post_update_client(inbound_id, client_uuid, client)
 
     async def del_client(
         self,
