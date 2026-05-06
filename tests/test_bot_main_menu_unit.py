@@ -285,10 +285,25 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(len(message.photos), 1)
         markup = message.replies[-1][1]
-        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Copy subscription URL")
+        self.assertEqual(
+            markup.inline_keyboard[1][0].api_kwargs["copy_text"]["text"],
+            "https://vxcloud.ru/account/feed/token/",
+        )
         self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
         self.assertEqual(markup.inline_keyboard[3][0].text, "Renew in browser")
         self.assertEqual(markup.inline_keyboard[-1][0].text, "Open in browser")
+
+    async def test_trial_success_markup_uses_mini_app_config_first(self):
+        bot = make_bot()
+
+        markup = bot._trial_success_markup(42)
+
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Open app")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
+        self.assertEqual(markup.inline_keyboard[2][1].callback_data, "act|start_mysub|_")
 
     async def test_my_vpn_list_has_direct_subscription_actions(self):
         bot = make_bot()

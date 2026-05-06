@@ -614,13 +614,11 @@ class VPNBot:
     def _trial_success_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
+                [self._mini_app_button("Open app", f"/account/config/{subscription_id}/")],
+                [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
                 [
-                    InlineKeyboardButton(text="🚀 Открыть", callback_data=f"act|cfg_open:{subscription_id}|_"),
-                    InlineKeyboardButton(text="📷 QR-код", callback_data=f"act|cfg_qr:{subscription_id}|_"),
-                ],
-                [
-                    InlineKeyboardButton(text="💬 Инструкция", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="📊 Мой доступ", callback_data="act|start_mysub|_"),
+                    InlineKeyboardButton(text="How to connect", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_"),
                 ],
             ]
         )
@@ -2749,7 +2747,7 @@ class VPNBot:
                 vless_url,
                 new_exp,
                 sub_url,
-                subscription_id=None,
+                subscription_id=(int(created_sub["id"]) if created_sub and created_sub.get("id") else None),
                 user_id=user_id,
                 last_payment_method=last_payment_method,
             )
@@ -2822,15 +2820,16 @@ class VPNBot:
             renew_path = f"{renew_path}?subscription_id={subscription_id}"
         renew_url = await self._account_url(user_id, renew_path)
 
-        buttons: list[list[InlineKeyboardButton]] = [
-            [InlineKeyboardButton(text="📋 Скопировать ссылку", api_kwargs={"copy_text": {"text": link_for_copy}})],
-        ]
+        copy_label = "Copy subscription URL" if subscription_url else "Copy connection link"
+        buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
             buttons.append([self._mini_app_button("Open app", f"/account/config/{subscription_id}/")])
+            buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
             buttons.append([self._mini_app_button("Renew in app", renew_path)])
             buttons.append([InlineKeyboardButton(text="Renew in browser", url=renew_url)])
         else:
             buttons.append([self._mini_app_button("Open app")])
+            buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
         buttons.append(
             [
                 InlineKeyboardButton(
