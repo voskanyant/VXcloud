@@ -1459,21 +1459,13 @@ class VPNBot:
             return
         if selected_menu_key == "menu_site":
             account_url = await self._account_url(user_id)
+            await self._track_event(user_id, "open_app", update, metadata={"source": "legacy_site_menu"})
             await update.message.reply_text(
                 self._content_text(
                     "menu_site_response",
-                    "Откройте личный кабинет на сайте.",
+                    "Open VXcloud in Telegram Mini App. If your Telegram client cannot open it, use the browser fallback.",
                 ),
-                reply_markup=InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(
-                                text=self._button_label("menu_site", "🌐 Личный кабинет на сайте"),
-                                url=account_url,
-                            )
-                        ]
-                    ]
-                ),
+                reply_markup=self._open_app_fallback_markup(account_url),
             )
             return
 

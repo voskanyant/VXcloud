@@ -258,6 +258,21 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "Open in browser")
 
+    async def test_legacy_site_menu_routes_to_mini_app_first(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        bot._menu_buttons = lambda has_active_subscription=False: [("menu_site", "Legacy account")]
+        message = FakeMessage("Legacy account")
+
+        await bot.menu_click(make_update(message), SimpleNamespace(user_data={}))
+
+        self.assertEqual(db.events[-1]["event_name"], "open_app")
+        self.assertEqual(db.events[-1]["metadata"], {"source": "legacy_site_menu"})
+        text, markup = message.replies[-1]
+        self.assertIn("Mini App", text)
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Open in browser")
+
     async def test_buy_markup_uses_mini_app_button_and_browser_fallback(self):
         bot = make_bot()
 
