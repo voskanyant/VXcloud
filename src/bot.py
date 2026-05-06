@@ -693,14 +693,16 @@ class VPNBot:
         )
         return InlineKeyboardMarkup(rows)
 
-    def _buy_existing_access_markup(self) -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton(text="🔄 Продлить текущий доступ", callback_data="act|buy_existing_renew|_")],
-                [InlineKeyboardButton(text="➕ Купить дополнительный доступ", callback_data="act|buy_existing_continue|_")],
-                [InlineKeyboardButton(text="⬅️ Назад", callback_data="act|start_back|_")],
-            ]
+    async def _buy_existing_access_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
+        rows = await self._mini_app_with_fallback_rows(
+            user_id=user_id,
+            next_path="/account/buy/",
+            web_app_text=self._with_card_price("Buy additional in app"),
         )
+        rows.append([InlineKeyboardButton(text="Renew current access", callback_data="act|buy_existing_renew|_")])
+        rows.append([InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_stars_continue|_")])
+        rows.append([InlineKeyboardButton(text="Back", callback_data="act|start_back|_")])
+        return InlineKeyboardMarkup(rows)
 
     def _support_hub_markup(self) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
@@ -877,10 +879,9 @@ class VPNBot:
             await self._replace_or_reply(
                 message,
                 "У вас уже есть активный доступ.\n\n"
-                "Что хотите сделать дальше?\n"
-                "• продлить текущий доступ\n"
-                "• купить дополнительный доступ",
-                reply_markup=self._buy_existing_access_markup(),
+                "Можно купить дополнительный доступ в Mini App или продлить текущий.\n"
+                "Telegram Stars остаются внутри бота.",
+                reply_markup=await self._buy_existing_access_markup(user_id),
             )
             return
         await self._show_buy_checkout_options(message, user_id)

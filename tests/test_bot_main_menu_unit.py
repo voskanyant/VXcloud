@@ -24,13 +24,14 @@ class FakeDB:
         self.subscriptions = {}
         self.subscription_list = []
         self.deleted = []
+        self.active_subscription = None
 
     async def fetch_bot_site_text_overrides(self):
         return {}
 
     async def get_active_subscription(self, user_id: int):
         del user_id
-        return None
+        return self.active_subscription
 
     async def get_subscription(self, user_id: int, subscription_id: int):
         del user_id
@@ -244,6 +245,32 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Mini App", text)
         self.assertIn("Telegram Stars", text)
         self.assertNotIn("на сайте", text)
+
+    async def test_buy_with_active_access_is_app_first_for_additional_access(self):
+        db = FakeDB()
+        db.active_subscription = {
+            "id": 42,
+            "display_name": "Work laptop",
+            "expires_at": datetime.now(timezone.utc) + timedelta(days=10),
+            "is_active": True,
+            "revoked_at": None,
+        }
+        bot = make_bot(db)
+        message = FakeMessage()
+
+        await bot._show_buy_offer(message, user_id=123)
+
+        text = message.replies[-1][0]
+        self.assertIn("Mini App", text)
+        self.assertIn("Telegram Stars", text)
+        markup = message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Buy additional in app · 249 RUB")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Open in browser")
+        self.assertEqual(markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Fbuy%2F")
+        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|buy_existing_renew|_")
+        self.assertEqual(markup.inline_keyboard[3][0].callback_data, "act|buy_stars_continue|_")
+        self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|start_back|_")
 
     async def test_legacy_card_markups_keep_mini_app_primary(self):
         bot = make_bot()
