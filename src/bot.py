@@ -521,13 +521,14 @@ class VPNBot:
     @staticmethod
     def _start_message_text(status_summary: str | None = None) -> str:
         text = (
-            "Добро пожаловать в VXcloud\n\n"
-            "Здесь можно быстро получить доступ к VPN для работы, общения и повседневных задач.\n\n"
-            "Что дальше:\n"
-            "• попробуйте 7 дней бесплатно\n"
-            "• купите новый доступ\n"
-            "• откройте Mini App для управления доступом\n\n"
-            "Если для подключения нужно приложение, нажмите «Как подключить»."
+            "Welcome to VXcloud\n\n"
+            "Use the bot for quick actions. Open the Mini App for the full account dashboard.\n\n"
+            "Main menu:\n"
+            "- My VPN: configs, QR, renew\n"
+            "- Buy access: new access\n"
+            "- Renew: extend a selected config\n"
+            "- Support: send one message\n"
+            "- Open app: dashboard, guides, card payments"
         )
         if status_summary:
             text = f"{text}\n\n{status_summary}"

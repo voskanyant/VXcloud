@@ -192,6 +192,11 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._send_start_screen(message, user_id=123)
 
         self.assertEqual(len(message.replies), 1)
+        text = message.replies[0][0]
+        self.assertIn("Mini App", text)
+        self.assertIn("My VPN", text)
+        self.assertIn("Open app", text)
+        self.assertNotIn("Как подключить", text)
         reply_markup = message.replies[0][1]
         self.assertIsInstance(reply_markup, ReplyKeyboardMarkup)
         self.assertNotIsInstance(reply_markup, InlineKeyboardMarkup)
