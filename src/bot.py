@@ -738,16 +738,20 @@ class VPNBot:
             reply_markup=self._support_hub_markup(),
         )
 
-    def _renew_no_active_markup(self) -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(
+    async def _renew_no_active_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
+        rows = await self._mini_app_with_fallback_rows(
+            user_id=user_id,
+            next_path="/account/buy/",
+            web_app_text=self._with_card_price("Buy access in app"),
+        )
+        rows.append([InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_new|_")])
+        rows.append(
             [
-                [InlineKeyboardButton(text="⭐ Купить новый доступ", callback_data="act|buy_new|_")],
-                [
-                    InlineKeyboardButton(text="🎁 Бесплатно 7д", callback_data="act|start_trial|_"),
-                    InlineKeyboardButton(text="⬅️ Назад", callback_data="act|renew_back|_"),
-                ],
+                InlineKeyboardButton(text="Start trial", callback_data="act|start_trial|_"),
+                InlineKeyboardButton(text="Back", callback_data="act|renew_back|_"),
             ]
         )
+        return InlineKeyboardMarkup(rows)
 
     def _renew_success_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
@@ -827,8 +831,8 @@ class VPNBot:
             else:
                 await message.reply_text(
                     "Сейчас у вас нет доступа для продления.\n\n"
-                    "Вы можете оформить новый доступ.",
-                    reply_markup=self._renew_no_active_markup(),
+                    "Вы можете оформить новый доступ в Mini App или оплатить через Telegram Stars.",
+                    reply_markup=await self._renew_no_active_markup(user_id),
                 )
                 return
 
@@ -1844,7 +1848,7 @@ class VPNBot:
                     if not target_subscription_id:
                         await query.message.reply_text(
                             "Не удалось определить доступ для продления.",
-                            reply_markup=self._renew_no_active_markup(),
+                            reply_markup=await self._renew_no_active_markup(user_id),
                         )
                     else:
                         await self._send_stars_invoice_for_message(

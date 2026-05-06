@@ -377,6 +377,26 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|renew_select:12|_")
         self.assertEqual(markup.inline_keyboard[-2][0].web_app.url, "https://vxcloud.ru/account-app/renew/?embed=1")
 
+    async def test_renew_without_active_access_is_app_first_buy(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        message = FakeMessage()
+        context = SimpleNamespace(user_data={})
+
+        await bot._show_renew_offer(message, user_id=123, context=context)
+
+        text = message.replies[-1][0]
+        self.assertIn("Mini App", text)
+        self.assertIn("Telegram Stars", text)
+        markup = message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Buy access in app · 249 RUB")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Open in browser")
+        self.assertEqual(markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Fbuy%2F")
+        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|buy_new|_")
+        self.assertEqual(markup.inline_keyboard[3][0].callback_data, "act|start_trial|_")
+        self.assertEqual(markup.inline_keyboard[3][1].callback_data, "act|renew_back|_")
+
     async def test_renew_select_targets_subscription_before_showing_payment_options(self):
         db = FakeDB()
         db.subscriptions[12] = {**expired_subscription(12), "display_name": "Laptop"}
