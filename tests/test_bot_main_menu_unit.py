@@ -236,6 +236,22 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Expiring soon: 1", text)
         self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
 
+    async def test_open_app_text_fallback_is_mini_app_first_and_tracked(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        message = FakeMessage("Open app")
+
+        await bot.menu_click(make_update(message), SimpleNamespace(user_data={}))
+
+        self.assertEqual(db.events[-1]["event_name"], "open_app")
+        self.assertEqual(db.events[-1]["metadata"], {"source": "reply_menu"})
+        text, markup = message.replies[-1]
+        self.assertIn("Mini App", text)
+        self.assertIn("browser fallback", text)
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Open app")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Open in browser")
+
     async def test_buy_markup_uses_mini_app_button_and_browser_fallback(self):
         bot = make_bot()
 

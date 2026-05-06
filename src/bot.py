@@ -725,6 +725,14 @@ class VPNBot:
             ]
         )
 
+    def _open_app_fallback_markup(self, account_url: str) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [self._mini_app_button(self._button_label("menu_open_app", "Open app"))],
+                [InlineKeyboardButton(text="Open in browser", url=account_url)],
+            ]
+        )
+
     async def _show_support_hub(self, message: Message, user_id: int) -> None:
         client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
         await self._replace_or_reply(
@@ -1470,13 +1478,11 @@ class VPNBot:
             account_url = await self._account_url(user_id)
             await self._track_event(user_id, "open_app", update, metadata={"source": "reply_menu"})
             await update.message.reply_text(
-                self._content_text("menu_open_app_response", "Open your VXcloud account in Telegram Mini App."),
-                reply_markup=InlineKeyboardMarkup(
-                    [
-                        [self._mini_app_button(self._button_label("menu_open_app", "Open app"))],
-                        [InlineKeyboardButton(text="Open in browser", url=account_url)],
-                    ]
+                self._content_text(
+                    "menu_open_app_response",
+                    "Open VXcloud in Telegram Mini App. If your Telegram client cannot open it, use the browser fallback.",
                 ),
+                reply_markup=self._open_app_fallback_markup(account_url),
             )
             return
         if selected_menu_key == "menu_site":
