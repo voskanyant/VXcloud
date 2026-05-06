@@ -25,6 +25,7 @@ class FakeDB:
         self.subscription_list = []
         self.deleted = []
         self.active_subscription = None
+        self.has_subscription = False
 
     async def fetch_bot_site_text_overrides(self):
         return {}
@@ -32,6 +33,10 @@ class FakeDB:
     async def get_active_subscription(self, user_id: int):
         del user_id
         return self.active_subscription
+
+    async def has_any_subscription(self, user_id: int):
+        del user_id
+        return self.has_subscription
 
     async def get_subscription(self, user_id: int, subscription_id: int):
         del user_id
@@ -331,6 +336,26 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
         self.assertEqual(markup.inline_keyboard[2][1].callback_data, "act|start_mysub|_")
+
+    async def test_trial_used_state_is_app_first_buy(self):
+        db = FakeDB()
+        db.has_subscription = True
+        bot = make_bot(db)
+        message = FakeMessage()
+
+        await bot._show_trial_offer(message, user_id=123)
+
+        text = message.replies[-1][0]
+        self.assertIn("Mini App", text)
+        self.assertIn("Telegram Stars", text)
+        markup = message.replies[-1][1]
+        self.assertEqual(markup.inline_keyboard[0][0].text, "Buy access in app · 249 RUB")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Open in browser")
+        self.assertEqual(markup.inline_keyboard[1][0].url, "https://vxcloud.ru/account/?next=%2Faccount%2Fbuy%2F")
+        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|buy_new|_")
+        self.assertEqual(markup.inline_keyboard[3][0].callback_data, "nav|menu_instructions|_")
+        self.assertEqual(markup.inline_keyboard[3][1].callback_data, "act|start_back|_")
 
     async def test_my_vpn_list_has_direct_subscription_actions(self):
         bot = make_bot()

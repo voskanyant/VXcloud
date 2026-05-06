@@ -600,16 +600,22 @@ class VPNBot:
             ]
         )
 
-    def _trial_used_markup(self) -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(
+    async def _trial_used_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
+        rows = await self._mini_app_with_fallback_rows(
+            user_id=user_id,
+            next_path="/account/buy/",
+            web_app_text=self._with_card_price("Buy access in app"),
+        )
+        rows.extend(
             [
-                [InlineKeyboardButton(text="⭐ Купить новый доступ", callback_data="act|buy_new|_")],
+                [InlineKeyboardButton(text="Pay with Telegram Stars", callback_data="act|buy_new|_")],
                 [
-                    InlineKeyboardButton(text="💬 Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="⬅️ Назад", callback_data="act|start_back|_"),
+                    InlineKeyboardButton(text="How to connect", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="Back", callback_data="act|start_back|_"),
                 ],
             ]
         )
+        return InlineKeyboardMarkup(rows)
 
     def _trial_success_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
@@ -889,13 +895,16 @@ class VPNBot:
     async def _show_buy_card_info(self, message: Message, user_id: int | None) -> None:
         await message.edit_reply_markup(reply_markup=await self._buy_card_markup(user_id))
 
+    async def _show_trial_used(self, message: Message, user_id: int) -> None:
+        await message.reply_text(
+            "Пробный доступ уже был использован\n\n"
+            "Вы можете оформить платный доступ в Mini App или оплатить через Telegram Stars.",
+            reply_markup=await self._trial_used_markup(user_id),
+        )
+
     async def _show_trial_offer(self, message: Message, user_id: int) -> None:
         if await self.db.has_any_subscription(user_id):
-            await message.reply_text(
-                "Пробный доступ уже был использован\n\n"
-                "Вы можете сразу оформить платный доступ.",
-                reply_markup=self._trial_used_markup(),
-            )
+            await self._show_trial_used(message, user_id)
             return
 
         await self._replace_or_reply(
@@ -1928,11 +1937,7 @@ class VPNBot:
                     await query.answer()
                     user_id = await self._ensure_user(update)
                     if await self.db.has_any_subscription(user_id):
-                        await query.message.reply_text(
-                            "Пробный доступ уже был использован\n\n"
-                            "Вы можете сразу оформить платный доступ.",
-                            reply_markup=self._trial_used_markup(),
-                        )
+                        await self._show_trial_used(query.message, user_id)
                     else:
                         context.user_data["trial_activating"] = True
                         try:
