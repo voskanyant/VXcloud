@@ -46,6 +46,7 @@ Default persistent menu:
 - 🎁 7 дней бесплатно
 - 💳 Купить
 - 🔄 Продлить
+- 📖 Инструкция
 - 🆘 Поддержка
 - 📱 Кабинет
 
@@ -79,16 +80,22 @@ Good contextual examples:
 - Отмена for destructive confirmations
 
 Do not add a global inline "Назад" button to every screen. Users navigate with
-the persistent menu. CMS inline JSON that contains only a global Back/Назад
-button should be ignored by the bot.
+the persistent menu. Add `Назад` only on deep contextual screens where it returns
+to a clear parent in the same flow, for example a subscription card back to
+`🛡 Мой VPN`, renewal checkout back to subscription selection, or an instruction
+subpage back to the instruction hub. CMS inline JSON that contains only a global
+Back/Назад button should be ignored by the bot.
 
 ## Flow Rules
 
 - `/start`: short welcome, compact subscription summary, persistent menu.
-  Show active access count, nearest expiry, and expired access count when
-  available. If all access is expired, say that there are no active accesses
-  and point the user to the persistent renew menu item. Do not add duplicate
-  inline navigation to the home screen.
+  The home copy should simply ask the user to choose an action in the menu and
+  mention that the cabinet inside Telegram contains QR, card payment,
+  instructions, and settings. Show active access count, nearest expiry, soon
+  expiring count, and expired access count when available. If all access is
+  expired, say that there are no active accesses and point the user to the
+  persistent renew menu item. Do not add duplicate inline navigation to the
+  home screen.
 - Legacy slash commands should route to the same current screens as the
   persistent menu. For example `/myvpn` must use the same My VPN flow instead
   of old active-subscription-only delivery copy. Customer slash commands must
@@ -97,8 +104,9 @@ button should be ignored by the bot.
 - My VPN: if the user has one subscription, open its card directly. If the
   user has several subscriptions, show a compact list sorted by active and
   nearest expiry first. Status icons are allowed in this list because they help
-  users spot active, expiring, and expired devices quickly. Subscription cards
-  contain QR, renew, copy, rename, and delete actions. Do not print long
+  users spot active, expiring, and expired devices quickly. The list should show
+  a short count summary and put the same status icon on each selector button.
+  Subscription cards contain QR, renew, copy, rename, and delete actions. Do not print long
   subscription or raw connection links in the message body by default; keep them
   inside QR and copy buttons. Delete confirmations should say "device" and
   "access", not "config", "3x-ui", "node", or other execution-layer wording.
@@ -146,8 +154,8 @@ button should be ignored by the bot.
 - Instructions: bot shows only device choices and opens Mini App guide pages.
   Copy must say the full guide opens in the cabinet, not in a separate site.
   Legacy cached labels and typed phrases such as "Как подключить" should still
-  route to this hub, but instructions should not return to the persistent menu
-  as a top-level item. Device choice buttons should use plain labels like
+  route to this hub. Instructions are a persistent menu item because setup help
+  is a primary customer task. Device choice buttons should use plain labels like
   `iPhone`, `Android`, and `Windows/macOS`; do not add decorative icons there.
 
 ## Screen Copy

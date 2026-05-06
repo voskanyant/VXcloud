@@ -243,14 +243,16 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(message.replies), 1)
         text = message.replies[0][0]
         self.assertIn("VXcloud", text)
-        self.assertIn("кабинет", text.lower())
+        self.assertIn("Кабинет внутри Telegram", text)
+        self.assertIn("меню ниже", text)
         self.assertNotIn("Как подключить", text)
+        self.assertNotIn("Бот помогает", text)
         reply_markup = message.replies[0][1]
         self.assertIsInstance(reply_markup, ReplyKeyboardMarkup)
         self.assertNotIsInstance(reply_markup, InlineKeyboardMarkup)
         labels = [button.text for row in reply_markup.keyboard for button in row]
-        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "🔄 Продлить", "🆘 Поддержка", "📱 Кабинет"])
-        open_app_button = reply_markup.keyboard[-1][1]
+        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "🔄 Продлить", "📖 Инструкция", "🆘 Поддержка", "📱 Кабинет"])
+        open_app_button = reply_markup.keyboard[-1][0]
         self.assertIsNotNone(open_app_button.web_app)
         self.assertEqual(open_app_button.web_app.url, "https://vxcloud.ru/account-app/?embed=1")
 
@@ -270,6 +272,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
                 "menu_trial": "7 days free",
                 "menu_buy_access": "Buy access",
                 "menu_renew_access": "Renew",
+                "menu_instructions": "Instructions",
                 "menu_support_simple": "Support",
                 "menu_open_app": "Open app",
                 "open_instructions": "How to connect",
@@ -280,7 +283,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         bot._cms_content["custom_buttons"] = '[{"text": "Open guide", "url": "https://example.test"}]'
 
         labels = [label for _key, label in bot._menu_buttons()]
-        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "🔄 Продлить", "🆘 Поддержка", "📱 Кабинет"])
+        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "🔄 Продлить", "📖 Инструкция", "🆘 Поддержка", "📱 Кабинет"])
         self.assertEqual(
             bot._content_text("menu_open_app_response", "Откройте кабинет."),
             "Откройте кабинет.",
@@ -297,6 +300,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
                 "menu_trial": "7 дней бесплатно",
                 "menu_buy_access": "Купить",
                 "menu_renew_access": "Продлить",
+                "menu_instructions": "Инструкция",
                 "menu_support_simple": "Поддержка",
                 "menu_open_app": "Кабинет",
             }
@@ -304,7 +308,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         labels = [label for _key, label in bot._menu_buttons()]
 
-        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "🔄 Продлить", "🆘 Поддержка", "📱 Кабинет"])
+        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "🔄 Продлить", "📖 Инструкция", "🆘 Поддержка", "📱 Кабинет"])
 
     async def test_cms_inline_back_buttons_are_filtered_out(self):
         bot = make_bot()
@@ -363,11 +367,11 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._send_start_screen(message, user_id=123)
 
         text = message.replies[0][0]
-        self.assertIn("Мой VPN", text)
-        self.assertIn("Активно: 1", text)
+        self.assertIn("Ваш VPN", text)
+        self.assertIn("✅ Активных: 1", text)
         self.assertIn("Ближайшее окончание: Work laptop", text)
-        self.assertIn("Скоро заканчиваются: 1", text)
-        self.assertIn("Истекли: 1", text)
+        self.assertIn("⏳ Скоро закончится: 1", text)
+        self.assertIn("⚠️ Истекло: 1", text)
         self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
 
     async def test_start_screen_shows_expired_status_without_active_subscriptions(self):
@@ -379,9 +383,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot._send_start_screen(message, user_id=123)
 
         text, reply_markup = message.replies[0]
-        self.assertIn("Мой VPN", text)
+        self.assertIn("Ваш VPN", text)
         self.assertIn("Активных доступов нет", text)
-        self.assertIn("Истекли: 2", text)
+        self.assertIn("⚠️ Истекло: 2", text)
         self.assertIn("🔄 Продлить", text)
         self.assertIsInstance(reply_markup, ReplyKeyboardMarkup)
         self.assertNotIsInstance(reply_markup, InlineKeyboardMarkup)
@@ -699,7 +703,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         markup = bot._configs_list_markup(subscriptions)
 
-        self.assertEqual(markup.inline_keyboard[0][0].text, "1. Work laptop")
+        self.assertEqual(markup.inline_keyboard[0][0].text, "1. • Work laptop")
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|cfg_open:42|_")
         action_row = markup.inline_keyboard[1]
         self.assertEqual(action_row[0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
@@ -718,11 +722,15 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         text = bot._configs_list_text(client_code="VX-000123", subscriptions=subscriptions)
         markup = bot._configs_list_markup(subscriptions)
 
+        self.assertIn("активных: 2", text)
+        self.assertIn("скоро закончится: 1", text)
+        self.assertIn("истекло: 1", text)
+        self.assertIn("Нажмите устройство", text)
         self.assertLess(text.index("скоро закончится Phone"), text.index("активен Laptop"))
         self.assertLess(text.index("активен Laptop"), text.index("истек Old phone"))
-        self.assertEqual(markup.inline_keyboard[0][0].text, "1. Phone")
-        self.assertEqual(markup.inline_keyboard[2][0].text, "2. Laptop")
-        self.assertEqual(markup.inline_keyboard[4][0].text, "3. Old phone")
+        self.assertEqual(markup.inline_keyboard[0][0].text, "1. ⏳ Phone")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "2. ✅ Laptop")
+        self.assertEqual(markup.inline_keyboard[4][0].text, "3. ⚠️ Old phone")
 
     async def test_my_vpn_list_puts_renew_first_for_expired_devices(self):
         bot = make_bot()
@@ -730,7 +738,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         markup = bot._configs_list_markup(subscriptions)
 
-        self.assertEqual(markup.inline_keyboard[0][0].text, "1. Old phone")
+        self.assertEqual(markup.inline_keyboard[0][0].text, "1. ⚠️ Old phone")
         action_row = markup.inline_keyboard[1]
         self.assertEqual(action_row[0].text, "🔄 Продлить")
         self.assertEqual(action_row[0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
@@ -762,12 +770,13 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         markup = bot._configs_list_markup([])
 
         self.assertIn("VX-000123", text)
+        self.assertLess(text.index("Пока нет устройств"), text.index("ID: VX-000123"))
         self.assertIn("7 дней бесплатно", text)
         self.assertIn("купите доступ", text)
         self.assertIn("QR", text)
         self.assertEqual(markup.inline_keyboard[0][0].text, "🎁 7 дней бесплатно")
         self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|start_trial|_")
-        self.assertEqual(markup.inline_keyboard[1][0].text, "💳 Купить картой")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "💳 Купить картой · 249 RUB")
         self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[2][0].text, "⭐ Купить за Stars · 250 Stars")
         self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|buy_new|_")
@@ -860,7 +869,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[3][0].text, "\u041f\u0435\u0440\u0435\u0438\u043c\u0435\u043d\u043e\u0432\u0430\u0442\u044c")
         self.assertEqual(markup.inline_keyboard[3][1].text, "\u0423\u0434\u0430\u043b\u0438\u0442\u044c")
         self.assertEqual(markup.inline_keyboard[3][1].callback_data, "act|cfg_delete_request:42|_")
-        self.assertEqual(len(markup.inline_keyboard), 4)
+        self.assertEqual(markup.inline_keyboard[4][0].text, "Назад")
+        self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|cfg_back|_")
+        self.assertEqual(len(markup.inline_keyboard), 5)
 
     async def test_expired_config_card_puts_renewal_first(self):
         bot = make_bot()
@@ -880,7 +891,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[1][1].text, "QR")
         self.assertEqual(markup.inline_keyboard[1][1].callback_data, "act|cfg_qr:42|_")
         self.assertEqual(markup.inline_keyboard[3][1].callback_data, "act|cfg_delete_request:42|_")
-        self.assertEqual(len(markup.inline_keyboard), 4)
+        self.assertEqual(markup.inline_keyboard[4][0].text, "Назад")
+        self.assertEqual(markup.inline_keyboard[4][0].callback_data, "act|cfg_back|_")
+        self.assertEqual(len(markup.inline_keyboard), 5)
 
     async def test_config_card_text_is_compact_and_does_not_print_access_link(self):
         db = FakeDB()
@@ -896,6 +909,18 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(primary_link, "https://vxcloud.ru/account/feed/feed-42/")
         self.assertNotIn("https://vxcloud.ru/account/feed/feed-42/", text)
         self.assertNotIn("vless://", text)
+
+    async def test_config_back_returns_to_my_vpn_list(self):
+        db = FakeDB()
+        db.subscription_list = [active_subscription(42, name="Phone")]
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|cfg_back|_")
+
+        await bot.inline_callback(make_callback_update(query), SimpleNamespace(user_data={}))
+
+        self.assertIn("Мой VPN", query.edits[-1][0])
+        self.assertIn("Phone", query.edits[-1][0])
+        self.assertEqual(query.edits[-1][1].inline_keyboard[0][0].callback_data, "act|cfg_open:42|_")
 
     async def test_expired_config_card_text_points_to_renewal(self):
         db = FakeDB()
@@ -1171,7 +1196,26 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         markup = query.message.replies[-1][1]
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=12&embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "⭐ Продлить за Stars · 250 Stars")
-        self.assertEqual(len(markup.inline_keyboard), 2)
+        self.assertEqual(markup.inline_keyboard[2][0].text, "Назад")
+        self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|renew_back|_")
+        self.assertEqual(len(markup.inline_keyboard), 3)
+
+    async def test_renew_back_returns_to_subscription_selection_when_multiple(self):
+        db = FakeDB()
+        db.subscription_list = [
+            {**expired_subscription(11), "display_name": "Phone"},
+            {**expired_subscription(12), "display_name": "Laptop"},
+        ]
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|renew_back|_")
+        context = SimpleNamespace(user_data={"selected_subscription_id": 12})
+
+        await bot.inline_callback(make_callback_update(query), context)
+
+        self.assertNotIn("selected_subscription_id", context.user_data)
+        self.assertIn("Выберите устройство", query.edits[-1][0])
+        self.assertEqual(query.edits[-1][1].inline_keyboard[0][0].callback_data, "act|renew_select:11|_")
+        self.assertEqual(query.edits[-1][1].inline_keyboard[1][0].callback_data, "act|renew_select:12|_")
 
     async def test_renew_select_invalid_answers_are_russian(self):
         bot = make_bot()
@@ -1233,7 +1277,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].text, "Полная инструкция")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/?view=instructions&embed=1")
         self.assertIsNone(markup.inline_keyboard[0][0].url)
-        self.assertEqual(len(markup.inline_keyboard), 1)
+        self.assertEqual(markup.inline_keyboard[1][0].text, "Назад")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "nav|menu_instructions|_")
+        self.assertEqual(len(markup.inline_keyboard), 2)
 
     async def test_support_hub_offers_quick_message_and_mini_app(self):
         bot = make_bot()

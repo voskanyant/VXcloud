@@ -337,6 +337,7 @@ def _account_template_urls(request: HttpRequest) -> dict[str, object]:
         "backend_link_url": _account_backend_url(request, "link/"),
         "backend_buy_url": _account_backend_url(request, "buy/"),
         "backend_renew_url": _account_backend_url(request, "renew/"),
+        "backend_instructions_url": _account_backend_url(request, "?view=instructions"),
         "backend_config_prefix": _account_backend_base(request) + "config/",
         "backend_rename_prefix": _account_backend_base(request) + "subscriptions/",
         "support_url": _account_backend_url(request, "?view=support"),
@@ -529,7 +530,7 @@ def _build_support_payload(request: HttpRequest) -> dict[str, object]:
         "subtitle": "Напишите в Telegram для помощи по аккаунту или откройте инструкцию по подключению.",
         "client_code": "",
         "telegram_url": _telegram_bot_url(),
-        "instructions_url": "/instructions/",
+        "instructions_url": _account_backend_url(request, "?view=instructions"),
         "dashboard_url": _account_frontend_url(),
     }
 

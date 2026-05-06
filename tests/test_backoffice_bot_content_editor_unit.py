@@ -72,11 +72,13 @@ class BackofficeBotContentEditorUnitTests(unittest.TestCase):
                 "menu_trial",
                 "menu_buy_access",
                 "menu_renew_access",
+                "menu_instructions",
                 "menu_support_simple",
                 "menu_open_app",
             ],
         )
         self.assertEqual(defaults["menu_trial"], "🎁 7 дней бесплатно")
+        self.assertEqual(defaults["menu_instructions"], "📖 Инструкция")
         self.assertEqual(defaults["menu_open_app"], "📱 Кабинет")
         self.assertNotIn("menu_site", keys)
         self.assertNotIn("back_button", keys)

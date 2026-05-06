@@ -12,7 +12,8 @@
 {% cms_text "cabinet.empty_configs" "Пока нет активных доступов. Оформите первый доступ, чтобы он появился здесь." as cabinet_empty_configs %}
 {% cms_text "cabinet.error_loading" "Не удалось загрузить данные аккаунта. Попробуйте обновить страницу." as cabinet_error_loading %}
 
-<div class="account-page-shell">
+<div class="account-page-shell{% if instructions_view %} account-page-shell-instructions{% endif %}">
+  {% if not instructions_view %}
   <section class="account-hero">
     <div class="account-hero-copy">
       <div class="account-eyebrow">Кабинет VXcloud</div>
@@ -41,6 +42,7 @@
       </div>
     </div>
   </section>
+  {% endif %}
 
   {% if support_view %}
     <section class="account-section" id="account-support">
@@ -60,14 +62,14 @@
         {% if support_telegram_url %}
           <a class="account-primary-button" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Написать в Telegram</a>
         {% endif %}
-        <a class="account-secondary-button" href="/instructions/"{% if embed_mode %} target="_top"{% endif %}>Открыть инструкцию</a>
+        <a class="account-secondary-button" href="{{ backend_instructions_url }}">Открыть инструкцию</a>
         <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
       </div>
     </section>
   {% endif %}
 
   {% if instructions_view %}
-    <section class="account-section" id="account-instructions">
+    <section class="account-section account-instructions-section" id="account-instructions">
       <div class="account-section-head">
         <div>
           <div class="account-eyebrow">Инструкция</div>
@@ -77,9 +79,9 @@
       <div class="account-message">
         {{ instructions_payload.subtitle }}
       </div>
-      <div class="account-device-actions">
+      <div class="account-device-actions account-instructions-device-actions">
         {% for device in instructions_payload.devices %}
-          <a class="account-secondary-button" href="{{ device.url }}">{{ device.label }}</a>
+          <a class="account-secondary-button{% if device.key == instructions_payload.device %} account-secondary-button-current{% endif %}" href="{{ device.url }}">{{ device.label }}</a>
         {% endfor %}
       </div>
       <div class="account-device-grid">
@@ -113,6 +115,7 @@
     </section>
   {% endif %}
 
+  {% if not instructions_view %}
   {% if not bot_user %}
     <section class="account-section">
       <div class="account-message account-message-error">{{ cabinet_error_loading }}</div>
@@ -247,6 +250,7 @@
       <div class="account-message">{{ cabinet_empty_configs }}</div>
     {% endif %}
   </section>
+  {% endif %}
 </div>
 
 <script>

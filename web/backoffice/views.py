@@ -125,6 +125,7 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
             {"key": "menu_trial", "label": "Кнопка меню: 7 дней бесплатно", "default": "🎁 7 дней бесплатно", "kind": "button"},
             {"key": "menu_buy_access", "label": "Кнопка меню: Купить", "default": "💳 Купить", "kind": "button"},
             {"key": "menu_renew_access", "label": "Кнопка меню: Продлить", "default": "🔄 Продлить", "kind": "button"},
+            {"key": "menu_instructions", "label": "Кнопка меню: Инструкция", "default": "📖 Инструкция", "kind": "button"},
             {"key": "menu_support_simple", "label": "Кнопка меню: Поддержка", "default": "🆘 Поддержка", "kind": "button"},
             {"key": "menu_open_app", "label": "Кнопка меню: Кабинет", "default": "📱 Кабинет", "kind": "button"},
         ],

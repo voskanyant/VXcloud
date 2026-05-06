@@ -94,7 +94,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertEqual(payload["support"]["title"], "Поддержка")
         self.assertIn("Telegram", payload["support"]["subtitle"])
         self.assertEqual(payload["support"]["telegram_url"], "https://t.me/vxcloud_test_bot")
-        self.assertEqual(payload["support"]["instructions_url"], "/instructions/")
+        self.assertEqual(payload["support"]["instructions_url"], "/account-app/?view=instructions&embed=1")
 
     def test_account_state_returns_instructions_payload_for_instructions_view(self):
         response = self.client.get("/account-app/api/state/?view=instructions&device=iphone&embed=1")
@@ -129,6 +129,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("Поддержка VXcloud", html)
         self.assertIn("Написать в Telegram", html)
         self.assertIn("Открыть инструкцию", html)
+        self.assertIn("/account-app/?view=instructions&amp;embed=1", html)
+        self.assertNotIn('href="/instructions/"', html)
         self.assertNotIn("Support hub", html)
         self.assertNotIn("Write in Telegram", html)
         self.assertNotIn("Open full guide", html)
@@ -150,7 +152,11 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("Инструкция по подключению", html)
         self.assertIn("Android", html)
         self.assertIn("v2rayNG", html)
+        self.assertIn("account-page-shell-instructions", html)
+        self.assertIn("account-instructions-device-actions", html)
         self.assertIn("/account-app/?view=instructions&amp;device=iphone&amp;embed=1", html)
+        self.assertNotIn("Кабинет VXcloud", html)
+        self.assertNotIn("Ваши доступы", html)
         self.assertNotIn("Open full guide", html)
 
     def test_account_app_dashboard_copy_is_localized(self):

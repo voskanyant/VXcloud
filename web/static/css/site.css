@@ -40,7 +40,7 @@ body {
 body.vx-account-embed {
   background: transparent;
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 a {
@@ -71,14 +71,14 @@ a:hover {
 .vx-embed-main {
   min-height: 100vh;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .vx-embed-container {
   width: 100%;
   max-width: 100%;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .content-shell > * + * {
@@ -3411,6 +3411,268 @@ body.theme-flatsome.vx-account-shell .stat-card {
   .account-config-item-meta {
     justify-self: start;
     text-align: left;
+  }
+}
+
+body.vx-account-embed {
+  --account-mini-radius: 8px;
+}
+
+body.vx-account-embed .account-page-shell {
+  width: 100%;
+  max-width: none;
+  gap: 14px;
+  padding: 12px 12px 28px;
+}
+
+body.vx-account-embed .account-hero {
+  padding: 2px 0 8px;
+  border-bottom: 0;
+}
+
+body.vx-account-embed .account-hero-copy {
+  max-width: none;
+}
+
+body.vx-account-embed .account-hero .account-eyebrow {
+  display: none;
+}
+
+body.vx-account-embed .account-title,
+body.vx-account-embed .account-section-title {
+  letter-spacing: 0;
+}
+
+body.vx-account-embed .account-title {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.08;
+}
+
+body.vx-account-embed .account-intro {
+  max-width: none;
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+body.vx-account-embed .account-hero-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-width: none;
+  margin-top: 12px;
+}
+
+body.vx-account-embed .account-hero-actions .account-button:first-child {
+  grid-column: 1 / -1;
+}
+
+body.vx-account-embed .account-button,
+body.vx-account-embed .account-primary-button,
+body.vx-account-embed .account-secondary-button,
+body.vx-account-embed .account-danger-button {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border-radius: var(--account-mini-radius);
+  font-size: 13px;
+}
+
+body.vx-account-embed .account-button {
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+body.vx-account-embed .account-button strong {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+body.vx-account-embed .account-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.vx-account-embed .account-summary-card {
+  gap: 5px;
+  min-height: 86px;
+  padding: 10px;
+  border-radius: var(--account-mini-radius);
+}
+
+body.vx-account-embed .account-summary-label,
+body.vx-account-embed .account-link-label {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+body.vx-account-embed .account-summary-main {
+  gap: 3px;
+}
+
+body.vx-account-embed .account-summary-main strong,
+body.vx-account-embed .account-summary-value,
+body.vx-account-embed .account-meta-box strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+body.vx-account-embed .account-summary-note,
+body.vx-account-embed .account-subtle,
+body.vx-account-embed .account-section-meta {
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+body.vx-account-embed .account-section {
+  padding: 10px 0 0;
+  border: 0;
+}
+
+body.vx-account-embed .account-section-head {
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+body.vx-account-embed .account-section-title {
+  margin-top: 4px;
+  font-size: 22px;
+  line-height: 1.1;
+}
+
+body.vx-account-embed .account-device-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+body.vx-account-embed #account-subscriptions .account-device-card {
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--account-mini-radius);
+}
+
+body.vx-account-embed #account-subscriptions .account-device-top {
+  gap: 10px;
+}
+
+body.vx-account-embed #account-subscriptions .account-device-name {
+  font-size: 16px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+body.vx-account-embed #account-subscriptions .account-device-status {
+  padding-top: 2px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+body.vx-account-embed #account-subscriptions .account-inline-form,
+body.vx-account-embed #account-subscriptions .account-device-meta,
+body.vx-account-embed #account-subscriptions .account-link-block {
+  display: none;
+}
+
+body.vx-account-embed #account-subscriptions .account-device-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.vx-account-embed #account-subscriptions .account-device-actions > * {
+  min-width: 0;
+  flex: initial;
+}
+
+body.vx-account-embed #account-subscriptions .account-device-actions .account-primary-button {
+  grid-column: 1 / -1;
+}
+
+body.vx-account-embed #account-subscriptions .account-device-actions form {
+  grid-column: 1 / -1;
+}
+
+body.vx-account-embed .account-page-shell-instructions {
+  gap: 12px;
+  padding-top: 12px;
+}
+
+body.vx-account-embed #account-instructions {
+  padding-top: 0;
+}
+
+body.vx-account-embed #account-instructions .account-eyebrow {
+  display: none;
+}
+
+body.vx-account-embed #account-instructions .account-section-head {
+  margin-bottom: 8px;
+}
+
+body.vx-account-embed #account-instructions .account-section-title {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.08;
+}
+
+body.vx-account-embed #account-instructions .account-message {
+  padding: 12px;
+  border-radius: var(--account-mini-radius);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+body.vx-account-embed .account-instructions-device-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.vx-account-embed .account-instructions-device-actions .account-secondary-button:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+body.vx-account-embed .account-secondary-button-current {
+  background: var(--account-ink);
+  border-color: var(--account-ink);
+  color: #ffffff;
+}
+
+body.vx-account-embed .account-secondary-button-current:hover {
+  background: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+body.vx-account-embed #account-instructions .account-device-card {
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--account-mini-radius);
+}
+
+body.vx-account-embed #account-instructions .account-device-name {
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+@media (max-width: 360px) {
+  body.vx-account-embed .account-page-shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  body.vx-account-embed .account-title {
+    font-size: 25px;
+  }
+
+  body.vx-account-embed .account-hero-actions,
+  body.vx-account-embed .account-summary,
+  body.vx-account-embed #account-subscriptions .account-device-actions {
+    grid-template-columns: 1fr;
   }
 }
 

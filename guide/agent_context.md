@@ -70,6 +70,8 @@ Subscriptions keep:
   as the main artifact.
 - Bot UX rules live in `guide/bot_ux_policy.md`. Keep the bot as a small
   Russian command/control layer and move full account work into the Mini App.
+- Mini App UX rules live in `guide/mini_app_ux_policy.md`. Keep `/account-app/`
+  compact, mobile-first, and scoped separately from the wider browser fallback.
 
 ## Known Production Risks
 

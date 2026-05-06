@@ -89,6 +89,7 @@ MENU_LABEL_DEFAULTS = {
     "menu_trial": "🎁 7 дней бесплатно",
     "menu_buy_access": "💳 Купить",
     "menu_renew_access": "🔄 Продлить",
+    "menu_instructions": "📖 Инструкция",
     "menu_support_simple": "🆘 Поддержка",
     "menu_open_app": "📱 Кабинет",
 }
@@ -97,6 +98,7 @@ MENU_STALE_LABELS = {
     "menu_trial": {"7 дней бесплатно", "Бесплатно 7д", "🎁 Бесплатно 7д"},
     "menu_buy_access": {"Купить", "Купить новый доступ", "⭐ Купить новый доступ"},
     "menu_renew_access": {"Продлить"},
+    "menu_instructions": {"Инструкция", "Инструкции", "Как подключить", "📖 Как подключить"},
     "menu_support_simple": {"Поддержка"},
     "menu_open_app": {"Кабинет", "Личный кабинет на сайте", "🌐 Личный кабинет на сайте"},
 }
@@ -345,6 +347,7 @@ class VPNBot:
             ("menu_trial", self._menu_label("menu_trial")),
             ("menu_buy", self._menu_label("menu_buy_access")),
             ("menu_renew", self._menu_label("menu_renew_access")),
+            ("menu_instructions", self._menu_label("menu_instructions")),
             ("menu_support", self._menu_label("menu_support_simple")),
             ("menu_open_app", self._menu_label("menu_open_app")),
         ]
@@ -540,6 +543,7 @@ class VPNBot:
             return InlineKeyboardMarkup(
                 [
                     [self._mini_app_button("Полная инструкция", "/account/?view=instructions")],
+                    [InlineKeyboardButton(text="Назад", callback_data="nav|menu_instructions|_")],
                 ]
             )
         raw = self._cms_content.get(f"{node_key}_buttons")
@@ -606,6 +610,9 @@ class VPNBot:
                 if row_buttons:
                     rows.append(row_buttons)
 
+        if parent_key:
+            rows.append([InlineKeyboardButton(text="Назад", callback_data=f"nav|{parent_key}|_")])
+
         if not rows:
             return None
         return InlineKeyboardMarkup(rows)
@@ -626,9 +633,8 @@ class VPNBot:
     def _start_message_text(status_summary: str | None = None) -> str:
         text = (
             "VXcloud\n\n"
-            "Выберите действие в меню ниже.\n\n"
-            "Бот помогает быстро проверить VPN, купить или продлить доступ и написать в поддержку. "
-            "QR, инструкции и оплата картой открываются в кабинете."
+            "Выберите действие в меню ниже.\n"
+            "Кабинет внутри Telegram открывает QR, оплату картой, инструкции и настройки."
         )
         if status_summary:
             text = f"{text}\n\n{status_summary}"
@@ -653,9 +659,9 @@ class VPNBot:
                 return None
             return "\n".join(
                 [
-                    "Мой VPN",
+                    "Ваш VPN",
                     "Активных доступов нет",
-                    f"Истекли: {len(expired)}",
+                    f"⚠️ Истекло: {len(expired)}",
                     "Нажмите «🔄 Продлить», чтобы выбрать устройство.",
                 ]
             )
@@ -663,21 +669,16 @@ class VPNBot:
         next_sub = min(active, key=lambda item: item["expires_at"])
         next_expires_at = next_sub.get("expires_at")
         next_expires_text = self._format_local_dt(next_expires_at) if isinstance(next_expires_at, datetime) else "-"
-        expiring_soon = sum(
-            1
-            for sub in active
-            if isinstance(sub.get("expires_at"), datetime)
-            and sub["expires_at"] <= now + timedelta(days=3)
-        )
         lines = [
-            "Мой VPN",
-            f"Активно: {len(active)}",
-            f"Ближайшее окончание: {self._subscription_name(next_sub)} - {next_expires_text}",
+            "Ваш VPN",
+            f"✅ Активных: {len(active)}",
+            f"Ближайшее окончание: {self._subscription_name(next_sub)} · {next_expires_text}",
         ]
+        expiring_soon = sum(1 for sub in active if self._subscription_expiring_soon(sub, now))
         if expiring_soon:
-            lines.append(f"Скоро заканчиваются: {expiring_soon}")
+            lines.append(f"⏳ Скоро закончится: {expiring_soon}")
         if expired:
-            lines.append(f"Истекли: {len(expired)}")
+            lines.append(f"⚠️ Истекло: {len(expired)}")
         return "\n".join(lines)
 
     async def _send_start_screen(self, message: Message, user_id: int) -> None:
@@ -792,6 +793,7 @@ class VPNBot:
         rows.extend(
             [
                 [InlineKeyboardButton(text=self._with_stars_price("⭐ Продлить за Stars"), callback_data="act|renew_stars_continue|_")],
+                [InlineKeyboardButton(text="Назад", callback_data="act|renew_back|_")],
             ]
         )
         return InlineKeyboardMarkup(rows)
@@ -1135,8 +1137,6 @@ class VPNBot:
             )
             return
         text = self._configs_list_text(client_code=client_code, subscriptions=subscriptions)
-        if subscriptions:
-            text = f"{text}\n\nВыберите устройство ниже."
         await self._replace_or_reply(
             message,
             text,
@@ -1270,6 +1270,35 @@ class VPNBot:
             return "⚠️ отозван"
         return status
 
+    def _subscription_button_icon(self, sub: dict[str, object], now: datetime | None = None) -> str:
+        badge = self._subscription_status_badge(sub, now or datetime.now(timezone.utc))
+        if badge.startswith("✅"):
+            return "✅"
+        if badge.startswith("⏳"):
+            return "⏳"
+        if badge.startswith("⚠️"):
+            return "⚠️"
+        return "•"
+
+    def _subscription_count_summary(self, subscriptions: list[dict[str, object]], now: datetime) -> str:
+        active = 0
+        expiring = 0
+        expired = 0
+        for sub in subscriptions:
+            status = self._subscription_status(sub, now)
+            if status == "активен":
+                active += 1
+                if self._subscription_expiring_soon(sub, now):
+                    expiring += 1
+            elif status == "истек":
+                expired += 1
+        parts = [f"активных: {active}"]
+        if expiring:
+            parts.append(f"скоро закончится: {expiring}")
+        if expired:
+            parts.append(f"истекло: {expired}")
+        return " · ".join(parts)
+
     @staticmethod
     def _subscription_can_delete(sub: dict[str, object], now: datetime | None = None) -> bool:
         current_time = now or datetime.now(timezone.utc)
@@ -1325,9 +1354,9 @@ class VPNBot:
             return self._content_text(
                 "my_configs_empty_message",
                 "Мой VPN\n\n"
+                "Пока нет устройств.\n"
                 "ID: {client_code}\n\n"
-                "Пока нет устройств.\n\n"
-                "Начните с 7 дней бесплатно или купите доступ. После активации здесь появятся QR и быстрые действия.",
+                "Начните с 7 дней бесплатно или купите доступ. После активации здесь появятся QR, продление и кабинет.",
             ).replace("{client_code}", client_code)
 
         for idx, sub in enumerate(self._sorted_subscriptions(subscriptions), start=1):
@@ -1349,17 +1378,24 @@ class VPNBot:
 
         return self._content_text(
             "my_configs_list_template",
-            "Мой VPN\n\nID: {client_code}\n\nУстройства:\n\n{items}",
-        ).replace("{client_code}", client_code).replace("{items}", "\n".join(items))
+            "Мой VPN\n\n"
+            "ID: {client_code}\n"
+            "{summary}\n\n"
+            "Устройства:\n\n"
+            "{items}\n\n"
+            "Нажмите устройство, чтобы открыть QR, ссылку и управление.",
+        ).replace("{client_code}", client_code).replace("{summary}", self._subscription_count_summary(subscriptions, now)).replace("{items}", "\n".join(items))
 
     def _configs_list_markup(self, subscriptions: list[dict[str, object]]) -> InlineKeyboardMarkup:
         rows: list[list[InlineKeyboardButton]] = []
+        now = datetime.now(timezone.utc)
         for idx, sub in enumerate(self._sorted_subscriptions(subscriptions), start=1):
             sub_id = int(sub["id"])
+            icon = self._subscription_button_icon(sub, now)
             rows.append(
                 [
                     InlineKeyboardButton(
-                        text=f"{idx}. {self._subscription_name(sub)}",
+                        text=f"{idx}. {icon} {self._subscription_name(sub)}",
                         callback_data=f"act|cfg_open:{sub_id}|_",
                     )
                 ]
@@ -1376,7 +1412,7 @@ class VPNBot:
             )
         if not subscriptions:
             rows.append([InlineKeyboardButton(text="🎁 7 дней бесплатно", callback_data="act|start_trial|_")])
-            rows.append([self._mini_app_button("💳 Купить картой", "/account/buy/")])
+            rows.append([self._mini_app_button(self._with_card_price("💳 Купить картой"), "/account/buy/")])
             rows.append([InlineKeyboardButton(text=self._with_stars_price("⭐ Купить за Stars"), callback_data="act|buy_new|_")])
         return InlineKeyboardMarkup(rows)
 
@@ -1409,6 +1445,7 @@ class VPNBot:
         if can_delete:
             manage_row.append(InlineKeyboardButton(text="Удалить", callback_data=f"act|cfg_delete_request:{subscription_id}|_"))
         rows.append(manage_row)
+        rows.append([InlineKeyboardButton(text="Назад", callback_data="act|cfg_back|_")])
         return InlineKeyboardMarkup(rows)
 
     def _delete_subscription_confirm_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
@@ -2159,7 +2196,20 @@ class VPNBot:
                 await query.answer()
                 if query.message is not None:
                     user_id = await self._ensure_user(update)
-                    await self._send_start_screen(query.message, user_id)
+                    context.user_data.pop("selected_subscription_id", None)
+                    subscriptions = await self.db.list_subscriptions(user_id)
+                    renewable = self._renewable_subscriptions(subscriptions)
+                    if len(renewable) > 1:
+                        await query.edit_message_text(
+                            text=self._renew_select_text(renewable),
+                            reply_markup=self._renew_select_markup(renewable),
+                        )
+                        return
+                    client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+                    await query.edit_message_text(
+                        text=self._configs_list_text(client_code=client_code, subscriptions=subscriptions),
+                        reply_markup=self._configs_list_markup(subscriptions),
+                    )
                 return
             if target == "trial_activate":
                 if query.message is not None:
