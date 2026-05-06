@@ -716,15 +716,6 @@ class VPNBot:
             ]
         )
 
-    def _support_sent_markup(self) -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(
-            [
-                [self._mini_app_button("Open app")],
-                [InlineKeyboardButton(text="My VPN", callback_data="act|start_mysub|_")],
-                [InlineKeyboardButton(text="Back", callback_data="act|start_back|_")],
-            ]
-        )
-
     def _open_app_fallback_markup(self, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [

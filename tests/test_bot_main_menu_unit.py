@@ -651,6 +651,19 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(db.events[-1]["event_name"], "support_sent")
         self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
 
+    async def test_empty_support_message_restores_main_menu_without_ticket(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        message = FakeMessage("   ")
+        context = SimpleNamespace(user_data={"support_wait_message": True})
+
+        await bot.menu_click(make_update(message), context)
+
+        self.assertNotIn("support_wait_message", context.user_data)
+        self.assertEqual(db.support_messages, [])
+        self.assertEqual(db.events, [])
+        self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
+
     async def test_menu_button_during_support_input_cancels_input_without_ticket(self):
         db = FakeDB()
         bot = make_bot(db)
@@ -707,6 +720,18 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("rename_wait_subscription_id", context.user_data)
         self.assertEqual(db.renamed, [(123, 42, "Work laptop")])
         self.assertTrue(any(isinstance(reply_markup, ReplyKeyboardMarkup) for _text, reply_markup in message.replies))
+
+    async def test_empty_rename_submission_restores_main_menu_without_rename(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        message = FakeMessage("   ")
+        context = SimpleNamespace(user_data={"rename_wait_subscription_id": 42})
+
+        await bot.menu_click(make_update(message), context)
+
+        self.assertNotIn("rename_wait_subscription_id", context.user_data)
+        self.assertEqual(db.renamed, [])
+        self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
 
     async def test_menu_button_during_rename_input_cancels_rename(self):
         db = FakeDB()
