@@ -217,6 +217,23 @@ def _safe_local_redirect_url(request: HttpRequest, candidate: str | None, fallba
     return fallback
 
 
+def _telegram_webapp_auth_redirect_url(request: HttpRequest, candidate: str | None) -> str:
+    fallback = _account_default_redirect_url(request)
+    target = _safe_local_redirect_url(request, candidate, fallback)
+    if not _is_account_auth_like_path(target):
+        return target
+
+    try:
+        parsed = urlsplit(target)
+        query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    except Exception:
+        query = {}
+
+    nested_next = (query.get("next") or query.get("return_to") or "").strip()
+    nested_fallback = "/account-app/?embed=1" if "embed=1" in target or nested_next.startswith("/account-app/") else fallback
+    return _safe_local_redirect_url(request, nested_next, nested_fallback)
+
+
 def _telegram_auth_success_response(request: HttpRequest, *, target_url: str) -> HttpResponse:
     target = _safe_local_redirect_url(request, target_url, _account_default_redirect_url(request))
     if (request.GET.get("popup") or "").strip() != "1" and not _account_embed_mode(request):
@@ -1983,6 +2000,7 @@ def telegram_webapp_auth(request: HttpRequest) -> HttpResponse:
         return JsonResponse({"error": "invalid_json"}, status=400)
 
     init_data = str(payload.get("initData", "") or "").strip()
+    return_to = str(payload.get("returnTo", "") or "").strip()
     if not init_data:
         return JsonResponse({"error": "missing_init_data"}, status=400)
 
@@ -2053,7 +2071,7 @@ def telegram_webapp_auth(request: HttpRequest) -> HttpResponse:
         event_name="open_app",
         metadata={"source": "telegram_webapp_auth"},
     )
-    return JsonResponse({"ok": True, "redirect": _account_default_redirect_url(request)})
+    return JsonResponse({"ok": True, "redirect": _telegram_webapp_auth_redirect_url(request, return_to)})
 
 
 def _generate_magic_token() -> str:

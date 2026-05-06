@@ -56,6 +56,13 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
     def test_default_cross_origin_opener_policy_allows_telegram_popup_callback(self):
         self.assertEqual(settings.SECURE_CROSS_ORIGIN_OPENER_POLICY, "same-origin-allow-popups")
 
+    def test_base_template_loads_telegram_webapp_script_for_mini_app_session_sync(self):
+        template = (WEB_ROOT / "templates" / "base.html").read_text(encoding="utf-8")
+
+        self.assertIn("https://telegram.org/js/telegram-web-app.js", template)
+        self.assertIn("data-account-authenticated", template)
+        self.assertIn("returnTo: currentUrl.pathname + currentUrl.search + currentUrl.hash", template)
+
     def test_telegram_login_widget_url_uses_same_window_callback(self):
         request = self.factory.get("/accounts/login/")
         request.META["HTTP_HOST"] = "vxcloud.ru"
@@ -311,7 +318,12 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
         )
         request = self.factory.post(
             "/api/auth/telegram/webapp",
-            data=json.dumps({"initData": init_data}),
+            data=json.dumps(
+                {
+                    "initData": init_data,
+                    "returnTo": "/accounts/login/?embed=1&next=/account-app/%3Fembed%3D1",
+                }
+            ),
             content_type="application/json",
         )
         user = object()
@@ -326,13 +338,51 @@ class TelegramSiteLoginUnitTests(unittest.TestCase):
                         response = telegram_webapp_auth(request)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.content.decode("utf-8"))["ok"], True)
+        response_payload = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(response_payload["ok"], True)
+        self.assertEqual(response_payload["redirect"], "/account-app/?embed=1")
         user_mock.assert_called_once()
         login_mock.assert_called_once_with(
             request,
             user,
             backend="django.contrib.auth.backends.ModelBackend",
         )
+
+    def test_telegram_webapp_auth_preserves_account_app_return_target(self):
+        bot_token = "telegram-bot-token"
+        user_payload = {"id": 777000, "username": "vxcloud_user", "first_name": "VX"}
+        init_data = _build_webapp_init_data(
+            {
+                "auth_date": str(int(time())),
+                "user": json.dumps(user_payload, separators=(",", ":")),
+            },
+            bot_token,
+        )
+        request = self.factory.post(
+            "/api/auth/telegram/webapp",
+            data=json.dumps(
+                {
+                    "initData": init_data,
+                    "returnTo": "/account-app/config/42/?embed=1",
+                }
+            ),
+            content_type="application/json",
+        )
+        user = object()
+
+        with override_settings(
+            TELEGRAM_WEBAPP_BOT_TOKEN=bot_token,
+            TELEGRAM_WEBAPP_AUTH_MAX_AGE_SECONDS=600,
+        ):
+            with patch("cabinet.views.transaction.atomic", return_value=nullcontext()):
+                with patch("cabinet.views._get_or_create_user_for_telegram", return_value=user):
+                    with patch("cabinet.views.login"):
+                        response = telegram_webapp_auth(request)
+
+        self.assertEqual(response.status_code, 200)
+        response_payload = json.loads(response.content.decode("utf-8"))
+        self.assertEqual(response_payload["ok"], True)
+        self.assertEqual(response_payload["redirect"], "/account-app/config/42/?embed=1")
 
     def test_telegram_webapp_auth_rejects_invalid_signature(self):
         bot_token = "telegram-bot-token"

@@ -109,6 +109,9 @@ The 2026-05-06 cleanup did three things:
 - made bot CMS fallback reject stale English customer-facing overrides, so old
   `/ops/` labels such as `Buy access` or `Open app` do not replace Russian
   defaults
+- fixed Mini App Telegram auth handoff to load Telegram WebApp JS, post
+  `initData` with the current `/account-app/` return path, and redirect back
+  into the embedded account UI after Django creates the session
 - cleaned remaining English fallback labels in input cancellation, delete alerts,
   and raw connection-link messages
 - made bot CMS fallback reject mojibake overrides, so broken stored labels do
