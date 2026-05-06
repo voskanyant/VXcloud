@@ -122,13 +122,15 @@ Back/Назад button should be ignored by the bot.
   "access", not "config", "3x-ui", "node", or other execution-layer wording.
   Rename input should normalize whitespace and reject overlong names with a
   clear limit instead of silently truncating. Empty My VPN should offer the
-  7-day trial first, then card and Stars purchase actions. Expired subscription
-  cards should put `🔄 Продлить` first; active cards can keep `📱 QR и доступ`
-  and `QR` first. Subscription card copy should state the next action for the
-  current state: renew if expired, renew early if close to expiry, otherwise
-  "open QR or copy the subscription link". Do not describe the buttons
-  themselves in the message body. QR messages for expired devices must warn
-  that renewal is needed and include the same renewal-first action layout.
+  7-day trial first, then card and Stars purchase actions. Active subscription
+  cards are link-first: `🔗 Скопировать ссылку` is the first action, then
+  `📱 Открыть доступ`, then QR and renewal. Expired subscription cards still
+  put `🔄 Продлить` first, then copy link, then access/QR. Subscription card
+  copy should give a short practical import hint: copy the subscription link,
+  open Streisand, V2Box, or v2rayNG, press `+`, then import from clipboard.
+  Do not print long subscription or raw connection links in the message body.
+  QR messages for expired devices must warn that renewal is needed and include
+  the same renewal-first action layout.
 - Trial: visible menu entry, one activation CTA, short one-time-use copy, then
   compact success with expiry plus cabinet, QR, and guide after activation. If
   activation fails, show a clear Russian failure message and a support action;

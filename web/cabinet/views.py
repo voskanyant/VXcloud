@@ -578,8 +578,8 @@ def _build_instructions_payload(request: HttpRequest, *, device: str = "") -> di
             },
         )
     return {
-        "title": "Инструкция по подключению",
-        "subtitle": "Выберите устройство, затем откройте QR и ссылку подписки прямо здесь.",
+        "title": "Подключение",
+        "subtitle": "Скопируйте ссылку подписки и импортируйте ее в VPN-приложение.",
         "device": selected_device,
         "devices": [
             {"key": "iphone", "label": "iPhone", "url": _account_backend_url(request, "?view=instructions&device=iphone")},

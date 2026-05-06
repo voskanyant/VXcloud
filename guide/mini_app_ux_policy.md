@@ -72,9 +72,9 @@ fallback and can use a wider layout.
 - The Mini App instruction view should not show the public WordPress header,
   blog article chrome, or the normal account dashboard below the guide.
 - The native instruction title should be short and task-first, for example
-  `Как подключить VPN`.
+  `Подключение`.
 - Show the current access or empty-access block before device tabs so the user
-  sees the QR/access path before choosing platform-specific steps.
+  sees the copy-link/access path before choosing platform-specific steps.
 - Device choices should look like compact tabs/buttons and keep the selected
   device obvious.
 - In Telegram, device tabs and step rows should be app-control size, not
@@ -83,8 +83,9 @@ fallback and can use a wider layout.
 - Setup steps should be structured as a short numbered list, not one long
   paragraph with inline numbers.
 - When the account already has an access, the instruction view should show the
-  primary access name and a direct `Открыть QR и доступ` action inside the Mini
-  App. Do not make the user return to the dashboard just to find the QR page.
+  primary access name and a direct `Скопировать ссылку` action inside the Mini
+  App. A secondary `QR и доступ` action can remain for scanning or advanced
+  details. Do not make the user return to the dashboard just to find the access.
 - If there is no access yet, the same area should explain that the user needs a
   trial or purchase first. The primary action should open the bot trial deep
   link when available; otherwise route them back to `Мой VPN`.
@@ -94,21 +95,23 @@ fallback and can use a wider layout.
   state and persistent `Мой VPN` return action as the primary instruction view.
 - Long editorial guide posts can remain public browser content, but Telegram
   users should first get the compact cabinet guide with direct access to `Мой VPN`,
-  QR, and support.
+  subscription link, QR, and support.
 - Instruction screen labels, access hints, empty states, and step text must
   stay readable Russian; no mojibake in the active renderer.
 
 ## Config Detail Rules
 
-- In the Mini App, subscription detail pages should be QR and copy-link first.
+- In the Mini App, subscription detail pages should be copy-link first. QR is a
+  useful fallback, not the primary method.
 - Status, all-config navigation, rename, and other management details should
   sit below the primary import actions.
 - QR panels should fit comfortably in the first mobile screen. Do not let the
   QR image grow to desktop size inside Telegram; keep nearby status/link fields
   compact so copy and scan actions stay close together.
-- The QR/detail page should include a short connection reminder near the QR:
-  open VPN client, scan QR or copy the subscription link, and use the compact
-  instruction page if device-specific steps are needed.
+- The access/detail page should include a short connection reminder near the
+  primary copy action: copy the subscription link, open Streisand, V2Box,
+  v2rayNG, Hiddify, or Nekoray, press `+`, then import from clipboard. The QR
+  panel can stay below as a fallback if scanning is easier.
 - The QR panel should include a short caption so the user knows the QR belongs
   in the VPN client, not in Telegram.
 - The connection reminder should be compact numbered/action rows, not another

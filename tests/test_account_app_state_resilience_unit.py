@@ -116,7 +116,11 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["authenticated"])
         self.assertEqual(payload["view"], "instructions")
-        self.assertEqual(payload["instructions"]["title"], "Инструкция по подключению")
+        self.assertEqual(payload["instructions"]["title"], "Подключение")
+        self.assertEqual(
+            payload["instructions"]["subtitle"],
+            "Скопируйте ссылку подписки и импортируйте ее в VPN-приложение.",
+        )
         self.assertEqual(payload["instructions"]["device"], "iphone")
         self.assertEqual(
             payload["instructions"]["devices"][0]["url"],
@@ -187,7 +191,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
-        self.assertIn("Инструкция по подключению", html)
+        self.assertIn("Подключение", html)
+        self.assertIn("Скопируйте ссылку подписки", html)
         self.assertIn("Android", html)
         self.assertIn("v2rayNG", html)
         self.assertIn("account-page-shell-instructions", html)

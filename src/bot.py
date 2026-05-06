@@ -1507,21 +1507,21 @@ class VPNBot:
         can_delete: bool,
         renewal_first: bool = False,
     ) -> InlineKeyboardMarkup:
-        cabinet_button = self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")
+        cabinet_button = self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")
         qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")
         renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")
-        copy_row = [InlineKeyboardButton(text="Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
+        copy_row = [InlineKeyboardButton(text="🔗 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
         if renewal_first:
             rows = [
                 [renew_button],
-                [cabinet_button, qr_button],
                 copy_row,
+                [cabinet_button, qr_button],
             ]
         else:
             rows = [
+                copy_row,
                 [cabinet_button],
                 [qr_button, renew_button],
-                copy_row,
             ]
         manage_row = [InlineKeyboardButton(text="Переименовать", callback_data=f"act|cfg_rename:{subscription_id}|_")]
         if can_delete:
@@ -1555,12 +1555,26 @@ class VPNBot:
         if self._subscription_needs_renewal(sub, now):
             access_hint = "Доступ истёк. Нажмите «🔄 Продлить», чтобы снова включить VPN."
         elif self._subscription_expiring_soon(sub, now):
-            access_hint = "Доступ скоро закончится. Продлите заранее, чтобы VPN не отключился."
+            access_hint = (
+                "Доступ скоро закончится. Продлите заранее, чтобы VPN не отключился.\n\n"
+                "Подключение через ссылку:\n"
+                "1. Нажмите «🔗 Скопировать ссылку».\n"
+                "2. Откройте Streisand, V2Box или v2rayNG.\n"
+                "3. Нажмите «+» и выберите импорт из буфера."
+            )
         else:
             access_hint = (
-                "Для подключения откройте QR или скопируйте ссылку подписки."
+                "Основной способ подключения — ссылка подписки.\n\n"
+                "1. Нажмите «🔗 Скопировать ссылку».\n"
+                "2. Откройте Streisand, V2Box или v2rayNG.\n"
+                "3. Нажмите «+» и выберите импорт из буфера."
                 if feed_url
-                else "Для подключения откройте QR или скопируйте ссылку."
+                else (
+                    "Основной способ подключения — ссылка.\n\n"
+                    "1. Нажмите «🔗 Скопировать ссылку».\n"
+                    "2. Откройте VPN-приложение.\n"
+                    "3. Нажмите «+» и выберите импорт из буфера."
+                )
             )
         text = (
             f"Устройство: {self._subscription_name(sub)}\n\n"
@@ -3243,15 +3257,15 @@ class VPNBot:
         if isinstance(subscription_id, int) and subscription_id > 0:
             renew_path = f"{renew_path}?subscription_id={subscription_id}"
 
-        copy_label = "Скопировать ссылку подписки" if subscription_url else "Скопировать ссылку"
+        copy_label = "🔗 Скопировать ссылку" if subscription_url else "🔗 Скопировать ссылку"
         buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
-            buttons.append([self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")])
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
+            buttons.append([self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")])
             buttons.append([self._mini_app_button("🔄 Продлить", renew_path)])
         else:
-            buttons.append([self._mini_app_button("📱 Открыть кабинет")])
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
+            buttons.append([self._mini_app_button("📱 Открыть кабинет")])
         buttons.append(
             [
                 InlineKeyboardButton(
@@ -3270,7 +3284,7 @@ class VPNBot:
         resolved_client_code = client_code or (f"VX-{user_id}" if user_id is not None else "")
         text = self._content_text(
             "menu_mysub_response",
-            "Доступ готов\n\nДействует до: {expires_at}\nID: {client_code}\n\nQR уже выше. Для подключения откройте QR и доступ или скопируйте ссылку.",
+            "Доступ готов\n\nДействует до: {expires_at}\nID: {client_code}\n\nОсновной способ подключения — ссылка подписки.\n\n1. Нажмите «🔗 Скопировать ссылку».\n2. Откройте Streisand, V2Box или v2rayNG.\n3. Нажмите «+» и выберите импорт из буфера.",
         )
         text = (
             text.replace("{expires_at}", self._format_local_dt(expires_at))
