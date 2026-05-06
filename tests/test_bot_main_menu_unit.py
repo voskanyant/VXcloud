@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "vxcloud_site.settings")
 
-from telegram import InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram import InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
 
 from src.bot import VPNBot
 
@@ -552,6 +552,17 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsInstance(message.replies[0][1], InlineKeyboardMarkup)
         self.assertEqual(message.replies[0][1].inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/?embed=1")
 
+    async def test_support_start_hides_main_menu_for_text_input(self):
+        bot = make_bot()
+        query = FakeCallbackQuery("act|support_start|_")
+        context = SimpleNamespace(user_data={})
+
+        await bot.inline_callback(make_callback_update(query), context)
+
+        self.assertTrue(context.user_data["support_wait_message"])
+        self.assertEqual(bot.db.events[-1]["event_name"], "support_started")
+        self.assertIsInstance(query.message.replies[-1][1], ReplyKeyboardRemove)
+
     async def test_support_message_submission_restores_main_menu(self):
         db = FakeDB()
         bot = make_bot(db)
@@ -584,6 +595,16 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("buy_wait_phone", context.user_data)
         self.assertEqual(db.renamed, [])
         self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
+
+    async def test_rename_request_hides_main_menu_for_text_input(self):
+        bot = make_bot()
+        query = FakeCallbackQuery("act|cfg_rename:42|_")
+        context = SimpleNamespace(user_data={})
+
+        await bot.inline_callback(make_callback_update(query), context)
+
+        self.assertEqual(context.user_data["rename_wait_subscription_id"], 42)
+        self.assertIsInstance(query.message.replies[-1][1], ReplyKeyboardRemove)
 
     async def test_rename_submission_restores_main_menu(self):
         db = FakeDB()

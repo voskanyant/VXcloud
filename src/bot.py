@@ -506,21 +506,6 @@ class VPNBot:
             return None
         return InlineKeyboardMarkup(rows)
 
-    def _start_inline_keyboard(self, account_url: str) -> InlineKeyboardMarkup:
-        return InlineKeyboardMarkup(
-            [
-                [self._mini_app_button(text="Open app")],
-                [
-                    InlineKeyboardButton(text="🎁 Попробовать 7 дней", callback_data="act|start_trial|_"),
-                    InlineKeyboardButton(text="⭐ Купить новый доступ", callback_data="act|buy_new|_"),
-                ],
-                [
-                    InlineKeyboardButton(text="💬 Как подключить", callback_data="nav|menu_instructions|_"),
-                    InlineKeyboardButton(text="Open in browser", url=account_url),
-                ],
-            ]
-        )
-
     async def _replace_or_reply(
         self,
         message: Message,
