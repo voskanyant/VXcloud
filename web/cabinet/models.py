@@ -61,6 +61,26 @@ class PaymentEvent(models.Model):
         db_table = "payment_events"
 
 
+class BotUserEvent(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(
+        "BotUser",
+        db_column="user_id",
+        on_delete=models.DO_NOTHING,
+        null=True,
+        blank=True,
+    )
+    telegram_id = models.BigIntegerField(null=True, blank=True)
+    event_name = models.TextField()
+    subscription_id = models.BigIntegerField(null=True, blank=True)
+    metadata = models.JSONField()
+    created_at = models.DateTimeField()
+
+    class Meta:
+        managed = False
+        db_table = "bot_user_events"
+
+
 class BotUser(models.Model):
     id = models.BigAutoField(primary_key=True)
     telegram_id = models.BigIntegerField(unique=True)

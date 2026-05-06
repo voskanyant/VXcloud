@@ -18,6 +18,7 @@ from src.bot import VPNBot
 class FakeDB:
     def __init__(self):
         self.renamed = []
+        self.events = []
         self.support_messages = []
 
     async def fetch_bot_site_text_overrides(self):
@@ -52,6 +53,26 @@ class FakeDB:
     async def get_latest_paid_order(self, user_id: int):
         del user_id
         return None
+
+    async def record_bot_user_event(
+        self,
+        *,
+        user_id,
+        event_name,
+        telegram_id=None,
+        subscription_id=None,
+        metadata=None,
+    ):
+        self.events.append(
+            {
+                "user_id": user_id,
+                "event_name": event_name,
+                "telegram_id": telegram_id,
+                "subscription_id": subscription_id,
+                "metadata": metadata or {},
+            }
+        )
+        return True
 
 
 class FakeMessage:
@@ -157,6 +178,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertNotIn("support_wait_message", context.user_data)
         self.assertEqual(db.support_messages, [(77, "user", 123, "Need help")])
+        self.assertEqual(db.events[-1]["event_name"], "support_sent")
         self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
 
     async def test_rename_submission_restores_main_menu(self):

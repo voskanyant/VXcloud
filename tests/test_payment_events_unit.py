@@ -6,6 +6,7 @@ from src.db import DB
 
 class FakePool:
     def __init__(self) -> None:
+        self.bot_events: list[dict[str, object]] = []
         self.events: dict[tuple[str, str], dict[str, object]] = {}
 
     async def fetchrow(self, query: str, *args):
@@ -35,6 +36,21 @@ class FakePool:
 
         raise AssertionError(f"Unexpected query: {query}")
 
+    async def execute(self, query: str, *args):
+        if "INSERT INTO bot_user_events" in query:
+            user_id, telegram_id, event_name, subscription_id, metadata_json = args
+            self.bot_events.append(
+                {
+                    "user_id": user_id,
+                    "telegram_id": telegram_id,
+                    "event_name": event_name,
+                    "subscription_id": subscription_id,
+                    "metadata": json.loads(metadata_json),
+                }
+            )
+            return "INSERT 0 1"
+        raise AssertionError(f"Unexpected query: {query}")
+
 
 class PaymentEventsDedupUnitTests(unittest.IsolatedAsyncioTestCase):
     async def test_insert_payment_event_if_new_deduplicates_by_provider_and_event_id(self):
@@ -60,6 +76,33 @@ class PaymentEventsDedupUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(ok)
         self.assertTrue(marked_existing)
         self.assertFalse(marked_missing)
+
+    async def test_record_bot_user_event_normalizes_and_stores_metadata(self):
+        db = DB("postgresql://unused")
+        pool = FakePool()
+        db.pool = pool
+
+        ok = await db.record_bot_user_event(
+            user_id=123,
+            telegram_id=777000,
+            event_name="Buy_Clicked",
+            subscription_id=42,
+            metadata={"source": "inline"},
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(
+            pool.bot_events,
+            [
+                {
+                    "user_id": 123,
+                    "telegram_id": 777000,
+                    "event_name": "buy_clicked",
+                    "subscription_id": 42,
+                    "metadata": {"source": "inline"},
+                }
+            ],
+        )
 
 
 if __name__ == "__main__":

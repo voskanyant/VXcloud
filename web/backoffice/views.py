@@ -40,6 +40,7 @@ from cabinet.models import (
     BotOrder,
     BotSubscription,
     BotUser,
+    BotUserEvent,
     EdgeServer,
     LinkedAccount,
     SupportMessage,
@@ -1550,6 +1551,7 @@ class DashboardView(StaffRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs: Any) -> dict[str, Any]:
         ctx = super().get_context_data(**kwargs)
         ctx["title"] = "Bot Control Center"
+        bot_event_since = timezone.now() - timedelta(days=7)
 
         metrics = {
             "users_total": safe_count(BotUser.objects.all()),
@@ -1570,6 +1572,21 @@ class DashboardView(StaffRequiredMixin, TemplateView):
                 EdgeServer.objects.filter(is_active=True).exclude(last_health_ok=True)
             ),
             "sync_errors": safe_count(VPNNodeClient.objects.exclude(sync_state="ok")),
+            "bot_starts_7d": safe_count(
+                BotUserEvent.objects.filter(event_name="start", created_at__gte=bot_event_since)
+            ),
+            "bot_open_app_7d": safe_count(
+                BotUserEvent.objects.filter(event_name="open_app", created_at__gte=bot_event_since)
+            ),
+            "bot_buy_clicks_7d": safe_count(
+                BotUserEvent.objects.filter(event_name="buy_clicked", created_at__gte=bot_event_since)
+            ),
+            "bot_renew_clicks_7d": safe_count(
+                BotUserEvent.objects.filter(event_name="renew_clicked", created_at__gte=bot_event_since)
+            ),
+            "bot_support_sent_7d": safe_count(
+                BotUserEvent.objects.filter(event_name="support_sent", created_at__gte=bot_event_since)
+            ),
         }
         edges = safe_list(lambda: EdgeServer.objects.order_by("priority", "id"))
         primary_edge = _current_primary_edge(edges)
@@ -1586,6 +1603,11 @@ class DashboardView(StaffRequiredMixin, TemplateView):
             {"label": "Stale pending", "value": metrics["orders_pending_stale"], "tone": "danger"},
         ]
         ctx["secondary_metrics"] = [
+            {"label": "Starts 7d", "value": metrics["bot_starts_7d"]},
+            {"label": "Open app 7d", "value": metrics["bot_open_app_7d"]},
+            {"label": "Buy clicks 7d", "value": metrics["bot_buy_clicks_7d"]},
+            {"label": "Renew clicks 7d", "value": metrics["bot_renew_clicks_7d"]},
+            {"label": "Support sent 7d", "value": metrics["bot_support_sent_7d"]},
             {"label": "Telegram users", "value": metrics["users_telegram"]},
             {"label": "Fresh pending", "value": max(metrics["orders_pending"] - metrics["orders_pending_stale"], 0)},
             {"label": "Activated orders", "value": metrics["orders_activated"]},

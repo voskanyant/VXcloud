@@ -1126,9 +1126,33 @@ class VPNBot:
         u = update.effective_user
         return await self.db.upsert_user(u.id, u.username, u.first_name)
 
+    async def _track_event(
+        self,
+        user_id: int | None,
+        event_name: str,
+        update: Update | None = None,
+        *,
+        subscription_id: int | None = None,
+        metadata: dict[str, object] | None = None,
+    ) -> None:
+        telegram_id = None
+        if update is not None and update.effective_user is not None:
+            telegram_id = int(update.effective_user.id)
+        try:
+            await self.db.record_bot_user_event(
+                user_id=user_id,
+                telegram_id=telegram_id,
+                event_name=event_name,
+                subscription_id=subscription_id,
+                metadata=metadata,
+            )
+        except Exception:
+            LOGGER.exception("Failed to record bot event '%s' user_id=%s", event_name, user_id)
+
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = await self._ensure_user(update)
         await self._refresh_cms()
+        await self._track_event(user_id, "start", update)
         start_arg = (context.args[0].strip() if context.args else "")
         if start_arg.startswith("link_"):
             link_code = start_arg.removeprefix("link_")
@@ -1211,6 +1235,7 @@ class VPNBot:
                 sender_user_id=user_id,
                 message_text=text_value,
             )
+            await self._track_event(user_id, "support_sent", update, metadata={"ticket_id": ticket_id})
 
             if self.settings.telegram_admin_id:
                 try:
@@ -1318,6 +1343,7 @@ class VPNBot:
             return
         if selected_menu_key == "menu_open_app":
             account_url = await self._account_url(user_id)
+            await self._track_event(user_id, "open_app", update, metadata={"source": "reply_menu"})
             await update.message.reply_text(
                 self._content_text("menu_open_app_response", "Open your VXcloud account in Telegram Mini App."),
                 reply_markup=InlineKeyboardMarkup(
@@ -1362,6 +1388,7 @@ class VPNBot:
         if message is None:
             return
         user_id = await self._ensure_user(update)
+        await self._track_event(user_id, "buy_clicked", update)
         await self._show_buy_offer(message, user_id)
 
     async def trial(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1377,6 +1404,8 @@ class VPNBot:
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is None:
             return
+        target_subscription_id, _target_sub = await self._resolve_renew_target(user_id, context)
+        await self._track_event(user_id, "renew_clicked", update, subscription_id=target_subscription_id)
         await self._show_renew_offer(message, user_id, context)
 
     async def admin_reload(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -1660,12 +1689,21 @@ class VPNBot:
                 await query.answer()
                 if query.message is not None:
                     user_id = await self._ensure_user(update)
+                    await self._track_event(user_id, "buy_clicked", update, metadata={"source": "inline"})
                     await self._show_buy_offer(query.message, user_id)
                 return
             if target == "buy_existing_renew":
                 await query.answer()
                 if query.message is not None:
                     user_id = await self._ensure_user(update)
+                    target_subscription_id, _target_sub = await self._resolve_renew_target(user_id, context)
+                    await self._track_event(
+                        user_id,
+                        "renew_clicked",
+                        update,
+                        subscription_id=target_subscription_id,
+                        metadata={"source": "inline"},
+                    )
                     await self._show_renew_offer(query.message, user_id, context)
                 return
             if target == "buy_existing_continue":
@@ -1799,6 +1837,8 @@ class VPNBot:
                 context.user_data["support_wait_message"] = True
                 await query.answer()
                 if query.message is not None:
+                    user_id = await self._ensure_user(update)
+                    await self._track_event(user_id, "support_started", update)
                     await query.message.reply_text(
                         self._content_text(
                             "support_start_message",
@@ -1829,6 +1869,7 @@ class VPNBot:
                     await query.answer("Устройство не найдено", show_alert=True)
                     return
                 context.user_data["selected_subscription_id"] = subscription_id
+                await self._track_event(user_id, "config_opened", update, subscription_id=subscription_id)
                 client_code = await self.db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
                 text, primary_link, _raw_vless_url = await self._config_card_text(user_id, sub, client_code=client_code)
                 await query.answer()
@@ -1882,6 +1923,7 @@ class VPNBot:
                 if not sub:
                     await query.answer("Устройство не найдено", show_alert=True)
                     return
+                await self._track_event(user_id, "qr_opened", update, subscription_id=subscription_id)
                 text, primary_link, _raw_vless_url = await self._config_card_text(
                     user_id,
                     sub,

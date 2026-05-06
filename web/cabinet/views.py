@@ -43,6 +43,7 @@ from .models import (
     BotOrder,
     BotSubscription,
     BotUser,
+    BotUserEvent,
     LinkedAccount,
     PaymentEvent,
     TelegramLinkToken,
@@ -769,6 +770,31 @@ def _ensure_site_bot_user(request: HttpRequest) -> BotUser | None:
         pass
 
     return BotUser.objects.filter(telegram_id=placeholder_telegram_id).first()
+
+
+def _record_bot_user_event(
+    *,
+    event_name: str,
+    telegram_id: int | None = None,
+    user_id: int | None = None,
+    metadata: dict[str, object] | None = None,
+) -> None:
+    normalized = event_name.strip().lower()
+    if not normalized:
+        return
+    try:
+        BotUserEvent.objects.create(
+            user_id=user_id,
+            telegram_id=telegram_id,
+            event_name=normalized,
+            subscription_id=None,
+            metadata=metadata or {},
+            created_at=timezone.now(),
+        )
+    except (OperationalError, ProgrammingError):
+        return
+    except Exception:
+        LOGGER.exception("bot_user_event_record_failed", extra={"event_name": normalized, "telegram_id": telegram_id})
 
 
 def _resolve_account_bot_user(
@@ -1947,6 +1973,16 @@ def telegram_webapp_auth(request: HttpRequest) -> HttpResponse:
         )
 
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    try:
+        bot_user = BotUser.objects.filter(telegram_id=telegram_id).first()
+    except (OperationalError, ProgrammingError):
+        bot_user = None
+    _record_bot_user_event(
+        user_id=int(bot_user.id) if bot_user else None,
+        telegram_id=telegram_id,
+        event_name="open_app",
+        metadata={"source": "telegram_webapp_auth"},
+    )
     return JsonResponse({"ok": True, "redirect": _account_default_redirect_url(request)})
 
 

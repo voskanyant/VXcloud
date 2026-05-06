@@ -1891,6 +1891,36 @@ class DB:
         )
         return row is not None
 
+    async def record_bot_user_event(
+        self,
+        *,
+        user_id: int | None,
+        event_name: str,
+        telegram_id: int | None = None,
+        subscription_id: int | None = None,
+        metadata: dict[str, Any] | None = None,
+    ) -> bool:
+        assert self.pool is not None
+        normalized_event = event_name.strip().lower()
+        if not normalized_event:
+            return False
+        payload = json.dumps(metadata or {}, ensure_ascii=False)
+        try:
+            await self.pool.execute(
+                """
+                INSERT INTO bot_user_events (user_id, telegram_id, event_name, subscription_id, metadata)
+                VALUES ($1, $2, $3, $4, $5::jsonb)
+                """,
+                user_id,
+                telegram_id,
+                normalized_event,
+                subscription_id,
+                payload,
+            )
+        except (asyncpg.UndefinedTableError, asyncpg.UndefinedColumnError):
+            return False
+        return True
+
     async def get_latest_paid_order(self, user_id: int) -> dict[str, Any] | None:
         assert self.pool is not None
         row = await self.pool.fetchrow(
