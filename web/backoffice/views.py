@@ -99,19 +99,34 @@ LEGACY_CONTENT_NOTICE = (
 STALE_PENDING_ORDER_TTL = timedelta(minutes=30)
 WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
 BOT_SITE_TEXT_PREFIX = "bot."
+STALE_BOT_CONTENT_KEYS = {
+    "back_button",
+    "buy_new_config_button",
+    "instructions_access_button",
+    "instructions_full_guide_button",
+    "instructions_install_button",
+    "instructions_support_button",
+    "instructions_video_button",
+    "menu_buy",
+    "menu_instructions",
+    "menu_mysub",
+    "menu_renew",
+    "menu_site",
+    "menu_site_response",
+    "menu_support",
+    "site_about_buttons",
+    "site_about_response",
+}
 BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
     {
         "title": "Меню и основные кнопки",
         "items": [
-            {"key": "menu_trial", "label": "Кнопка меню: Бесплатно 7д", "default": "🎁 Бесплатно 7д", "kind": "button"},
-            {"key": "menu_buy", "label": "Кнопка меню: Купить новый доступ", "default": "⭐ Купить новый доступ", "kind": "button"},
-            {"key": "menu_renew", "label": "Кнопка меню: Продлить", "default": "🔄 Продлить", "kind": "button"},
-            {"key": "menu_mysub", "label": "Кнопка меню: Мой доступ", "default": "📊 Мой доступ", "kind": "button"},
-            {"key": "menu_instructions", "label": "Кнопка меню: Инструкция", "default": "💬 Инструкция", "kind": "button"},
-            {"key": "menu_support", "label": "Кнопка меню: Поддержка", "default": "🆘 Поддержка", "kind": "button"},
-            {"key": "menu_site", "label": "Кнопка меню: Личный кабинет на сайте", "default": "🌐 Личный кабинет на сайте", "kind": "button"},
-            {"key": "back_button", "label": "Кнопка: Назад", "default": "⬅️ Назад", "kind": "button"},
-            {"key": "buy_new_config_button", "label": "Кнопка: Купить новый доступ в списке конфигов", "default": "⭐ Купить новый доступ", "kind": "button"},
+            {"key": "menu_my_vpn", "label": "Кнопка меню: Мой VPN", "default": "🛡 Мой VPN", "kind": "button"},
+            {"key": "menu_trial", "label": "Кнопка меню: 7 дней бесплатно", "default": "🎁 7 дней бесплатно", "kind": "button"},
+            {"key": "menu_buy_access", "label": "Кнопка меню: Купить", "default": "💳 Купить", "kind": "button"},
+            {"key": "menu_renew_access", "label": "Кнопка меню: Продлить", "default": "🔄 Продлить", "kind": "button"},
+            {"key": "menu_support_simple", "label": "Кнопка меню: Поддержка", "default": "🆘 Поддержка", "kind": "button"},
+            {"key": "menu_open_app", "label": "Кнопка меню: Кабинет", "default": "📱 Кабинет", "kind": "button"},
         ],
     },
     {
@@ -133,32 +148,26 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
     {
         "title": "Инструкции и навигация",
         "items": [
-            {"key": "menu_instructions_response", "label": "Экран: Как подключиться", "default": "Как подключиться\n\nЧтобы всё заработало, нужно сделать два шага:\n\n1. Установить приложение\n2. Оплатить доступ\n\nМы покажем всё по шагам ниже.", "kind": "textarea", "rows": 7},
-            {"key": "instructions_install_response", "label": "Экран: Как установить приложение", "default": "Как установить приложение\n\nЕсли вы используете iPhone в России, нужного приложения может не быть в App Store.\n\nЭто нормально — просто нужно временно сменить регион.\n\nСначала:\n• смените регион App Store (на любую другую страну)\n\nЗатем:\n• установите приложение для подключения\n\nПосле установки:\n• можно вернуть регион обратно на Россию\n\nНиже есть подробная инструкция и видео — мы покажем всё по шагам.", "kind": "textarea", "rows": 12},
-            {"key": "site_about_response", "label": "Экран: Что можно делать на сайте", "default": "Что можно делать на сайте\n\nВ личном кабинете вы можете:\n\n• увидеть все свои устройства\n• открыть доступ для подключения\n• показать QR-код\n• оплатить новый доступ или продление картой\n• открыть подробные инструкции и видео\n\nСайт и бот работают вместе — ваши данные будут одинаковыми везде.", "kind": "textarea", "rows": 10},
-            {"key": "menu_site_response", "label": "Текст: открыть кабинет на сайте", "default": "Откройте личный кабинет на сайте.", "kind": "textarea", "rows": 3},
-            {"key": "instructions_install_button", "label": "Кнопка: Установить приложение", "default": "📱 Установить приложение", "kind": "button"},
-            {"key": "instructions_access_button", "label": "Кнопка: Мой доступ на экране инструкций", "default": "📊 Мой доступ", "kind": "button"},
-            {"key": "instructions_support_button", "label": "Кнопка: Поддержка на экране инструкций", "default": "🆘 Поддержка", "kind": "button"},
-            {"key": "instructions_full_guide_button", "label": "Кнопка: Подробная инструкция", "default": "📖 Подробная инструкция", "kind": "button"},
-            {"key": "instructions_video_button", "label": "Кнопка: Видео-инструкция", "default": "🎬 Видео-инструкция", "kind": "button"},
-            {"key": "menu_instructions_buttons", "label": "Advanced JSON: inline-кнопки для меню инструкций", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатных кнопок. Формат: JSON массив строк/рядов кнопок."},
-            {"key": "instructions_install_buttons", "label": "Advanced JSON: inline-кнопки для экрана установки", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатных кнопок. Можно переопределить layout полностью."},
-            {"key": "site_about_buttons", "label": "Advanced JSON: inline-кнопки для экрана про сайт", "default": "", "kind": "textarea", "rows": 6, "help": "Используется только если вы вручную вызовете этот экран."},
+            {"key": "menu_instructions_response", "label": "Экран: инструкция", "default": "Инструкция\n\nВыберите устройство. Полная инструкция откроется в кабинете внутри Telegram.", "kind": "textarea", "rows": 4},
+            {"key": "instructions_install_response", "label": "Экран: полная инструкция", "default": "Инструкция\n\nОткройте полную инструкцию в кабинете. Там собраны приложения, QR и данные доступа.", "kind": "textarea", "rows": 4},
+            {"key": "menu_instructions_buttons", "label": "Advanced JSON: кнопки инструкции", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатных Mini App кнопок: iPhone, Android, Windows/macOS, Полная инструкция."},
+            {"key": "instructions_install_buttons", "label": "Advanced JSON: кнопка полной инструкции", "default": "", "kind": "textarea", "rows": 6, "help": "Оставьте пустым для штатной Mini App кнопки полной инструкции."},
         ],
     },
     {
         "title": "Оплата и восстановление",
         "items": [
             {"key": "pay_card_button", "label": "Кнопка: Оплатить картой", "default": "💳 Оплатить картой", "kind": "button"},
-            {"key": "open_instructions", "label": "Кнопка: Инструкция", "default": "💬 Инструкция", "kind": "button"},
-            {"key": "open_account", "label": "Кнопка: Личный кабинет на сайте", "default": "🌐 Личный кабинет на сайте", "kind": "button"},
-            {"key": "stars_only_notice", "label": "Текст: Stars only notice", "default": "Оплата в боте доступна только через звёзды Telegram ⭐\nДля iPhone обычно используется способ оплаты через мобильный баланс МТС.", "kind": "textarea", "rows": 4},
+            {"key": "open_instructions", "label": "Кнопка: Как подключить", "default": "📖 Как подключить", "kind": "button"},
+            {"key": "open_account", "label": "Кнопка: Кабинет", "default": "📱 Кабинет", "kind": "button"},
+            {"key": "stars_only_notice", "label": "Текст: Stars покупка", "default": "Оплата Stars\n\nСейчас Telegram откроет счёт. После оплаты доступ появится в «🛡 Мой VPN».", "kind": "textarea", "rows": 4},
+            {"key": "stars_renew_notice", "label": "Текст: Stars продление", "default": "Оплата Stars\n\nСейчас Telegram откроет счёт. После оплаты срок обновится автоматически.", "kind": "textarea", "rows": 4},
             {"key": "invoice_title", "label": "Заголовок Stars invoice", "default": "Оплата VXcloud через звёзды", "kind": "input"},
             {"key": "invoice_price_label", "label": "Label Stars price", "default": "Оплата звёздами", "kind": "input"},
-            {"key": "invoice_description", "label": "Описание Stars invoice", "default": "Оплата доступа в боте выполняется только через звёзды Telegram. Для iPhone чаще всего — через мобильный баланс МТС.", "kind": "textarea", "rows": 4},
+            {"key": "invoice_description", "label": "Описание Stars invoice: покупка", "default": "Покупка доступа VXcloud через Telegram Stars.", "kind": "textarea", "rows": 3},
+            {"key": "invoice_renew_description", "label": "Описание Stars invoice: продление", "default": "Продление доступа VXcloud через Telegram Stars.", "kind": "textarea", "rows": 3},
             {"key": "payment_already_processed_message", "label": "Текст: платёж уже обработан", "default": "Платёж уже обработан. Отправляю ваш доступ...", "kind": "textarea", "rows": 3},
-            {"key": "provision_delay_message", "label": "Текст: активация задерживается", "default": "Платёж получен, но активация задерживается. Нажмите «📊 Мой доступ» через 10-20 секунд. Если доступ не появится, напишите в поддержку.", "kind": "textarea", "rows": 4},
+            {"key": "provision_delay_message", "label": "Текст: активация задерживается", "default": "Платёж получен, но активация задерживается. Нажмите «🛡 Мой VPN» через 10-20 секунд. Если доступ не появится, напишите в поддержку.", "kind": "textarea", "rows": 4},
             {"key": "recovering_subscription_message", "label": "Текст: найден оплаченный заказ", "default": "Найден оплаченный заказ. Пробую восстановить доступ...", "kind": "textarea", "rows": 3},
             {"key": "recover_failed_message", "label": "Текст: восстановление не удалось", "default": "Не удалось автоматически восстановить доступ. Поддержка уже уведомлена, пожалуйста подождите.", "kind": "textarea", "rows": 4},
         ],
@@ -168,10 +177,10 @@ BOT_CONTENT_SECTIONS: list[dict[str, Any]] = [
         "items": [
             {"key": "cancel_message", "label": "Текст: отмена действия", "default": "Операция отменена.", "kind": "textarea", "rows": 2},
             {"key": "menu_unknown_message", "label": "Текст: неизвестная команда", "default": "Используйте кнопки меню ниже.", "kind": "textarea", "rows": 2},
-            {"key": "support_start_message", "label": "Текст: старт поддержки", "default": "Напишите сообщение одним сообщением в этот чат.\n\nМы получим его вместе с вашим ID и данными по доступу.", "kind": "textarea", "rows": 4},
+            {"key": "support_start_message", "label": "Текст: старт поддержки", "default": "Напишите сообщение одним текстом.\n\nЧтобы выйти без отправки, нажмите «Отмена».", "kind": "textarea", "rows": 4},
             {"key": "support_empty_message", "label": "Текст: пустое сообщение в поддержку", "default": "Текст обращения пустой. Нажмите «Поддержка» и попробуйте снова.", "kind": "textarea", "rows": 3},
             {"key": "support_default_subject", "label": "Subject нового тикета", "default": "Запрос из Telegram-бота", "kind": "input"},
-            {"key": "support_received_message", "label": "Текст: сообщение принято", "default": "Сообщение отправлено\n\nМы получили ваш запрос и ответим сюда в Telegram.\n\nВаш ID:\n{client_code}", "kind": "textarea", "rows": 5},
+            {"key": "support_received_message", "label": "Текст: сообщение принято", "default": "Сообщение отправлено\n\nНомер обращения: #{ticket_id}\nОтвет придет сюда в Telegram.\n\nИсторию обращений можно открыть через «📱 Кабинет».\nВаш ID: {client_code}", "kind": "textarea", "rows": 6},
             {"key": "support_admin_new_ticket_header", "label": "Текст: шапка для admin-уведомления", "default": "🆘 Новый тикет поддержки", "kind": "input"},
             {"key": "support_admin_reply_subject", "label": "Subject ответа поддержки", "default": "Ответ поддержки", "kind": "input"},
             {"key": "support_admin_reply_prefix", "label": "Текст: ответ поддержки пользователю", "default": "💬 Ответ поддержки:\n\n{message}", "kind": "textarea", "rows": 4},
@@ -1485,6 +1494,11 @@ class BotContentEditorView(StaffRequiredMixin, LegacyContentContextMixin, Templa
                 deleted, _ = SiteText.objects.filter(key=db_key).delete()
                 if deleted:
                     removed += 1
+        stale_deleted, _ = SiteText.objects.filter(
+            key__in=[_bot_override_key(key) for key in STALE_BOT_CONTENT_KEYS]
+        ).delete()
+        if stale_deleted:
+            removed += stale_deleted
         if updated or removed:
             messages.success(
                 request,

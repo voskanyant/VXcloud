@@ -24,36 +24,44 @@ The Telegram Mini App is the customer dashboard:
 - richer support history
 
 Django remains the source of truth for account data, Telegram auth validation,
-payments, subscriptions, and ops. 3x-ui/Xray/Cloudflare are execution layers.
+payments, subscriptions, and ops. 3x-ui, Xray, and Cloudflare are execution
+layers only.
 
-## Language
+## Language And Icons
 
 Customer-facing bot defaults are Russian. English should only remain for product
-or platform names where users expect them, for example VXcloud, VPN, Telegram,
-Mini App, Stars, iPhone, Android, Windows, and macOS.
+or platform names where users expect them: VXcloud, VPN, Telegram, Stars,
+iPhone, Android, Windows, and macOS. In customer copy, describe the Telegram
+Mini App as "кабинет внутри Telegram" unless the exact platform term is needed.
 
-If CMS overrides exist, they can still replace defaults. New default labels and
-fallback text should be Russian.
+Icons are allowed in the persistent menu and primary call-to-action buttons.
+Do not add icons to every small contextual button. This keeps the bot scannable
+without turning every screen into a wall of buttons.
 
 ## Persistent Menu
 
 Default persistent menu:
 
-- Мой VPN
-- Купить
-- Продлить
-- Поддержка
-- Кабинет
+- 🛡 Мой VPN
+- 🎁 7 дней бесплатно
+- 💳 Купить
+- 🔄 Продлить
+- 🆘 Поддержка
+- 📱 Кабинет
 
-The menu should be visible after normal bot flows. Hide it only while waiting
-for free text input, currently:
+The menu should be visible after normal bot flows. Hide the full menu only while
+waiting for free text input:
 
 - support message
 - subscription rename
 - future promo code or similar input states
 
 When input completes, is empty, or is cancelled by a menu button, restore the
-persistent menu.
+persistent menu. The bot should also understand old plain labels such as
+"Мой VPN" and "Кабинет" so users with a cached keyboard are not stuck.
+
+During text input states, show a one-button `Отмена` keyboard instead of a blank
+keyboard. This keeps the full menu hidden while giving users an obvious escape.
 
 ## Inline Buttons
 
@@ -62,17 +70,101 @@ main menu inside inline keyboards.
 
 Good contextual examples:
 
-- Открыть кабинет
+- 📱 Открыть кабинет
 - QR
-- Продлить
+- 🔄 Продлить
 - Скопировать ссылку
 - Переименовать
 - Удалить
-- Назад
+- Отмена for destructive confirmations
 
-Avoid adding browser fallback buttons to every card. Keep browser fallback where
-it is genuinely useful, such as the top-level cabinet entry or card checkout
-entrypoints for older Telegram clients.
+Do not add a global inline "Назад" button to every screen. Users navigate with
+the persistent menu. CMS inline JSON that contains only a global Back/Назад
+button should be ignored by the bot.
+
+## Flow Rules
+
+- `/start`: short welcome, compact subscription summary, persistent menu.
+  Show active access count, nearest expiry, and expired access count when
+  available. If all access is expired, say that there are no active accesses
+  and point the user to the persistent renew menu item. Do not add duplicate
+  inline navigation to the home screen.
+- Legacy slash commands should route to the same current screens as the
+  persistent menu. For example `/myvpn` must use the same My VPN flow instead
+  of old active-subscription-only delivery copy. Customer slash commands must
+  also clear active text-input states such as support message and rename before
+  opening the requested screen.
+- My VPN: if the user has one subscription, open its card directly. If the
+  user has several subscriptions, show a compact list sorted by active and
+  nearest expiry first. Status icons are allowed in this list because they help
+  users spot active, expiring, and expired devices quickly. Subscription cards
+  contain QR, renew, copy, rename, and delete actions. Do not print long
+  subscription or raw connection links in the message body by default; keep them
+  inside QR and copy buttons. Delete confirmations should say "device" and
+  "access", not "config", "3x-ui", "node", or other execution-layer wording.
+  Rename input should normalize whitespace and reject overlong names with a
+  clear limit instead of silently truncating. Empty My VPN should offer the
+  7-day trial first, then card and Stars purchase actions. Expired subscription
+  rows and cards should put `🔄 Продлить` first; active cards can keep cabinet
+  and QR first. Subscription card copy should state the next action for the
+  current state: renew if expired, renew early if close to expiry, otherwise use
+  QR/copy. QR messages for expired devices must warn that renewal is needed and
+  include the same renewal-first action layout.
+- Trial: visible menu entry, one activation CTA, short one-time-use copy, then
+  compact success with expiry plus cabinet, QR, and guide after activation. If
+  activation fails, show a clear Russian failure message and a support action;
+  do not leak node or provisioning internals to the customer. If the trial is
+  already used and the user has active access, point to the current subscription
+  instead of pushing another purchase.
+- Buy: two payment choices only, card checkout in Mini App and Stars in bot.
+  Copy should mention where access appears after payment, not repeat delivery
+  mechanics. If the user already has active access, the buy screen should make
+  "buy another device" and "renew this access" explicit and target renewal to
+  the active subscription when possible.
+- Renew: always target one explicit subscription before showing payment. If
+  several subscriptions can be renewed, show the same active/nearest-expiry
+  ordering and status cues as My VPN. If there is nothing to renew, offer the
+  7-day trial first, then card and Stars purchase actions.
+- Payment success: compact confirmation only. Do not explain every possible
+  action in prose when the buttons already show cabinet and QR. Do not add an
+  "Открыть в боте" button on success screens; the user is already in the bot.
+- Stars invoices: if the bot sends a pre-invoice notice, keep it short and
+  specific to buy or renew. Do not add carrier or platform payment advice to
+  every invoice screen. Button labels should distinguish the action: use
+  `Купить за Stars` for new access and `Продлить за Stars` for renewal. Payment
+  CTA buttons should show the price when it is known, for example
+  `Купить за Stars · 250 Stars` or `Купить картой · 249 RUB`.
+- Reminders: short expiration notices that name the device and include direct
+  `🔄 Продлить` and `📱 Кабинет` Mini App buttons. Do not use "config" wording
+  in customer reminders.
+- Support: hub first with a short prompt and user ID; writing a message hides
+  the menu until submit/cancel. Overlong messages should not create tickets;
+  keep the user in input mode, explain the limit, and keep only `Отмена`
+  visible. Submitted-ticket confirmation should restore the persistent menu,
+  include the ticket number, and point to `📱 Кабинет` for support history
+  without replacing the menu with inline navigation.
+- Instructions: bot shows only device choices and opens Mini App guide pages.
+  Copy must say the full guide opens in the cabinet, not in a separate site.
+  Legacy cached labels and typed phrases such as "Как подключить" should still
+  route to this hub, but instructions should not return to the persistent menu
+  as a top-level item. Device choice buttons should use plain labels like
+  `iPhone`, `Android`, and `Windows/macOS`; do not add decorative icons there.
+
+## Screen Copy
+
+Each bot screen should answer one question clearly:
+
+- where the user is
+- what the current account or subscription state is
+- which button to press next
+
+Keep copy short. Prefer two payment lines, for example "Картой: ... в кабинете"
+and "Stars: внутри Telegram", instead of long payment explanations. Avoid
+repeating the full product structure on every screen.
+
+Do not expose implementation details in customer alerts. If XUI, DNS, or
+Cloudflare cleanup fails, tell the user what they can do next and log the
+internal reason for operators.
 
 ## Mini App Buttons
 
@@ -88,47 +180,26 @@ Examples:
 - `/account/config/42/` -> `/account-app/config/42/?embed=1`
 
 Backend Mini App identity must be validated with Telegram initData before
-trusting user identity. Magic links are only browser fallback.
+trusting user identity. Magic links are browser fallback only.
 
-## Current Cleanup
+## Ops Labels
 
-The 2026-05-06 cleanup did three things:
+The `/ops/` bot settings page should expose only current runtime keys. Stale
+menu keys such as `menu_site`, `menu_mysub`, `menu_buy`, `menu_renew`, and
+`back_button` should not be editable as active customer menu labels.
 
-- changed bot default labels from English to Russian
-- reduced noisy duplicate inline rows on config and payment success cards
-- kept Mini App as the primary account surface, with limited browser fallback
-- reduced buy, renew, and trial contextual keyboards to primary action, Stars
-  where applicable, and Back; browser fallback stays on top-level cabinet and
-  post-payment entrypoints instead of every payment choice
-- localized the Mini App support view opened from the bot, so support copy and
-  actions stay Russian
-- moved bot instruction choices to Mini App instruction views instead of
-  opening public `/instructions/` directly from Telegram
-- localized account dashboard/config labels that Telegram users see after
-  opening Mini App from the bot
-- made bot CMS fallback reject stale English customer-facing overrides, so old
-  `/ops/` labels such as `Buy access` or `Open app` do not replace Russian
-  defaults
-- fixed Mini App Telegram auth handoff to load Telegram WebApp JS, post
-  `initData` with the current `/account-app/` return path, and redirect back
-  into the embedded account UI after Django creates the session
-- kept the 7-day trial as a Russian persistent-menu entry while removing
-  inline `Back` navigation rows from bot screens; users should use the
-  persistent menu for navigation, while inline buttons stay reserved for
-  immediate contextual actions
-- cleaned remaining English fallback labels in input cancellation, delete alerts,
-  and raw connection-link messages
-- made bot CMS fallback reject mojibake overrides, so broken stored labels do
-  not replace clean Russian defaults
-
-It also added a 3x-ui client update fallback for panels that reject wrapped
-`updateClient` payloads with `empty client ID`.
+If old DB overrides still exist, runtime fallback should prevent stale English,
+mojibake, or old plain menu labels from replacing the canonical Russian menu.
+The editor defaults should match the current bot copy: short Mini App-first
+instructions, compact Stars buy/renew text, and support confirmations with a
+ticket number plus `📱 Кабинет` history pointer. Obsolete site/about and old
+instruction button override keys should be cleared when the editor is saved.
 
 ## Next Safe Steps
 
 Do not split `src/bot.py` until UX is stable. The next useful slices are:
 
-- finish Russian cleanup for older CMS/default text that still contains mojibake
 - move long instructions fully into the Mini App
+- keep reducing taps in My VPN and Renew without adding global Back buttons
 - split one stable flow at a time into `src/bot/flows/`
 - keep regression tests around menu restore behavior and Mini App button markup
