@@ -2135,6 +2135,31 @@
   line-height: 1.42;
 }
 
+.vx-native-account .vx-section-card__head,
+.vx-native-account .vx-config-view__head {
+  gap: 6px;
+  padding: 14px;
+}
+
+.vx-native-account .vx-section-card__head h1,
+.vx-native-account .vx-config-view__head .vx-account-title {
+  font-size: clamp(1.18rem, 4.4vw, 1.54rem);
+  line-height: 1.16;
+  letter-spacing: 0;
+}
+
+.vx-native-account .vx-section-card__head h2 {
+  font-size: var(--vx-section-title-size);
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.vx-native-account .vx-section-card__head span,
+.vx-native-account .vx-config-view__head .vx-account-subtitle {
+  font-size: 0.9rem;
+  line-height: 1.38;
+}
+
 .vx-native-account .vx-native-account__skeleton,
 .vx-native-account .vx-account-hero,
 .vx-native-account .vx-section-card,
@@ -2173,6 +2198,373 @@
 
 .vx-native-account .vx-account-hero {
   padding: clamp(14px, 2.4vw, 22px);
+}
+
+.vx-native-account .vx-account-app__shell--config {
+  gap: 10px;
+}
+
+.vx-native-account .vx-config-view {
+  gap: 10px;
+  padding: 12px;
+}
+
+.vx-native-account .vx-config-view__main,
+.vx-native-account .vx-config-view__side {
+  gap: 10px;
+}
+
+.vx-native-account .vx-config-qr {
+  display: grid;
+  justify-items: center;
+  padding: 10px;
+}
+
+.vx-native-account .vx-config-qr img {
+  width: min(100%, 260px);
+  max-width: 260px;
+  border-radius: 8px;
+}
+
+.vx-native-account .vx-config-qr__hint {
+  margin-top: 8px;
+  font-size: 0.86rem;
+  line-height: 1.3;
+}
+
+.vx-native-account .vx-instructions-body {
+  gap: 10px;
+  padding: 0 12px 14px;
+}
+
+.vx-native-account .vx-guide-access {
+  gap: 4px;
+  padding: 10px 12px;
+  border-color: #e8e8e8;
+  background: #ffffff;
+}
+
+.vx-native-account .vx-guide-access strong {
+  font-size: 0.98rem;
+  line-height: 1.18;
+}
+
+.vx-native-account .vx-guide-access small {
+  font-size: 0.84rem;
+  line-height: 1.32;
+}
+
+.vx-native-account .vx-device-tabs {
+  gap: 4px;
+  padding: 4px;
+  border-color: #e8e8e8;
+  background: #ffffff;
+}
+
+.vx-native-account .vx-device-tab {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  line-height: 1.18;
+}
+
+.vx-native-account .vx-guide-panel {
+  gap: 10px;
+  padding: 10px;
+}
+
+.vx-native-account .vx-guide-panel__head h2 {
+  font-size: 1rem;
+  line-height: 1.18;
+}
+
+.vx-native-account .vx-guide-panel__head p {
+  margin-top: 3px;
+  font-size: 0.86rem;
+  line-height: 1.32;
+}
+
+.vx-native-account .vx-guide-steps--cards {
+  gap: 6px;
+}
+
+.vx-native-account .vx-guide-steps--cards li {
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  min-height: 0;
+  padding: 8px;
+}
+
+.vx-native-account .vx-guide-steps--cards li::before {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  font-size: 0.76rem;
+}
+
+.vx-native-account .vx-guide-steps--cards strong {
+  font-size: 0.9rem;
+  line-height: 1.22;
+}
+
+.vx-native-account .vx-guide-steps--cards span {
+  margin-top: 2px;
+  font-size: 0.84rem;
+  line-height: 1.34;
+}
+
+.vx-native-account .vx-support-body {
+  gap: 10px;
+  padding: 0 12px 14px;
+}
+
+.vx-native-account .vx-support-contact,
+.vx-native-account .vx-support-id,
+.vx-native-account .vx-support-templates,
+.vx-native-account .vx-support-note {
+  gap: 8px;
+  padding: 10px;
+  border-color: #e8e8e8;
+  background: #ffffff;
+}
+
+.vx-native-account .vx-support-contact {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vx-native-account .vx-support-contact__copy {
+  gap: 3px;
+}
+
+.vx-native-account .vx-support-contact__copy strong,
+.vx-native-account .vx-support-note strong,
+.vx-native-account .vx-support-templates strong {
+  font-size: 0.94rem;
+  line-height: 1.22;
+}
+
+.vx-native-account .vx-support-contact__copy span,
+.vx-native-account .vx-support-note span,
+.vx-native-account .vx-support-templates > span {
+  font-size: 0.84rem;
+  line-height: 1.34;
+}
+
+.vx-native-account .vx-support-id {
+  grid-template-columns: minmax(0, 0.55fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.vx-native-account .vx-support-id span {
+  font-size: 0.74rem;
+}
+
+.vx-native-account .vx-support-id code {
+  font-size: 0.98rem;
+}
+
+.vx-native-account .vx-support-template-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.vx-native-account .vx-support-template {
+  min-height: 38px;
+  padding: 8px;
+  font-size: 0.82rem;
+  line-height: 1.18;
+}
+
+.vx-native-account .vx-account-app__shell--auth {
+  gap: 10px;
+}
+
+.vx-native-account .vx-auth-card {
+  max-width: 520px;
+}
+
+.vx-native-account .vx-auth-card__tabs {
+  gap: 4px;
+  padding: 4px;
+}
+
+.vx-native-account .vx-auth-tab {
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: 0.86rem;
+  line-height: 1.18;
+}
+
+.vx-native-account .vx-auth-card__body {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.vx-native-account .vx-auth-card__body > .vx-account-title {
+  font-size: clamp(1.18rem, 4.4vw, 1.54rem);
+  line-height: 1.16;
+}
+
+.vx-native-account .vx-auth-card__body > .vx-account-subtitle {
+  font-size: 0.9rem;
+  line-height: 1.38;
+}
+
+.vx-native-account .vx-auth-card--telegram-first .vx-auth-telegram {
+  gap: 8px;
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.vx-native-account .vx-auth-telegram__eyebrow {
+  color: #050505;
+  font-size: 0.78rem;
+  line-height: 1.2;
+  font-weight: 800;
+  text-transform: none;
+}
+
+.vx-native-account .vx-auth-telegram__copy {
+  font-size: 0.86rem;
+  line-height: 1.34;
+}
+
+.vx-native-account .vx-auth-telegram__status {
+  gap: 3px;
+  padding: 9px;
+}
+
+.vx-native-account .vx-auth-telegram__status strong {
+  font-size: 0.9rem;
+  line-height: 1.22;
+}
+
+.vx-native-account .vx-auth-telegram__status span {
+  font-size: 0.82rem;
+  line-height: 1.34;
+}
+
+.vx-native-account .vx-auth-telegram__widget {
+  min-height: 44px;
+}
+
+.vx-native-account .vx-auth-divider span {
+  background: #ffffff;
+  font-size: 0.72rem;
+  text-transform: none;
+}
+
+.vx-native-account .vx-auth-fallback {
+  gap: 10px;
+  padding: 10px;
+}
+
+.vx-native-account .vx-auth-fallback__head strong {
+  font-size: 0.92rem;
+}
+
+.vx-native-account .vx-auth-fallback__head span {
+  font-size: 0.82rem;
+  line-height: 1.34;
+}
+
+.vx-native-account .vx-auth-form {
+  gap: 10px;
+}
+
+.vx-native-account .vx-auth-form label {
+  gap: 4px;
+  color: #4f4f4f;
+  font-size: 0.82rem;
+}
+
+.vx-native-account .vx-auth-form input {
+  min-height: 42px;
+  padding: 9px 10px;
+}
+
+.vx-native-account .vx-auth-links {
+  gap: 8px 14px;
+  margin-top: 4px;
+  font-size: 0.86rem;
+}
+
+.vx-native-account .vx-account-app__shell--link {
+  gap: 10px;
+}
+
+.vx-native-account .vx-link-card {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.vx-native-account .vx-link-body {
+  gap: 10px;
+  padding: 0 12px 14px;
+}
+
+.vx-native-account .vx-link-body .vx-field-card {
+  gap: 7px;
+  padding: 10px;
+}
+
+.vx-native-account .vx-link-code {
+  min-height: 42px;
+  gap: 8px;
+  padding: 8px 9px;
+  border-color: #e8e8e8;
+  background: #f6f6f6;
+}
+
+.vx-native-account .vx-link-code code {
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+
+.vx-native-account .vx-link-body > .vx-button--primary {
+  min-height: 42px;
+  padding: 9px 10px;
+}
+
+.vx-native-account .vx-link-card .vx-status-banner {
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 0.86rem;
+  line-height: 1.34;
+}
+
+.vx-native-account .vx-account-actions--footer .vx-button {
+  min-height: 42px;
+  padding: 9px 10px;
+  font-size: 0.88rem;
+}
+
+.vx-native-account .vx-config-info-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.vx-native-account .vx-info-card--wide {
+  grid-column: 1 / -1;
+}
+
+.vx-native-account .vx-info-card,
+.vx-native-account .vx-field-card {
+  gap: 7px;
+  padding: 10px;
+}
+
+.vx-native-account .vx-field-card label {
+  margin-bottom: 3px;
+  font-size: 0.76rem;
+  line-height: 1.2;
+}
+
+.vx-native-account .vx-field-hint {
+  font-size: 0.82rem;
+  line-height: 1.38;
 }
 
 .vx-native-account .vx-account-identity {
@@ -2326,15 +2718,27 @@
 
 .vx-native-account .vx-account-empty--dashboard {
   display: grid;
-  gap: 8px;
+  gap: 7px;
   border-color: #e8e8e8;
   background: #ffffff;
   color: #050505;
 }
 
+.vx-native-account .vx-account-empty__badge {
+  justify-self: start;
+  border: 1px solid #e8e8e8;
+  border-radius: 8px;
+  background: #f6f6f6;
+  color: #050505;
+  padding: 5px 8px;
+  font-size: 0.76rem;
+  line-height: 1.1;
+  font-weight: 800;
+}
+
 .vx-native-account .vx-account-empty--dashboard strong {
-  font-size: 1rem;
-  line-height: 1.25;
+  font-size: 1.05rem;
+  line-height: 1.2;
   font-weight: 800;
 }
 
@@ -2348,8 +2752,14 @@
 .vx-native-account .vx-account-empty__actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-  margin-top: 4px;
+  gap: 7px;
+  margin-top: 3px;
+}
+
+.vx-native-account .vx-account-empty__actions .vx-button {
+  min-height: 42px;
+  padding: 9px 10px;
+  font-size: 0.88rem;
 }
 
 .vx-native-account .vx-checkout-body {

@@ -691,6 +691,19 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("в кабинете", text)
         self.assertNotIn("бот пришлет", text)
 
+    async def test_start_trial_deep_link_opens_trial_offer(self):
+        bot = make_bot()
+        message = FakeMessage()
+        context = SimpleNamespace(args=["trial"], user_data={})
+
+        await bot.start(make_update(message), context)
+
+        self.assertTrue(message.replies)
+        self.assertIn("7 \u0434\u043d\u0435\u0439", message.replies[-1][0])
+        markup = message.replies[-1][1]
+        self.assertIsInstance(markup, InlineKeyboardMarkup)
+        self.assertEqual(markup.inline_keyboard[0][0].callback_data, "act|trial_activate|_")
+
     async def test_trial_used_state_is_app_first_buy(self):
         db = FakeDB()
         db.has_subscription = True

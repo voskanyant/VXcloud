@@ -1605,6 +1605,9 @@ class VPNBot:
         await self._restore_menu_after_command_input_cancel(update, context, user_id)
         await self._track_event(user_id, "start", update)
         start_arg = (context.args[0].strip() if context.args else "")
+        if start_arg.strip().lower() in {"trial", "free", "7days", "7_days"}:
+            await self._show_trial_offer(update.message, user_id)
+            return
         if start_arg.startswith("link_"):
             link_code = start_arg.removeprefix("link_")
             status = await self.db.consume_telegram_link_code(link_code, update.effective_user.id)

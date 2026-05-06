@@ -25,6 +25,8 @@ fallback and can use a wider layout.
   generic browser-account heading such as `Личный кабинет`.
 - Keep the top subtitle short and operational. Use compact status metrics such
   as active access count and nearest expiry instead of a long marketing intro.
+- The access list heading should say `Ваши доступы`, not a device-oriented
+  label such as `Устройства`.
 - Current dashboard metadata should render as a quiet identity footer after the
   access list and help block. It may show username, client ID with copy, Telegram
   link state, settings, and logout, but it must not look like the main content.
@@ -41,15 +43,27 @@ fallback and can use a wider layout.
 - On dashboard subscription cards, opening `QR и доступ` is the primary daily
   action; renewal is secondary and must still target an explicit subscription
   id.
+- The dashboard hero CTA should also be contextual: if the user has an active
+  access, the primary action opens that access's `QR и доступ`; buying another
+  access becomes secondary. If the user has no access at all, the primary action
+  should open the bot trial deep link for `7 дней бесплатно`; paid checkout is
+  the secondary path.
 - Renew actions must target an explicit subscription id. If more than one access
   can be renewed, the top renew shortcut should move the user to the access
   list instead of starting checkout without a target.
 - Rename fields, raw subscription links, local IDs, and delete controls belong
   on deeper detail screens, not expanded by default in the dashboard.
+- Rename controls on detail screens should use access language such as
+  `Название доступа`; avoid device-oriented labels unless the flow is truly
+  about one physical device.
 - Native WordPress Mini App dashboard cards should not render those deeper
   controls hidden in the markup. Keep them out of the list screen entirely.
 - Empty dashboard states should be actionable. Show a short Russian explanation
-  plus direct actions to buy access and open the compact instruction screen.
+  plus direct actions to start the 7-day trial in the bot, buy access, and open
+  the compact instruction screen.
+- When a trial deep link is available, the no-access dashboard should look like
+  a trial-start panel, not a generic empty state. A short badge such as
+  `Без карты · 7 дней` is acceptable; paid checkout remains secondary.
 
 ## Instruction Rules
 
@@ -57,17 +71,27 @@ fallback and can use a wider layout.
   or a device variant such as `device=iphone`, not the generic public blog index.
 - The Mini App instruction view should not show the public WordPress header,
   blog article chrome, or the normal account dashboard below the guide.
+- The native instruction title should be short and task-first, for example
+  `Как подключить VPN`.
+- Show the current access or empty-access block before device tabs so the user
+  sees the QR/access path before choosing platform-specific steps.
 - Device choices should look like compact tabs/buttons and keep the selected
   device obvious.
+- In Telegram, device tabs and step rows should be app-control size, not
+  article/navigation size. Keep them tight enough that access state, tabs, and
+  the first step are visible without a long scroll.
 - Setup steps should be structured as a short numbered list, not one long
   paragraph with inline numbers.
 - When the account already has an access, the instruction view should show the
   primary access name and a direct `Открыть QR и доступ` action inside the Mini
   App. Do not make the user return to the dashboard just to find the QR page.
 - If there is no access yet, the same area should explain that the user needs a
-  trial or purchase first and route them back to `Мой VPN`.
+  trial or purchase first. The primary action should open the bot trial deep
+  link when available; otherwise route them back to `Мой VPN`.
 - The instruction view must always keep a direct `Мой VPN` action visible,
   even when the primary action opens QR/access.
+- Legacy instruction fallback renderers must keep the same trial-first empty
+  state and persistent `Мой VPN` return action as the primary instruction view.
 - Long editorial guide posts can remain public browser content, but Telegram
   users should first get the compact cabinet guide with direct access to `Мой VPN`,
   QR, and support.
@@ -79,6 +103,9 @@ fallback and can use a wider layout.
 - In the Mini App, subscription detail pages should be QR and copy-link first.
 - Status, all-config navigation, rename, and other management details should
   sit below the primary import actions.
+- QR panels should fit comfortably in the first mobile screen. Do not let the
+  QR image grow to desktop size inside Telegram; keep nearby status/link fields
+  compact so copy and scan actions stay close together.
 - The QR/detail page should include a short connection reminder near the QR:
   open VPN client, scan QR or copy the subscription link, and use the compact
   instruction page if device-specific steps are needed.
@@ -92,6 +119,9 @@ fallback and can use a wider layout.
 - Customer-visible detail copy should say `доступ`, `QR`, and `ссылка подписки`.
   Avoid `конфиг` in destructive confirmations, empty/error states, and field
   labels even if route names and CSS classes still use config internally.
+- Legacy QR/access fallback renderers must follow the same structure as the
+  primary detail screen: QR hint and quick guide near the QR, delete in the
+  lower management block, and `Название доступа` for rename fields.
 - The desktop browser fallback can keep the wider two-column layout.
 
 ## Support Rules
@@ -107,8 +137,14 @@ fallback and can use a wider layout.
   common cases such as connection failure, sites not opening, and payment or
   renewal issues. Templates should include the client ID when available and
   should not replace the primary Telegram support action.
-- The Telegram contact action should appear near the top in its own compact
-  contact block. Templates and explanation text belong below it.
+- The Telegram contact action should appear first in the body in its own compact
+  contact block. Client ID, templates, and explanation text belong below it.
+- In Telegram, support contact, client ID, and template blocks should use tight
+  app-control sizing so the first screen shows both the support CTA and copyable
+  customer ID.
+- Legacy support fallback renderers must follow the same order: Telegram
+  contact first, copyable client ID second, templates next, and dashboard/guide
+  navigation last.
 - Keep the primary support action in Telegram until richer ticket history and
   in-app forms are implemented.
 - Support screen labels and helper text must stay readable Russian. The primary
@@ -128,10 +164,22 @@ fallback and can use a wider layout.
   fallback.
 - Email/password auth may remain visible, but it must be visually labeled as
   the fallback path and placed in a secondary contained block below Telegram.
+- Auth copy should stay short: use a direct title such as `Вход в VXcloud`,
+  explain that opening from the bot is normally automatic, and label email as a
+  backup path rather than equal primary navigation.
+- Auth tabs, Telegram fallback, and email form controls should use compact
+  Telegram app sizing. Avoid large desktop form spacing in the Mini App.
+- Support/help links on auth screens should use the native Telegram link opener
+  when the configured support target is a Telegram URL.
 - Telegram account linking screens are customer UI too. Keep code, expiry,
   regenerate, bot-open, and dashboard-return labels readable Russian.
 - Link codes should be copyable in one tap with a specific `Код скопирован`
   confirmation because Telegram deep links can fail on some clients.
+- Native Telegram linking screens should use compact code panels and app-sized
+  actions: open bot as the primary action, then regenerate code and return to
+  `Мой VPN` as secondary actions.
+- Legacy link fallback renderers must use the same native link screen structure,
+  copy-code action, and Russian labels as the primary renderer.
 - Link screens must not expose internal env var names, raw setup errors, or
   `/start` command syntax as the primary fallback. Tell the user to copy the
   code and send it to the VXcloud bot.
@@ -170,12 +218,15 @@ fallback and can use a wider layout.
 - Checkout screens should also explain what happens after the external bank or
   payment page opens: finish payment, return to `Мой VPN`, and the access will
   update automatically.
+- If the bank page opens in an external window, tell the user not to close
+  Telegram. If the payment page does not open, send the user back to `Мой VPN`
+  to retry or contact support.
 
 ## Instructions Rules
 
 - Instruction screens are Mini App task screens, not public blog articles.
-- Keep device selection at the top, then show the current access state, then a
-  compact three-step guide.
+- Show the current access state first, then device selection, then a compact
+  three-step guide.
 - Steps should be short numbered rows: install client, open QR/access, import
   VPN. Avoid long paragraph instructions inside the Mini App.
 - The primary action on instruction screens should open the user's QR/access
@@ -189,6 +240,8 @@ fallback and can use a wider layout.
   checkout, or API-backed view cannot load.
 - Recovery screens should include one primary `Повторить` action and keep
   dashboard/support as secondary routes.
+- Legacy error fallback renderers must use the same compact recovery card as
+  the primary error screen, including retry, `Мой VPN`, and support actions.
 - Loading screens should say what is happening in Russian instead of showing
   only anonymous skeleton blocks.
 
@@ -201,6 +254,9 @@ fallback and can use a wider layout.
   less.
 - Native Mini App cards, buttons, QR panels, support panels, and instruction
   panels should render without decorative gradients or soft card shadows.
+- Native Mini App section and detail headers should be compact: small padding,
+  normal letter spacing, and app-scale titles instead of desktop hero-scale
+  typography.
 - Primary action groups in the Mini App should be explicit, not inherited from
   broad responsive browser rules. Main CTA rows should keep the primary action
   first and full width when that reduces ambiguity.
@@ -223,6 +279,9 @@ fallback and can use a wider layout.
 - The WordPress native account shell must load Telegram WebApp JS and POST
   `initData` to `/api/auth/telegram/webapp` before showing the auth form. The
   Telegram login widget is a browser fallback, not the primary Mini App login.
+- Telegram handoff links from the Mini App, such as trial activation, support,
+  and account linking, should use Telegram WebApp `openTelegramLink` when it is
+  available. Keep normal `href` links as browser fallback.
 - Deep Mini App views should use Telegram WebApp BackButton when it is
   available. Hide it on the dashboard and auth views; show it on config,
   instructions, support, settings, link, and checkout views. If browser history

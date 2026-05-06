@@ -278,7 +278,8 @@ function vx_site_account_app_config() {
     $account_path = rtrim((string) wp_parse_url($account_url, PHP_URL_PATH), '/') . '/';
     $telegram_bot_username = trim((string) getenv('TELEGRAM_BOT_USERNAME'));
     $telegram_bot_username = ltrim($telegram_bot_username, '@');
-    $support_telegram_url = $telegram_bot_username !== '' ? 'https://t.me/' . $telegram_bot_username : '';
+    $telegram_bot_url = $telegram_bot_username !== '' ? 'https://t.me/' . $telegram_bot_username : '';
+    $telegram_trial_url = $telegram_bot_username !== '' ? 'https://t.me/' . $telegram_bot_username . '?start=trial' : '';
 
     return array(
         'accountUrl' => esc_url_raw($account_url),
@@ -294,7 +295,9 @@ function vx_site_account_app_config() {
         'apiSubscriptionBaseUrl' => esc_url_raw(home_url('/account-app/api/subscriptions/')),
         'apiTelegramWebAppAuthUrl' => esc_url_raw(home_url('/api/auth/telegram/webapp')),
         'supportUrl' => esc_url_raw(home_url('/instructions/')),
-        'supportTelegramUrl' => esc_url_raw($support_telegram_url),
+        'telegramBotUrl' => esc_url_raw($telegram_bot_url),
+        'telegramTrialUrl' => esc_url_raw($telegram_trial_url),
+        'supportTelegramUrl' => esc_url_raw($telegram_bot_url),
     );
 }
 
