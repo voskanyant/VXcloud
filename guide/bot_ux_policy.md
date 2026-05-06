@@ -106,6 +106,9 @@ The 2026-05-06 cleanup did three things:
   opening public `/instructions/` directly from Telegram
 - localized account dashboard/config labels that Telegram users see after
   opening Mini App from the bot
+- made bot CMS fallback reject stale English customer-facing overrides, so old
+  `/ops/` labels such as `Buy access` or `Open app` do not replace Russian
+  defaults
 - cleaned remaining English fallback labels in input cancellation, delete alerts,
   and raw connection-link messages
 - made bot CMS fallback reject mojibake overrides, so broken stored labels do

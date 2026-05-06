@@ -58,6 +58,33 @@ LOGGER = logging.getLogger(__name__)
 IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 EMAIL_RE = re.compile(r"(?:email|user)[:=]\s*([^\s,\]]+)", re.IGNORECASE)
 BRACKET_RE = re.compile(r"\[([^\[\]\s]+)\]")
+CYRILLIC_RE = re.compile(r"[А-Яа-яЁё]")
+LATIN_WORD_RE = re.compile(r"[A-Za-z]+")
+CMS_RAW_VALUE_KEYS = {"site_url", "account_page_url"}
+CMS_ALLOWED_LATIN_WORDS = {
+    "android",
+    "app",
+    "hiddify",
+    "id",
+    "ios",
+    "iphone",
+    "mac",
+    "macos",
+    "mini",
+    "mts",
+    "nekoray",
+    "qr",
+    "rub",
+    "stars",
+    "streisand",
+    "telegram",
+    "url",
+    "v2box",
+    "v2rayng",
+    "vpn",
+    "vxcloud",
+    "windows",
+}
 
 
 def _node_reality_info(node: dict[str, object]) -> InboundRealityInfo | None:
@@ -166,6 +193,8 @@ class VPNBot:
             return default
         if self._looks_broken_cms_text(normalized, min_question_marks=4):
             return default
+        if self._looks_stale_english_cms_text(key, normalized):
+            return default
         return value
 
     def _button_label(self, key: str, default: str) -> str:
@@ -177,6 +206,8 @@ class VPNBot:
             return default
         if self._looks_broken_cms_text(normalized, min_question_marks=2):
             return default
+        if self._looks_stale_english_cms_text(key, normalized):
+            return default
         return value
 
     @staticmethod
@@ -187,6 +218,17 @@ class VPNBot:
         if normalized.count("?") >= max(min_question_marks, len(normalized) // 4):
             return True
         return any(marker in normalized for marker in ("Ð", "Ñ", "Â", "â", "�"))
+
+    @staticmethod
+    def _looks_stale_english_cms_text(key: str, value: str) -> bool:
+        if key in CMS_RAW_VALUE_KEYS or key.endswith("_url"):
+            return False
+        if CYRILLIC_RE.search(value):
+            return False
+        words = [word.lower() for word in LATIN_WORD_RE.findall(value)]
+        if not words:
+            return False
+        return any(word not in CMS_ALLOWED_LATIN_WORDS for word in words)
 
     async def _has_active_subscription(self, user_id: int) -> bool:
         return await self.db.get_active_subscription(user_id) is not None
@@ -422,6 +464,8 @@ class VPNBot:
             )
         raw = self._cms_content.get(f"{node_key}_buttons")
         if not raw:
+            return None
+        if self._looks_stale_english_cms_text(f"{node_key}_buttons", raw):
             return None
 
         try:

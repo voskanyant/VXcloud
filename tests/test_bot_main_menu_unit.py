@@ -227,6 +227,40 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(bot._content_text("menu_open_app_response", "Чистый текст"), "Чистый текст")
         self.assertEqual(bot._button_label("menu_open_app", "Кабинет"), "Кабинет")
 
+    async def test_stale_english_cms_overrides_fall_back_to_russian_defaults(self):
+        bot = make_bot()
+        bot._cms_buttons.update(
+            {
+                "menu_my_vpn": "My VPN",
+                "menu_buy_access": "Buy access",
+                "menu_renew_access": "Renew",
+                "menu_support_simple": "Support",
+                "menu_open_app": "Open app",
+                "open_instructions": "How to connect",
+            }
+        )
+        bot._cms_content["menu_open_app_response"] = "Open your account dashboard."
+        bot._cms_content["menu_instructions_response"] = "How to connect\n\nChoose your device."
+        bot._cms_content["custom_buttons"] = '[{"text": "Open guide", "url": "https://example.test"}]'
+
+        labels = [label for _key, label in bot._menu_buttons()]
+        self.assertEqual(labels, ["Мой VPN", "Купить", "Продлить", "Поддержка", "Кабинет"])
+        self.assertEqual(
+            bot._content_text("menu_open_app_response", "Откройте кабинет."),
+            "Откройте кабинет.",
+        )
+        self.assertIn("Как подключить", bot._node_response_text("menu_instructions"))
+        self.assertEqual(bot._button_label("open_instructions", "Как подключить"), "Как подключить")
+        self.assertIsNone(bot._node_inline_keyboard("custom"))
+
+    async def test_cms_url_and_platform_only_values_are_still_allowed(self):
+        bot = make_bot()
+        bot._cms_content["site_url"] = "https://vxcloud.ru"
+        bot._cms_content["invoice_price_label"] = "Telegram Stars"
+
+        self.assertEqual(bot._content_text("site_url", "https://fallback.test"), "https://vxcloud.ru")
+        self.assertEqual(bot._content_text("invoice_price_label", "Оплата звёздами"), "Telegram Stars")
+
     async def test_start_screen_shows_compact_status_for_active_subscriptions(self):
         db = FakeDB()
         db.subscription_list = [
