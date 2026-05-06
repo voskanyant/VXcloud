@@ -150,6 +150,7 @@ ensure_frontdoor_port_available
 
 echo "[5/11] Build custom images..."
 docker compose --env-file .env build wordpress web
+docker compose --env-file .env --profile bot build bot
 
 echo "[6/11] Start data services..."
 docker compose --env-file .env up -d db wpdb
