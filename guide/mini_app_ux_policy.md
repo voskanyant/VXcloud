@@ -1,6 +1,6 @@
 # VXcloud Mini App UX Policy
 
-Last updated: 2026-05-06
+Last updated: 2026-05-07
 
 ## Role
 
@@ -14,6 +14,22 @@ The Telegram Mini App is the primary customer account surface for:
 
 The Telegram bot stays a command layer. The public browser account pages stay a
 fallback and can use a wider layout.
+
+## Current Implementation Contract
+
+- Telegram opens the Django `/account-app/` pages. WordPress account shortcode
+  styles do not control the Mini App dashboard.
+- The embedded dashboard is a separate mobile-first account surface, not the
+  desktop account page squeezed into Telegram.
+- The first dashboard screen is link-first: `Мой VPN`, `Ваши доступы`, and
+  `Скопировать ссылку` must be visible before QR or secondary management.
+- Each active access should include a short mini instruction: copy the
+  subscription link, open Streisand/V2Box/v2rayNG, press `+`, import from
+  clipboard.
+- QR remains available as a fallback on the access detail page, below the
+  subscription-link copy action.
+- Embed pages must define their own account CSS variables and fit a narrow
+  Telegram viewport without horizontal clipping.
 
 ## Dashboard Rules
 

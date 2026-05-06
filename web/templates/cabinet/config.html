@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 {% load cms %}
 
-{% block title %}QR и доступ - VXcloud{% endblock %}
+{% block title %}Доступ - VXcloud{% endblock %}
 
 {% block content %}
 {% cms_text "cabinet.config.back_action" "Назад в кабинет" as cabinet_config_back_action %}
@@ -18,8 +18,8 @@
 
       <div class="account-section-head">
         <div>
-          <div class="account-eyebrow">Импорт QR</div>
-          <h2 class="account-section-title">QR и доступ</h2>
+          <div class="account-eyebrow">QR</div>
+          <h2 class="account-section-title">QR для импорта</h2>
         </div>
         <div class="account-section-meta">#{{ subscription.id }}</div>
       </div>
@@ -87,13 +87,19 @@
 
       <article class="account-section account-config-link-section">
         <label class="account-link-label" for="cfg">Ссылка подписки</label>
+        <button type="button" class="account-primary-button account-config-copy-main" id="copy-config-main">Скопировать ссылку</button>
         <div class="account-link-row">
           <input id="cfg" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
           <button type="button" class="account-icon-button" id="copy-config-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
             <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
           </button>
         </div>
-        <p class="account-subtle account-subtle-block">Импортируйте эту ссылку один раз. После этого VXcloud сможет менять сервер за этим адресом без ручной замены доступа.</p>
+        <p class="account-subtle account-subtle-block">Основной способ подключения — ссылка подписки. QR используйте только если приложение не умеет импорт из буфера.</p>
+        <ol class="account-mini-steps account-config-mini-steps">
+          <li>Скопируйте ссылку.</li>
+          <li>Откройте Streisand, V2Box или v2rayNG.</li>
+          <li>Нажмите «+» и выберите импорт из буфера.</li>
+        </ol>
       </article>
 
       <article class="account-section account-config-rename-section">
@@ -133,5 +139,16 @@
 
   const copyIconButton = document.getElementById('copy-config-icon');
   if (copyIconButton) copyIconButton.addEventListener('click', copyCfg);
+  const copyMainButton = document.getElementById('copy-config-main');
+  if (copyMainButton) {
+    copyMainButton.addEventListener('click', async () => {
+      const oldText = copyMainButton.textContent;
+      await copyCfg();
+      copyMainButton.textContent = 'Ссылка скопирована';
+      setTimeout(() => {
+        copyMainButton.textContent = oldText;
+      }, 1200);
+    });
+  }
 </script>
 {% endblock %}

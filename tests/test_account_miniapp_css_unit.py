@@ -18,18 +18,16 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("overflow-y: auto;", body_rule)
 
     def test_embed_dashboard_uses_compact_mobile_layout(self):
-        self.assertIn("body.vx-account-embed .account-page-shell", self.css)
-        self.assertIn("body.vx-account-embed .account-title", self.css)
-        self.assertIn("body.vx-account-embed .account-summary", self.css)
-        self.assertIn("grid-template-columns: repeat(2, minmax(0, 1fr));", self.css)
+        self.assertIn("body.vx-account-embed .account-page-shell-mini", self.css)
+        self.assertIn("body.vx-account-embed .account-mini-title", self.css)
+        self.assertIn("body.vx-account-embed .account-mini-access-card", self.css)
+        self.assertIn("body.vx-account-embed .account-mini-card-actions", self.css)
 
-    def test_embed_dashboard_puts_vpn_devices_before_account_metadata(self):
-        self.assertIn("body.vx-account-embed .account-hero", self.css)
-        self.assertIn("body.vx-account-embed #account-subscriptions", self.css)
-        self.assertIn("body.vx-account-embed .account-summary", self.css)
-        self.assertIn("order: 1;", self.css)
-        self.assertIn("order: 2;", self.css)
-        self.assertIn("order: 3;", self.css)
+    def test_embed_dashboard_is_link_first(self):
+        self.assertIn("body.vx-account-embed .account-mini-copy-panel", self.css)
+        self.assertIn("body.vx-account-embed .account-mini-steps", self.css)
+        self.assertIn("counter-reset: account-mini-step;", self.css)
+        self.assertIn("body.vx-account-embed .account-mini-card-actions .account-primary-button", self.css)
 
     def test_embed_subscription_list_hides_expanded_details(self):
         self.assertIn(
@@ -68,6 +66,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("body.vx-account-embed .account-page-shell-config", self.css)
         self.assertIn("body.vx-account-embed .account-page-shell-config .account-section-qr", self.css)
         self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-link-section", self.css)
+        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-copy-main", self.css)
+        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-mini-steps", self.css)
         self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-status-section", self.css)
         self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-list-section", self.css)
         self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-rename-section", self.css)

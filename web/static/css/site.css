@@ -38,6 +38,11 @@ body {
 }
 
 body.vx-account-embed {
+  --account-ink: #111111;
+  --account-muted: #5f5f5f;
+  --account-hairline: #e7e7e7;
+  --account-line: #d6d6d6;
+  --account-soft: #fafafa;
   background: transparent;
   overflow-x: hidden;
   overflow-y: auto;
@@ -2917,6 +2922,14 @@ body.vx-account-shell #footer {
   color: var(--account-ink);
 }
 
+.account-config-copy-main {
+  margin: 8px 0 10px;
+}
+
+.account-config-mini-steps {
+  margin-top: 10px;
+}
+
 .account-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3449,10 +3462,30 @@ body.vx-account-embed {
 }
 
 body.vx-account-embed .account-page-shell {
+  box-sizing: border-box;
   width: 100%;
   max-width: none;
   gap: 14px;
   padding: 12px 12px 28px;
+  overflow-x: hidden;
+}
+
+body.vx-account-embed .account-page-shell *,
+body.vx-account-embed .account-page-shell *::before,
+body.vx-account-embed .account-page-shell *::after {
+  min-width: 0;
+}
+
+body.vx-account-embed .account-button,
+body.vx-account-embed .account-primary-button,
+body.vx-account-embed .account-secondary-button,
+body.vx-account-embed .account-danger-button,
+body.vx-account-embed .account-message,
+body.vx-account-embed .account-subtle,
+body.vx-account-embed .account-intro,
+body.vx-account-embed .account-section-meta {
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 body.vx-account-embed .account-hero {
@@ -3641,7 +3674,7 @@ body.vx-account-embed .account-page-shell-config .account-config-layout {
 }
 
 body.vx-account-embed .account-page-shell-config .account-section-qr {
-  order: 1;
+  order: 2;
   padding: 10px 0 0;
   border: 0;
 }
@@ -3650,10 +3683,14 @@ body.vx-account-embed .account-page-shell-config .account-config-stack {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  order: 1;
 }
 
 body.vx-account-embed .account-page-shell-config .account-config-link-section {
   order: 1;
+  padding: 12px;
+  border: 1px solid var(--account-hairline);
+  border-radius: var(--account-mini-radius);
 }
 
 body.vx-account-embed .account-page-shell-config .account-config-status-section {
@@ -3672,6 +3709,18 @@ body.vx-account-embed .account-page-shell-config .auth-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-copy-main {
+  min-height: 46px;
+}
+
+body.vx-account-embed .account-page-shell-config .account-link-row {
+  margin-top: 0;
+}
+
+body.vx-account-embed .account-page-shell-config .account-config-mini-steps {
+  margin-top: 10px;
 }
 
 body.vx-account-embed .account-page-shell-config .account-qr-frame {
@@ -3727,12 +3776,15 @@ body.vx-account-embed #account-instructions .account-step-list {
 
 body.vx-account-embed .account-instructions-device-actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-body.vx-account-embed .account-instructions-device-actions .account-secondary-button:nth-child(3) {
-  grid-column: 1 / -1;
+body.vx-account-embed .account-instructions-device-actions .account-secondary-button {
+  min-height: 40px;
+  padding: 8px 5px;
+  font-size: 12px;
+  line-height: 1.15;
 }
 
 body.vx-account-embed .account-secondary-button-current {
@@ -3745,6 +3797,231 @@ body.vx-account-embed .account-secondary-button-current:hover {
   background: #000000;
   border-color: #000000;
   color: #ffffff;
+}
+
+body.vx-account-embed .account-page-shell-mini {
+  gap: 10px;
+  padding: 10px 10px 24px;
+}
+
+body.vx-account-embed .account-mini-hero,
+body.vx-account-embed .account-mini-actions,
+body.vx-account-embed .account-mini-section,
+body.vx-account-embed .account-mini-access-card,
+body.vx-account-embed .account-mini-empty {
+  border: 1px solid var(--account-hairline);
+  border-radius: var(--account-mini-radius);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+body.vx-account-embed .account-mini-hero {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+body.vx-account-embed .account-mini-title {
+  margin: 0;
+  color: var(--account-ink);
+  font-size: 24px;
+  line-height: 1.05;
+  letter-spacing: 0;
+  font-weight: 800;
+}
+
+body.vx-account-embed .account-mini-subtitle {
+  margin: 6px 0 0;
+  max-width: none;
+  color: var(--account-muted);
+  font-size: 13px;
+  line-height: 1.38;
+}
+
+body.vx-account-embed .account-mini-idline {
+  margin: 5px 0 0;
+  color: var(--account-muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+body.vx-account-embed .account-mini-idline strong {
+  color: var(--account-ink);
+  font-weight: 800;
+}
+
+body.vx-account-embed .account-mini-section-head span {
+  color: var(--account-muted);
+  font-size: 11px;
+  line-height: 1.25;
+}
+
+body.vx-account-embed .account-mini-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  padding: 8px;
+}
+
+body.vx-account-embed .account-mini-actions .account-primary-button {
+  grid-column: 1 / -1;
+}
+
+body.vx-account-embed .account-mini-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+body.vx-account-embed .account-mini-section-head {
+  display: grid;
+  gap: 4px;
+}
+
+body.vx-account-embed .account-mini-section-head h2 {
+  margin: 0;
+  color: var(--account-ink);
+  font-size: 20px;
+  line-height: 1.1;
+  letter-spacing: 0;
+  font-weight: 800;
+}
+
+body.vx-account-embed .account-mini-access-list {
+  display: grid;
+  gap: 10px;
+}
+
+body.vx-account-embed .account-mini-access-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+body.vx-account-embed .account-mini-access-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+
+body.vx-account-embed .account-mini-access-head h3 {
+  margin: 0;
+  color: var(--account-ink);
+  font-size: 17px;
+  line-height: 1.2;
+  letter-spacing: 0;
+  font-weight: 800;
+}
+
+body.vx-account-embed .account-mini-access-head p {
+  margin: 4px 0 0;
+  color: var(--account-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+body.vx-account-embed .account-mini-pill {
+  padding: 4px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--account-hairline);
+  color: var(--account-muted);
+  background: #ffffff;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+body.vx-account-embed .account-mini-pill-active {
+  border-color: #c8e6d1;
+  color: #166534;
+  background: #f0fdf4;
+}
+
+body.vx-account-embed .account-mini-copy-panel {
+  display: grid;
+  gap: 3px;
+  padding: 10px;
+  border-radius: var(--account-mini-radius);
+  background: #f7fafc;
+}
+
+body.vx-account-embed .account-mini-copy-panel strong,
+body.vx-account-embed .account-mini-empty strong {
+  color: var(--account-ink);
+  font-size: 14px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+body.vx-account-embed .account-mini-copy-panel span,
+body.vx-account-embed .account-mini-empty span {
+  color: var(--account-muted);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+body.vx-account-embed .account-mini-copy-panel-muted {
+  background: #fff8f0;
+}
+
+body.vx-account-embed .account-mini-steps {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: account-mini-step;
+}
+
+body.vx-account-embed .account-mini-steps li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--account-ink);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+body.vx-account-embed .account-mini-steps li::before {
+  counter-increment: account-mini-step;
+  content: counter(account-mini-step);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #000000;
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+body.vx-account-embed .account-mini-card-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+body.vx-account-embed .account-mini-card-actions > * {
+  min-width: 0;
+}
+
+body.vx-account-embed .account-mini-card-actions .account-primary-button {
+  grid-column: 1 / -1;
+}
+
+body.vx-account-embed .account-mini-empty {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
 }
 
 body.vx-account-embed #account-instructions .account-device-card {
