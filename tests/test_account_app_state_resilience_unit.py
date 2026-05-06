@@ -89,6 +89,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertTrue(payload["authenticated"])
         self.assertEqual(payload["view"], "support")
+        self.assertEqual(payload["support"]["title"], "Поддержка")
+        self.assertIn("Telegram", payload["support"]["subtitle"])
         self.assertEqual(payload["support"]["telegram_url"], "https://t.me/vxcloud_test_bot")
         self.assertEqual(payload["support"]["instructions_url"], "/instructions/")
 
@@ -105,7 +107,12 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
-        self.assertIn("Support hub", html)
+        self.assertIn("Поддержка VXcloud", html)
+        self.assertIn("Написать в Telegram", html)
+        self.assertIn("Открыть инструкцию", html)
+        self.assertNotIn("Support hub", html)
+        self.assertNotIn("Write in Telegram", html)
+        self.assertNotIn("Open full guide", html)
         self.assertIn("VX-000007", html)
         self.assertIn("https://t.me/vxcloud_test_bot", html)
 

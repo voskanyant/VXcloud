@@ -100,6 +100,8 @@ The 2026-05-06 cleanup did three things:
 - reduced buy, renew, and trial contextual keyboards to primary action, Stars
   where applicable, and Back; browser fallback stays on top-level cabinet and
   post-payment entrypoints instead of every payment choice
+- localized the Mini App support view opened from the bot, so support copy and
+  actions stay Russian
 - cleaned remaining English fallback labels in input cancellation, delete alerts,
   and raw connection-link messages
 - made bot CMS fallback reject mojibake overrides, so broken stored labels do

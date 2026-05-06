@@ -486,8 +486,8 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
 
 def _build_support_payload(request: HttpRequest) -> dict[str, object]:
     return {
-        "title": "Support",
-        "subtitle": "Choose the fastest path for your issue.",
+        "title": "Поддержка",
+        "subtitle": "Напишите в Telegram для помощи по аккаунту или откройте инструкцию по подключению.",
         "client_code": "",
         "telegram_url": _telegram_bot_url(),
         "instructions_url": "/instructions/",

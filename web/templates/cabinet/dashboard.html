@@ -46,22 +46,22 @@
     <section class="account-section" id="account-support">
       <div class="account-section-head">
         <div>
-          <div class="account-eyebrow">Support</div>
-          <h2 class="account-section-title">Support hub</h2>
+          <div class="account-eyebrow">Поддержка</div>
+          <h2 class="account-section-title">Поддержка VXcloud</h2>
         </div>
         {% if support_client_code %}
           <div class="account-section-meta">{{ support_client_code }}</div>
         {% endif %}
       </div>
       <div class="account-message">
-        Send one concise message in Telegram for account-specific help. For setup steps, open the full guide.
+        Напишите одно сообщение в Telegram, если нужна помощь по аккаунту. Для настройки устройства откройте инструкцию.
       </div>
       <div class="account-device-actions">
         {% if support_telegram_url %}
-          <a class="account-primary-button" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Write in Telegram</a>
+          <a class="account-primary-button" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Написать в Telegram</a>
         {% endif %}
-        <a class="account-secondary-button" href="/instructions/"{% if embed_mode %} target="_top"{% endif %}>Open full guide</a>
-        <a class="account-secondary-button" href="{{ backend_dashboard_url }}">My VPN</a>
+        <a class="account-secondary-button" href="/instructions/"{% if embed_mode %} target="_top"{% endif %}>Открыть инструкцию</a>
+        <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
       </div>
     </section>
   {% endif %}
