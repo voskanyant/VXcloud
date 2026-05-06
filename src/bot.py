@@ -1307,6 +1307,9 @@ class VPNBot:
         cancel_label = self._button_label("contact_cancel", "\u041e\u0442\u043c\u0435\u043d\u0430").strip().lower()
         user_id = await self._ensure_user(update)
         menu_keyboard = await self._menu_keyboard_for_user(user_id)
+        menu_buttons = self._menu_buttons(has_active_subscription=await self._has_active_subscription(user_id))
+        label_to_key = {label.strip().lower(): key for key, label in menu_buttons}
+        selected_menu_key = label_to_key.get(text)
 
         if text in {"cancel", "\u043e\u0442\u043c\u0435\u043d\u0430", cancel_label}:
             context.user_data.pop("buy_wait_phone", None)
@@ -1319,6 +1322,16 @@ class VPNBot:
                 reply_markup=menu_keyboard,
             )
             return
+
+        if selected_menu_key and (
+            context.user_data.get("support_wait_message") or context.user_data.get("rename_wait_subscription_id") is not None
+        ):
+            context.user_data.pop("support_wait_message", None)
+            context.user_data.pop("rename_wait_subscription_id", None)
+            await update.message.reply_text(
+                self._content_text("input_cancelled_by_menu_message", "Input cancelled. Use the main menu below."),
+                reply_markup=menu_keyboard,
+            )
 
         if context.user_data.get("support_wait_message"):
             context.user_data.pop("support_wait_message", None)
@@ -1424,10 +1437,6 @@ class VPNBot:
             )
             await self.mysub(update, context)
             return
-
-        menu_buttons = self._menu_buttons(has_active_subscription=await self._has_active_subscription(user_id))
-        label_to_key = {label.strip().lower(): key for key, label in menu_buttons}
-        selected_menu_key = label_to_key.get(text)
 
         if selected_menu_key == "menu_buy":
             await self.buy(update, context)

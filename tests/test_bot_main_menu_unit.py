@@ -594,6 +594,21 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(db.events[-1]["event_name"], "support_sent")
         self.assertIsInstance(message.replies[-1][1], ReplyKeyboardMarkup)
 
+    async def test_menu_button_during_support_input_cancels_input_without_ticket(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        message = FakeMessage("My VPN")
+        context = SimpleNamespace(user_data={"support_wait_message": True})
+
+        await bot.menu_click(make_update(message), context)
+
+        self.assertNotIn("support_wait_message", context.user_data)
+        self.assertEqual(db.support_messages, [])
+        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
+        self.assertIn("Input cancelled", message.replies[0][0])
+        self.assertIn("VX-000123", message.replies[-1][0])
+        self.assertIn("Mini App", message.replies[-1][0])
+
     async def test_cancel_clears_rename_state_and_restores_main_menu(self):
         db = FakeDB()
         bot = make_bot(db)
@@ -635,6 +650,20 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("rename_wait_subscription_id", context.user_data)
         self.assertEqual(db.renamed, [(123, 42, "Work laptop")])
         self.assertTrue(any(isinstance(reply_markup, ReplyKeyboardMarkup) for _text, reply_markup in message.replies))
+
+    async def test_menu_button_during_rename_input_cancels_rename(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        message = FakeMessage("Renew")
+        context = SimpleNamespace(user_data={"rename_wait_subscription_id": 42})
+
+        await bot.menu_click(make_update(message), context)
+
+        self.assertNotIn("rename_wait_subscription_id", context.user_data)
+        self.assertEqual(db.renamed, [])
+        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
+        self.assertIn("Input cancelled", message.replies[0][0])
+        self.assertIn("Mini App", message.replies[-1][0])
 
 
 if __name__ == "__main__":
