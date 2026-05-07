@@ -26,19 +26,19 @@
             <span class="vx-bot-pill{% if row.is_active %} vx-bot-pill-active{% endif %}">{% if row.is_active %}Активен{% else %}Истёк{% endif %}</span>
           </div>
           <div class="vx-bot-actions">
-            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ row.auto_import_url }}">⚡ Подключить</a>
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ row.auto_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
             <button
               type="button"
               class="account-secondary-button vx-bot-button js-copy-config"
               data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}"
-            >🔗 Скопировать ссылку</button>
-            <a class="account-secondary-button vx-bot-button" href="{{ backend_config_prefix }}{{ row.id }}/">📱 QR и доступ</a>
+            ><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
+            <a class="account-secondary-button vx-bot-button" href="{{ backend_config_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">📱</span><span>QR и доступ</span></a>
           </div>
           <details class="vx-bot-more">
             <summary>Ещё</summary>
             <div class="vx-bot-actions vx-bot-actions-secondary">
               {% if row.can_renew %}
-                <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top">🔄 Продлить</a>
+                <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">🔄</span><span>Продлить</span></a>
               {% endif %}
               <a class="account-secondary-button vx-bot-button" href="{{ backend_install_prefix }}{{ row.id }}/">Настроить вручную</a>
             </div>
@@ -100,14 +100,14 @@
               class="account-secondary-button vx-bot-button js-copy-config"
               data-copy-text="{{ support_client_code }}"
               data-copy-success="ID скопирован"
-            >Скопировать ID клиента</button>
+            ><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ID клиента</span></button>
           </div>
         {% endif %}
         <div class="vx-bot-actions">
           {% if support_telegram_url %}
-            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>💬 Написать в Telegram</a>
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}><span class="vx-bot-button-icon" aria-hidden="true">💬</span><span>Написать в Telegram</span></a>
           {% endif %}
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}">📖 Открыть инструкцию</a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📖</span><span>Открыть инструкцию</span></a>
           <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
         </div>
       </div>
@@ -137,7 +137,7 @@
               type="button"
               class="account-primary-button vx-bot-button vx-bot-button-primary js-copy-config"
               data-copy-text="{{ instructions_payload.primary_subscription.feed_url|default:instructions_payload.primary_subscription.vless_url|default:'' }}"
-            >🔗 Скопировать ссылку</button>
+            ><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
           {% else %}
             <p class="vx-bot-eyebrow">Доступ</p>
             <h2 class="vx-bot-title">Пока нет активного доступа</h2>
@@ -168,11 +168,11 @@
           </ol>
           <div class="vx-bot-actions account-instruction-actions">
             {% if instructions_payload.primary_subscription %}
-              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}">📱 Открыть доступ</a>
+              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📱</span><span>Открыть доступ</span></a>
             {% else %}
               <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
             {% endif %}
-            <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}">💬 Поддержка</a>
+            <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}"><span class="vx-bot-button-icon" aria-hidden="true">💬</span><span>Поддержка</span></a>
           </div>
         </article>
       </div>
@@ -354,18 +354,29 @@
       if (!text) return;
       try {
         await navigator.clipboard.writeText(text);
-        const icon = btn.querySelector('.account-icon-glyph');
-        const previousHtml = icon ? icon.innerHTML : '';
-        const previousText = btn.textContent;
+        const icon = btn.querySelector('.vx-bot-button-icon, .account-icon-glyph');
+        const label = icon ? icon.nextElementSibling : null;
+        const previousIconHtml = icon ? icon.innerHTML : '';
+        const previousLabelText = label ? label.textContent : '';
+        const previousButtonHtml = btn.innerHTML;
         const successText = btn.getAttribute('data-copy-success') || 'Ссылка скопирована';
-        if (icon) {
+        if (icon && label) {
+          icon.innerHTML = '&#10003;';
+          label.textContent = successText;
+        } else if (icon) {
           icon.innerHTML = '&#10003;';
         } else {
           btn.textContent = successText;
         }
         setTimeout(() => {
-          if (icon) icon.innerHTML = previousHtml;
-          if (!icon) btn.textContent = previousText;
+          if (icon && label) {
+            icon.innerHTML = previousIconHtml;
+            label.textContent = previousLabelText;
+          } else if (icon) {
+            icon.innerHTML = previousIconHtml;
+          } else {
+            btn.innerHTML = previousButtonHtml;
+          }
         }, 1200);
       } catch (e) {
         console.debug('copy failed', e);

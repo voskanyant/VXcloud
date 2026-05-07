@@ -213,6 +213,7 @@
     overflow-wrap: break-word;
   }
   .btn:active { transform: translateY(1px); }
+  .btn:focus-visible { outline: 2px solid rgba(36,129,204,.32); outline-offset: 2px; }
   .btn.primary { background: var(--accent); color: var(--accent-ink); }
   .btn.danger  { background: #fbecec; color: var(--danger); }
   .btn .glyph { opacity: .9; }
@@ -487,14 +488,14 @@
             <div class="card-title">iPhone</div>
             <div class="access-meta"><span>действует до 21.05.2026</span><span class="pill ok">Активен</span></div>
             <div class="kb">
-              <div class="row"><a class="btn primary">⚡ Подключить</a></div>
+              <div class="row"><a class="btn primary"><span class="btn-icon">⚡</span><span>Подключить</span></a></div>
               <div class="row">
-                <a class="btn">🔗 Скопировать ссылку</a>
-                <a class="btn">📱 QR и доступ</a>
+                <a class="btn"><span class="btn-icon">🔗</span><span>Скопировать ссылку</span></a>
+                <a class="btn"><span class="btn-icon">📱</span><span>QR и доступ</span></a>
               </div>
               <details><summary>Ещё</summary>
                 <div class="row" style="margin-top:6px;">
-                  <a class="btn">🔄 Продлить</a>
+                  <a class="btn"><span class="btn-icon">🔄</span><span>Продлить</span></a>
                   <a class="btn">Настроить вручную</a>
                 </div>
               </details>
@@ -506,10 +507,10 @@
             <div class="card-title">MacBook</div>
             <div class="access-meta"><span>действует до 14.06.2026</span><span class="pill ok">Активен</span></div>
             <div class="kb">
-              <div class="row"><a class="btn primary">⚡ Подключить</a></div>
+              <div class="row"><a class="btn primary"><span class="btn-icon">⚡</span><span>Подключить</span></a></div>
               <div class="row">
-                <a class="btn">🔗 Скопировать ссылку</a>
-                <a class="btn">📱 QR и доступ</a>
+                <a class="btn"><span class="btn-icon">🔗</span><span>Скопировать ссылку</span></a>
+                <a class="btn"><span class="btn-icon">📱</span><span>QR и доступ</span></a>
               </div>
             </div>
           </div>
@@ -552,7 +553,7 @@
             <div class="card-title">Ссылка подписки</div>
             <div class="card-line">Нажмите «Подключить». Если приложение не открылось, скопируйте ссылку.</div>
             <div class="kb">
-              <div class="row"><a class="btn primary">⚡ Подключить</a></div>
+              <div class="row"><a class="btn primary"><span class="btn-icon">⚡</span><span>Подключить</span></a></div>
               <div class="row"><a class="btn"><span class="btn-icon">🔗</span><span>Скопировать ссылку</span></a></div>
             </div>
             <div class="urlbox"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn" style="width:auto;padding:4px 10px;font-size:11px;">⧉</a></div>
@@ -604,7 +605,7 @@
             <div class="card-eyebrow" style="margin-top:10px;">Подключение</div>
             <div class="card-title">Подключить iPhone</div>
             <div class="card-line">Если приложение уже установлено, откроем импорт одной кнопкой.</div>
-            <div class="kb"><div class="row"><a class="btn primary">⚡ Подключить</a></div></div>
+            <div class="kb"><div class="row"><a class="btn primary"><span class="btn-icon">⚡</span><span>Подключить</span></a></div></div>
           </div>
 
           <div class="card">
@@ -720,12 +721,12 @@
             </div>
             <div class="soft-panel">
               <div class="kv"><span>ID клиента</span><strong>VX-7K3M-4P</strong></div>
-              <a class="btn">Скопировать ID клиента</a>
+              <a class="btn"><span class="btn-icon">⧉</span><span>Скопировать ID клиента</span></a>
             </div>
             <div class="kb">
-              <div class="row"><a class="btn primary">💬 Написать в Telegram</a></div>
+              <div class="row"><a class="btn primary"><span class="btn-icon">💬</span><span>Написать в Telegram</span></a></div>
               <div class="row">
-                <a class="btn">📖 Открыть инструкцию</a>
+                <a class="btn"><span class="btn-icon">📖</span><span>Открыть инструкцию</span></a>
                 <a class="btn">Мой VPN</a>
               </div>
             </div>

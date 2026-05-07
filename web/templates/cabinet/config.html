@@ -19,7 +19,7 @@
     <h2 class="vx-bot-title">Ссылка подписки</h2>
     <p class="vx-bot-line">Нажмите «Подключить». Если приложение не открылось, скопируйте ссылку.</p>
     <div class="vx-bot-actions">
-      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}">⚡ Подключить</a>
+      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
       <button type="button" class="account-secondary-button vx-bot-button account-config-copy-main" id="copy-config-main"><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
     </div>
     <div class="vx-bot-url-row">
@@ -255,11 +255,25 @@
   const copyMainButton = document.getElementById('copy-config-main');
   if (copyMainButton) {
     copyMainButton.addEventListener('click', async () => {
-      const oldText = copyMainButton.textContent;
+      const icon = copyMainButton.querySelector('.vx-bot-button-icon');
+      const label = icon ? icon.nextElementSibling : null;
+      const oldIconHtml = icon ? icon.innerHTML : '';
+      const oldLabelText = label ? label.textContent : '';
+      const oldHtml = copyMainButton.innerHTML;
       await copyCfg();
-      copyMainButton.textContent = 'Ссылка скопирована';
+      if (icon && label) {
+        icon.innerHTML = '&#10003;';
+        label.textContent = 'Ссылка скопирована';
+      } else {
+        copyMainButton.textContent = 'Ссылка скопирована';
+      }
       setTimeout(() => {
-        copyMainButton.textContent = oldText;
+        if (icon && label) {
+          icon.innerHTML = oldIconHtml;
+          label.textContent = oldLabelText;
+        } else {
+          copyMainButton.innerHTML = oldHtml;
+        }
       }, 1200);
     });
   }

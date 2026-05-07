@@ -25,7 +25,7 @@
     <p class="vx-bot-eyebrow">Подключение</p>
     <h1 class="vx-bot-title vx-install-title">Подключить {{ display_name }}</h1>
     <p class="vx-bot-line">Если приложение уже установлено, откроем импорт одной кнопкой.</p>
-    <a class="account-primary-button vx-bot-button vx-bot-button-primary vx-install-main-cta" href="{{ auto_import_url }}">⚡ Подключить</a>
+    <a class="account-primary-button vx-bot-button vx-bot-button-primary vx-install-main-cta" href="{{ auto_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
   </section>
 
   <section class="vx-bot-card">
@@ -55,8 +55,8 @@
         </button>
       </div>
       <div class="vx-bot-actions vx-bot-actions-secondary">
-        <button type="button" class="account-primary-button vx-bot-button vx-bot-button-primary" id="install-copy-button">🔗 Скопировать ссылку</button>
-        <a class="account-secondary-button vx-bot-button" id="install-guide-link" href="{{ backend_instructions_url }}">📖 Подробная инструкция</a>
+        <button type="button" class="account-primary-button vx-bot-button vx-bot-button-primary" id="install-copy-button"><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
+        <a class="account-secondary-button vx-bot-button" id="install-guide-link" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📖</span><span>Подробная инструкция</span></a>
       </div>
     </details>
   </section>
@@ -336,12 +336,28 @@
     ].filter(Boolean);
     copyButtons.forEach((button) => {
       button.addEventListener('click', async () => {
-        const oldText = button.textContent;
+        const icon = button.querySelector('.vx-bot-button-icon, .account-icon-glyph');
+        const label = icon ? icon.nextElementSibling : null;
+        const oldIconHtml = icon ? icon.innerHTML : '';
+        const oldLabelText = label ? label.textContent : '';
+        const oldHtml = button.innerHTML;
         await copyAccessUrl();
-        if (oldText) {
+        if (label) {
+          if (icon) icon.innerHTML = '&#10003;';
+          label.textContent = 'Ссылка скопирована';
+          setTimeout(() => {
+            if (icon) icon.innerHTML = oldIconHtml;
+            label.textContent = oldLabelText;
+          }, 1200);
+        } else if (icon) {
+          icon.innerHTML = '&#10003;';
+          setTimeout(() => {
+            icon.innerHTML = oldIconHtml;
+          }, 1200);
+        } else if (oldHtml) {
           button.textContent = 'Ссылка скопирована';
           setTimeout(() => {
-            button.textContent = oldText;
+            button.innerHTML = oldHtml;
           }, 1200);
         }
       });

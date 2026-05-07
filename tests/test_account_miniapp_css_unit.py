@@ -31,9 +31,12 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("grid-column: 1 / -1;", self.css)
 
     def test_embed_bot_buttons_wrap_cleanly(self):
+        self.assertIn("gap: 7px;", self.css)
         self.assertIn("text-wrap: balance;", self.css)
         self.assertIn("word-break: normal;", self.css)
         self.assertIn("overflow-wrap: break-word;", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-button > span:not(.vx-bot-button-icon)", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-button:focus-visible", self.css)
 
     def test_embed_more_controls_are_polished_tap_targets(self):
         more_rule = self.css[self.css.index(".vx-account-bot .vx-bot-more summary {") :]
