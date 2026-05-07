@@ -583,7 +583,8 @@ class VPNBot:
         return f"{self._site_url().rstrip('/')}/open-app/?{params}"
 
     def _v2box_import_url(self, subscription_url: str) -> str:
-        return f"v2box://install-config?url={quote(subscription_url, safe='')}"
+        params = urlencode({"url": subscription_url, "name": "VXcloud"})
+        return f"v2box://install-sub?{params}"
 
     def _node_response_text(self, node_key: str) -> str:
         response_key = f"{node_key}_response"

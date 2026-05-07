@@ -353,7 +353,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("https://support.apple.com/en-us/118283", html)
         self.assertIn("Streisand", html)
         self.assertIn('"manual_note"', html)
-        self.assertIn("v2box://install-config", html)
+        self.assertIn("v2box://install-sub", html)
         self.assertIn("\"autostart\": true", html)
         self.assertNotIn("shouldAutoStart", html)
         self.assertIn("V2Box", html)
@@ -379,7 +379,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
         self.assertIn("streisand://import/https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F", html)
-        self.assertIn("v2box://install-config?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F", html)
+        self.assertIn("v2box://install-sub?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F&amp;name=VXcloud", html)
         self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
 
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):

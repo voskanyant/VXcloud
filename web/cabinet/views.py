@@ -87,7 +87,7 @@ INSTALL_APP_MATRIX: dict[str, list[dict[str, object]]] = {
             "label": "V2Box",
             "autostart": True,
             "install_url": "https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690",
-            "import_url_template": "v2box://install-config?url={url}",
+            "import_url_template": "v2box://install-sub?url={url}&name=VXcloud",
         },
         {
             "key": "shadowrocket",
@@ -1971,7 +1971,7 @@ def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
         },
         {
             "label": "V2Box",
-            "url": f"v2box://install-config?url={encoded_url}",
+            "url": f"v2box://install-sub?url={encoded_url}&name=VXcloud",
         },
     ]
 
