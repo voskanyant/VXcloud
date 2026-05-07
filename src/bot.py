@@ -578,6 +578,10 @@ class VPNBot:
     def _open_app_url(self, config_url: str) -> str:
         return f"{self._site_url().rstrip('/')}/open-app/?u={quote(config_url, safe='')}"
 
+    def _auto_import_url(self, subscription_url: str) -> str:
+        params = urlencode({"mode": "ios-auto", "u": subscription_url})
+        return f"{self._site_url().rstrip('/')}/open-app/?{params}"
+
     def _v2box_import_url(self, subscription_url: str) -> str:
         return f"v2box://install-config?url={quote(subscription_url, safe='')}"
 
@@ -1511,8 +1515,7 @@ class VPNBot:
         renewal_first: bool = False,
     ) -> InlineKeyboardMarkup:
         cabinet_button = self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")
-        v2box_button = InlineKeyboardButton(text="⚡ V2Box авто", url=self._open_app_url(self._v2box_import_url(copy_text)))
-        install_button = self._mini_app_button("📱 Другие приложения", f"/account/install/{subscription_id}/")
+        install_button = InlineKeyboardButton(text="⚡ Подключить", url=self._auto_import_url(copy_text))
         qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")
         renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")
         copy_row = [InlineKeyboardButton(text="🔗 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
@@ -1520,14 +1523,12 @@ class VPNBot:
             rows = [
                 [renew_button],
                 copy_row,
-                [v2box_button],
                 [install_button],
                 [cabinet_button, qr_button],
             ]
         else:
             rows = [
                 copy_row,
-                [v2box_button],
                 [install_button],
                 [cabinet_button],
                 [qr_button, renew_button],
@@ -3270,8 +3271,7 @@ class VPNBot:
         buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
-            buttons.append([InlineKeyboardButton(text="⚡ V2Box авто", url=self._open_app_url(self._v2box_import_url(link_for_copy)))])
-            buttons.append([self._mini_app_button("📱 Другие приложения", f"/account/install/{subscription_id}/")])
+            buttons.append([InlineKeyboardButton(text="⚡ Подключить", url=self._auto_import_url(link_for_copy))])
             buttons.append([self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")])
             buttons.append([self._mini_app_button("🔄 Продлить", renew_path)])
         else:

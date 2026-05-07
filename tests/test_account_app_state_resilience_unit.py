@@ -367,6 +367,21 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertNotIn("Состояние конфига", html)
         self.assertNotIn("Все конфиги", html)
 
+    def test_open_app_auto_import_preserves_nested_encoded_url(self):
+        response = self.client.get(
+            "/open-app/",
+            {
+                "mode": "ios-auto",
+                "u": "https://vxcloud.ru/account/feed/feed-token/",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("streisand://import/https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F", html)
+        self.assertIn("v2box://install-config?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F", html)
+        self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
+
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):
         with patch.object(sys.modules["cabinet.views"].settings, "VPN_PUBLIC_HOST", ""), patch.object(
             sys.modules["cabinet.views"].settings, "VPN_PUBLIC_PORT", ""

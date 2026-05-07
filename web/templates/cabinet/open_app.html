@@ -11,19 +11,37 @@
   <div class="account-eyebrow">Открытие приложения</div>
   <h1 class="account-title-compact">{{ open_app_heading }}</h1>
 
-  {% if deeplink %}
+  {% if deeplinks %}
     <p class="account-subtle">{{ open_app_description }}</p>
     <div class="auth-actions">
-      <a class="account-primary-button" href="{{ deeplink }}">Открыть конфиг</a>
+      {% for item in deeplinks %}
+        <a class="{% if forloop.first %}account-primary-button{% else %}account-secondary-button{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
+      {% endfor %}
       <button class="account-secondary-button" type="button" onclick="copyLink()">Скопировать ссылку</button>
     </div>
-    <textarea id="deeplink-box" class="account-input auth-textarea" rows="5" readonly>{{ deeplink }}</textarea>
+    <textarea id="deeplink-box" class="account-input auth-textarea" rows="5" readonly>{{ copy_text }}</textarea>
+    {{ deeplinks|json_script:"open-app-links" }}
     <script>
       (function () {
-        const url = "{{ deeplink|escapejs }}";
-        setTimeout(function () {
+        const box = document.getElementById('deeplink-box');
+        if (box && box.value && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(box.value).catch(function () {});
+        }
+        const linksEl = document.getElementById('open-app-links');
+        const links = linksEl ? JSON.parse(linksEl.textContent || '[]') : [];
+        let index = 0;
+        function openNext() {
+          if (!links[index] || !links[index].url) return;
+          const url = links[index].url;
+          index += 1;
           window.location.href = url;
-        }, 50);
+          if (links[index]) {
+            setTimeout(function () {
+              if (!document.hidden) openNext();
+            }, 1600);
+          }
+        }
+        setTimeout(openNext, 80);
       })();
       function copyLink() {
         const box = document.getElementById('deeplink-box');

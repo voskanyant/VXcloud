@@ -61,6 +61,7 @@ ALLOWED_DEEPLINK_SCHEMES = (
     "ss://",
     "hysteria2://",
     "tuic://",
+    "streisand://",
     "v2box://",
 )
 PAYMENT_SUCCESS_STATUSES = {"success", "succeeded", "paid", "approved"}
@@ -1935,12 +1936,74 @@ def delete_subscription(request: HttpRequest, subscription_id: int) -> HttpRespo
     return _redirect_after_account_post(request)
 
 
+def _is_safe_subscription_import_url(request: HttpRequest, url: str) -> bool:
+    raw = str(url or "").strip()
+    try:
+        parsed = urlsplit(raw)
+    except Exception:
+        return False
+    if parsed.scheme not in {"http", "https"}:
+        return False
+    if not parsed.path.startswith("/account/feed/"):
+        return False
+
+    allowed_hosts = {"vxcloud.ru", request.get_host().split(":", 1)[0]}
+    public_site_url = str(getattr(settings, "WORDPRESS_PUBLIC_SITE_URL", "") or "").strip()
+    if public_site_url:
+        try:
+            public_host = urlsplit(public_site_url).hostname
+            if public_host:
+                allowed_hosts.add(public_host)
+        except Exception:
+            pass
+    vpn_host = _vpn_public_host()
+    if vpn_host:
+        allowed_hosts.add(vpn_host)
+    return bool(parsed.hostname and parsed.hostname in allowed_hosts)
+
+
+def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
+    encoded_url = quote(subscription_url, safe="")
+    return [
+        {
+            "label": "Streisand",
+            "url": f"streisand://import/{encoded_url}#VXcloud",
+        },
+        {
+            "label": "V2Box",
+            "url": f"v2box://install-config?url={encoded_url}",
+        },
+    ]
+
+
 def open_app_link(request: HttpRequest) -> HttpResponse:
     raw = (request.GET.get("u") or "").strip()
-    deeplink = unquote(raw)
-    if not any(deeplink.startswith(prefix) for prefix in ALLOWED_DEEPLINK_SCHEMES):
-        deeplink = ""
-    return render(request, "cabinet/open_app.html", {"deeplink": deeplink})
+    mode = (request.GET.get("mode") or "").strip()
+    deeplink = ""
+    deeplinks: list[dict[str, str]] = []
+    copy_text = ""
+
+    if mode == "ios-auto" and _is_safe_subscription_import_url(request, raw):
+        deeplinks = _build_ios_auto_import_links(raw)
+        copy_text = raw
+    else:
+        deeplink = raw
+        if not any(deeplink.startswith(prefix) for prefix in ALLOWED_DEEPLINK_SCHEMES):
+            deeplink = ""
+        if deeplink:
+            deeplinks = [{"label": "VPN-приложение", "url": deeplink}]
+            copy_text = deeplink
+
+    return render(
+        request,
+        "cabinet/open_app.html",
+        {
+            "deeplink": deeplink,
+            "deeplinks": deeplinks,
+            "copy_text": copy_text,
+            "auto_sequence": mode == "ios-auto",
+        },
+    )
 
 
 def tg_magic_login(request: HttpRequest, token: str) -> HttpResponse:
