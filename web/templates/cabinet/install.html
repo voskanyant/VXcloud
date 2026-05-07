@@ -168,6 +168,7 @@
     function appSubtitle(app) {
       const bits = [];
       if (app.recommended) bits.push('рекомендуем');
+      if (app.autostart) bits.push('авто-импорт');
       if (app.paid) bits.push('платное');
       if (app.import_url_template) bits.push('быстрый импорт');
       if (app.open_url_template) bits.push('откроем приложение');
@@ -198,8 +199,14 @@
         }, isAutomatic ? 1800 : 1400);
         return;
       }
-      setStatus('Ссылка скопирована. Откройте ' + app.name + ' и выберите импорт из буфера.');
+      setStatus(app.manual_note || ('Ссылка скопирована. Откройте ' + app.name + ' и выберите импорт из буфера.'));
       showManual();
+    }
+
+    function getAutostartApp(apps) {
+      return apps.find((app) => app.autostart) ||
+        apps.find((app) => app.import_url_template || app.open_url_template) ||
+        apps[0];
     }
 
     function renderApps() {
@@ -255,7 +262,7 @@
 
       if (shouldAutoStart && !autoStarted && apps.length) {
         autoStarted = true;
-        window.setTimeout(() => handleAppOpen(apps[0], { automatic: true }), 120);
+        window.setTimeout(() => handleAppOpen(getAutostartApp(apps), { automatic: true }), 120);
       }
     }
 
