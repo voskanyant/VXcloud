@@ -156,6 +156,24 @@
     return normalizePath(cfg.accountPath || "/account/") + (query.toString() ? "?" + query.toString() : "");
   }
 
+  function accountDashboardReturnPath() {
+    const currentPath = window.location.pathname || "";
+    const basePath = currentPath.indexOf("/account-app") === 0 ? "/account-app/" : cfg.accountPath || "/account/";
+    const base = normalizePath(basePath);
+    const search = new URLSearchParams(window.location.search || "");
+    if (currentPath.indexOf("/account-app") === 0 && search.get("embed") === "1") {
+      return base + "?embed=1";
+    }
+    return base;
+  }
+
+  function openCheckoutRedirect(url) {
+    const target = String(url || "").trim();
+    if (!target) return;
+    window.history.replaceState({}, "", accountDashboardReturnPath());
+    window.location.assign(target);
+  }
+
   function currentRoute() {
     const path = window.location.pathname;
     const search = new URLSearchParams(window.location.search || "");
@@ -1565,7 +1583,7 @@
           const body = mode === "renew" && /^\d+$/.test(subscriptionId) ? { subscription_id: Number(subscriptionId) } : {};
           const result = await apiFetch(endpoint, { method: "POST", body: body });
           if (result && result.redirect_url) {
-            window.location.assign(result.redirect_url);
+            openCheckoutRedirect(result.redirect_url);
             return;
           }
         } catch (error) {
@@ -1845,7 +1863,7 @@
           const body = route.view === "checkout-renew" && route.subscriptionId ? { subscription_id: route.subscriptionId } : {};
           const result = await apiFetch(endpoint, { method: "POST", body: body });
           if (result && result.redirect_url) {
-            window.location.assign(result.redirect_url);
+            openCheckoutRedirect(result.redirect_url);
             return;
           }
           renderError("\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u043e\u0442\u043a\u0440\u044b\u0442\u044c \u043e\u043f\u043b\u0430\u0442\u0443.");
