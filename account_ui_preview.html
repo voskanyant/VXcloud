@@ -435,24 +435,33 @@
 
   /* hidden URL field (manual fallback) */
   .urlbox {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     background: #fbfbfc;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    padding: 8px 10px;
+    margin-top: 8px;
     font-size: 12px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     color: var(--muted);
-    margin-top: 8px;
-    overflow: hidden;
   }
   .urlbox span {
-    flex: 1;
+    min-width: 0;
+    height: 44px;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: #fbfbfc;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 22px;
+  }
+  .copy-mini {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    font-size: 15px;
   }
   .qrbox {
     display: flex;
@@ -564,7 +573,7 @@
               <div class="row"><a class="btn primary"><span class="btn-icon">⚡</span><span>Подключить</span></a></div>
               <div class="row"><a class="btn"><span class="btn-icon">🔗</span><span>Скопировать ссылку</span></a></div>
             </div>
-            <div class="urlbox"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn" style="width:auto;padding:4px 10px;font-size:11px;">⧉</a></div>
+            <div class="urlbox"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn copy-mini">⧉</a></div>
           </div>
 
           <div class="card">
@@ -651,7 +660,7 @@
             <details>
               <summary>Настроить вручную</summary>
               <div class="card-line" style="margin-top:8px;">Скопируйте ссылку, откройте свое приложение, нажмите «+», выберите «Импорт из буфера обмена».</div>
-              <div class="urlbox"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn" style="width:auto;padding:4px 10px;font-size:11px;">⧉</a></div>
+              <div class="urlbox"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn copy-mini">⧉</a></div>
             </details>
           </div>
 
@@ -687,7 +696,7 @@
           <div class="card tight">
             <details>
               <summary>Настроить вручную</summary>
-              <div class="urlbox" style="margin-top:8px;"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn" style="width:auto;padding:4px 10px;font-size:11px;">⧉</a></div>
+              <div class="urlbox"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn copy-mini">⧉</a></div>
             </details>
           </div>
 

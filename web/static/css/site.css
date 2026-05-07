@@ -4828,6 +4828,9 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .vx-bot-url-row .account-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 44px;
   height: 44px;
   min-height: 44px;
@@ -4835,6 +4838,13 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   border-radius: var(--vx-bot-button-radius);
   background: var(--vx-bot-secondary);
   transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.vx-account-bot .vx-bot-url-row .account-icon-glyph {
+  color: var(--vx-bot-text);
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .vx-account-bot .vx-bot-url-row .account-link-input:focus {

@@ -125,6 +125,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         )
         self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-button:focus-visible", self.css)
         self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-button:active", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-glyph", self.css)
+        self.assertIn("font-weight: 800;", self.css)
         self.assertIn("background: #fbfbfc;", self.css)
         self.assertIn(".vx-account-bot .vx-bot-qr-frame .account-qr-image", self.css)
 
