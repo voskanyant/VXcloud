@@ -239,24 +239,24 @@
         path: normalizePath("/account/link/"),
       };
     }
-    if (/^\/account\/buy\/?$/i.test(path)) {
+    if (/^\/account(?:-app)?\/buy\/?$/i.test(path)) {
       return {
         view: "checkout-buy",
         subscriptionId: null,
         device: "",
-        path: normalizePath("/account/buy/"),
+        path: normalizePath(path.indexOf("/account-app") === 0 ? "/account-app/buy/" : "/account/buy/"),
       };
     }
-    if (/^\/account\/renew\/?$/i.test(path)) {
+    if (/^\/account(?:-app)?\/renew\/?$/i.test(path)) {
       const subscriptionIdRaw = search.get("subscription_id") || "";
       return {
         view: "checkout-renew",
         subscriptionId: /^\d+$/.test(subscriptionIdRaw) ? Number(subscriptionIdRaw) : null,
         device: "",
-        path: normalizePath("/account/renew/"),
+        path: normalizePath(path.indexOf("/account-app") === 0 ? "/account-app/renew/" : "/account/renew/"),
       };
     }
-    const configMatch = path.match(/^\/account\/config\/(\d+)\/?$/);
+    const configMatch = path.match(/^\/account(?:-app)?\/config\/(\d+)\/?$/);
     if (configMatch) {
       return {
         view: "config",
