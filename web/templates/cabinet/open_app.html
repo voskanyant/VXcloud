@@ -12,6 +12,7 @@
       <h1 class="vx-bot-title" id="open-app-title">Пробуем открыть {{ deeplinks.0.label }}</h1>
       <div class="vx-open-progress" aria-hidden="true"><span id="open-app-progress"></span></div>
       <p class="vx-bot-line">Если приложение установлено, импорт откроется автоматически. Если нет, попробуем следующее.</p>
+      <p class="vx-bot-line">При первом запуске разрешите доступ к сети, затем вернитесь сюда.</p>
       <div class="vx-bot-actions">
         <a class="account-primary-button vx-bot-button vx-bot-button-primary" id="open-app-current" href="{{ deeplinks.0.url }}">Открыть {{ deeplinks.0.label }}</a>
         <button type="button" class="account-secondary-button vx-bot-button" id="open-app-next">Не открылось — попробовать дальше</button>
@@ -19,7 +20,7 @@
     </article>
 
     <details class="vx-bot-card vx-bot-more vx-open-app-manual">
-      <summary>Ручная установка</summary>
+      <summary>Настроить вручную</summary>
       <p class="vx-bot-line">Скопируйте ссылку, откройте свое приложение, нажмите «+» и выберите импорт из буфера.</p>
       <div class="vx-bot-url-row">
         <input id="deeplink-box" class="account-input account-link-input" type="text" readonly value="{{ copy_text }}">

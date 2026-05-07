@@ -4746,6 +4746,40 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   margin-top: 4px;
 }
 
+.vx-account-bot .vx-config-hero-card {
+  gap: 5px;
+}
+
+.vx-account-bot .vx-bot-key-grid {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+}
+
+.vx-account-bot .vx-bot-key-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px;
+  color: var(--vx-bot-muted);
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.vx-account-bot .vx-bot-key-row + .vx-bot-key-row {
+  border-top: 1px solid var(--vx-bot-line);
+}
+
+.vx-account-bot .vx-bot-key-row strong {
+  color: var(--vx-bot-text);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .vx-account-bot.account-page-shell-support,
 .vx-account-bot.account-page-shell-instructions {
   gap: 10px;

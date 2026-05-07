@@ -327,8 +327,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         html = response.content.decode("utf-8")
         self.assertIn("QR и доступ", html)
         self.assertIn("Скопировать ссылку", html)
-        self.assertIn("Подключить автоматически", html)
-        self.assertLess(html.index("Подключить автоматически"), html.index("Скопировать ссылку"))
+        self.assertIn("⚡ Подключить", html)
+        self.assertLess(html.index("⚡ Подключить"), html.index("Скопировать ссылку"))
         self.assertIn("Активен", html)
         self.assertIn("Данные", html)
         self.assertIn("Все доступы", html)
@@ -421,7 +421,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertNotIn("streisandRetried", html)
         self.assertNotIn("streisandWarmupPending", html)
         self.assertNotIn("window.location.href = 'streisand://'", html)
-        self.assertIn("Ручная установка", html)
+        self.assertIn("Настроить вручную", html)
+        self.assertIn("При первом запуске разрешите доступ к сети", html)
         self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
 
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):

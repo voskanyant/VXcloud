@@ -5,7 +5,9 @@
 {% block content %}
 {% if subscription %}
 <div class="account-page-shell account-page-shell-config vx-account-bot">
-  <section class="vx-bot-card vx-bot-status-strip">
+  <section class="vx-bot-card vx-bot-status-strip vx-config-hero-card">
+    <p class="vx-bot-eyebrow">Доступ</p>
+    <h1 class="vx-bot-title vx-bot-title-large">{{ display_name }}</h1>
     <p class="vx-bot-line">
       <span class="vx-bot-pill{% if has_active %} vx-bot-pill-active{% endif %}">{% if has_active %}Активен{% else %}Истёк{% endif %}</span>
       {% if subscription.expires_at %} действует до <strong>{{ subscription.expires_at|date:'d.m.Y H:i' }}</strong>{% else %} бессрочный доступ{% endif %}
@@ -14,10 +16,10 @@
 
   <article class="vx-bot-card account-config-link-section">
     <p class="vx-bot-eyebrow">Подключение</p>
-    <h1 class="vx-bot-title">Ссылка подписки</h1>
-    <p class="vx-bot-line">Скопируйте ссылку или откройте импорт автоматически.</p>
+    <h2 class="vx-bot-title">Ссылка подписки</h2>
+    <p class="vx-bot-line">Нажмите «Подключить». Если приложение не открылось, скопируйте ссылку.</p>
     <div class="vx-bot-actions">
-      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}">⚡ Подключить автоматически</a>
+      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}">⚡ Подключить</a>
       <button type="button" class="account-secondary-button vx-bot-button account-config-copy-main" id="copy-config-main">🔗 Скопировать ссылку</button>
     </div>
     <div class="vx-bot-url-row">
@@ -29,7 +31,7 @@
   </article>
 
   <article class="vx-bot-card account-section-qr" id="qr">
-    <p class="vx-bot-eyebrow">QR</p>
+    <p class="vx-bot-eyebrow">Запасной способ</p>
     <h2 class="vx-bot-title">QR и доступ</h2>
     <div class="account-qr-frame vx-bot-qr-frame">
       <img class="account-qr-image" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
@@ -39,10 +41,18 @@
 
   <article class="vx-bot-card account-config-rename-section">
     <p class="vx-bot-eyebrow">Данные</p>
-    <p class="vx-bot-line">ID доступа: <strong>#{{ subscription.id }}</strong></p>
-    {% if subscription.user and subscription.user.client_code %}
-      <p class="vx-bot-line">ID клиента: <strong>{{ subscription.user.client_code }}</strong></p>
-    {% endif %}
+    <div class="vx-bot-key-grid">
+      <div class="vx-bot-key-row">
+        <span>ID доступа</span>
+        <strong>#{{ subscription.id }}</strong>
+      </div>
+      {% if subscription.user and subscription.user.client_code %}
+        <div class="vx-bot-key-row">
+          <span>ID клиента</span>
+          <strong>{{ subscription.user.client_code }}</strong>
+        </div>
+      {% endif %}
+    </div>
     <div class="vx-bot-actions">
       {% if can_renew %}
         <a class="account-secondary-button vx-bot-button" href="{{ renew_url }}" target="_top">🔄 Продлить</a>
