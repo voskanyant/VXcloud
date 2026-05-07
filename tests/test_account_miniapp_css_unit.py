@@ -27,6 +27,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-actions-utility", self.css)
+        title_rule = self.css[self.css.index(".vx-account-bot .vx-bot-title {") :]
+        title_rule = title_rule[: title_rule.index("}")]
+        self.assertIn("font-size: 17px;", title_rule)
+        self.assertIn("font-weight: 700;", title_rule)
         bot_card_rule = self.css[self.css.index(".vx-account-bot .vx-bot-card {") :]
         bot_card_rule = bot_card_rule[: bot_card_rule.index("}")]
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.03)", bot_card_rule)
