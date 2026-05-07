@@ -40,6 +40,27 @@ class ActivateSubscriptionIdempotencyUnitTests(unittest.IsolatedAsyncioTestCase)
         db.extend_subscription.assert_not_called()
         db.create_subscription.assert_not_called()
 
+    async def test_retry_on_in_flight_activating_order_does_not_return_old_subscription(self):
+        db = AsyncMock()
+        db.claim_order_for_activation.return_value = None
+        db.get_order_by_id.return_value = {
+            "id": 102,
+            "user_id": 77,
+            "status": "activating",
+        }
+        db.get_user_client_code.return_value = None
+
+        xui = AsyncMock()
+        settings = AsyncMock()
+
+        with self.assertRaisesRegex(RuntimeError, "already activating"):
+            await activate_subscription(102, db=db, xui=xui, settings=settings)
+
+        db.get_active_subscription.assert_not_called()
+        db.get_latest_subscription.assert_not_called()
+        db.extend_subscription.assert_not_called()
+        db.create_subscription.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -181,7 +181,9 @@ async def activate_subscription(
 
     if claimed_order is None:
         status = str(order.get("status") or "")
-        if status not in {"activating", "activated"}:
+        if status == "activating":
+            raise RuntimeError(f"Order {order_id} is already activating")
+        if status != "activated":
             raise RuntimeError(f"Order {order_id} is not eligible for activation (status={status})")
         sub = await db.get_active_subscription(user_id)
         if sub is None:

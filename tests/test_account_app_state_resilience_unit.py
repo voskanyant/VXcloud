@@ -17,6 +17,7 @@ import django
 
 django.setup()
 
+from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.auth.models import User
 from django.db import DatabaseError
 from django.test import Client, RequestFactory
@@ -24,6 +25,7 @@ from django.utils import timezone
 from unittest.mock import patch
 
 from cabinet.views import (
+    _build_dashboard_payment_state,
     _build_public_absolute_url,
     _resolve_renew_target_subscription_id,
     _vpn_public_host,
@@ -42,6 +44,13 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.client = Client()
         assert self.client.login(username="account_state_resilience", password="pass12345")
         self.factory = RequestFactory()
+
+    def _request_with_session(self, path: str = "/account-app/api/state/"):
+        request = self.factory.get(path)
+        request.user = self.user
+        SessionMiddleware(lambda req: None).process_request(request)
+        request.session.save()
+        return request
 
     def test_account_state_returns_empty_dashboard_when_bot_backend_errors(self):
         with patch("cabinet.views._resolve_account_bot_user", side_effect=DatabaseError("users table unavailable")):
@@ -295,6 +304,38 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("/account-app/config/42/", actions_html)
         self.assertLess(actions_html.index("Подключить"), actions_html.index("QR и доступ"))
         self.assertLess(actions_html.index("Подключить"), actions_html.index("Скопировать ссылку"))
+
+    def test_dashboard_payment_state_recovers_paid_order_without_session_state(self):
+        now = timezone.now()
+        bot_user = SimpleNamespace(id=321)
+        order = SimpleNamespace(
+            id=9001,
+            status="paid",
+            paid_at=now,
+        )
+
+        class FakeOrderQuerySet:
+            def filter(self, *args, **kwargs):
+                return self
+
+            def only(self, *args):
+                return self
+
+            def order_by(self, *args):
+                return self
+
+            def first(self):
+                return order
+
+        request = self._request_with_session()
+        with patch("cabinet.views.BotOrder.objects.filter", return_value=FakeOrderQuerySet()):
+            with patch("cabinet.views._spawn_activation_worker") as spawn_worker:
+                state = _build_dashboard_payment_state(request, bot_user)
+
+        self.assertIsNotNone(state)
+        self.assertTrue(state["pending"])
+        self.assertEqual(state["status"], "paid")
+        spawn_worker.assert_called_once_with(int(order.id))
 
     def test_account_app_dashboard_empty_state_is_trial_first_when_bot_exists(self):
         bot_user = SimpleNamespace(id=7, client_code="VX-000007")

@@ -26,7 +26,7 @@ from django.contrib.auth.views import LoginView
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.core.cache import cache
-from django.db import DatabaseError, IntegrityError, OperationalError, ProgrammingError
+from django.db import DatabaseError, IntegrityError, OperationalError, ProgrammingError, models
 from django.db import transaction
 from django.conf import settings
 from django.middleware.csrf import get_token
@@ -1109,21 +1109,26 @@ def _build_dashboard_payment_state(request: HttpRequest, bot_user: BotUser | Non
         return None
     session_state = _load_web_order_session_state(request, user_id=int(bot_user.id))
     order_id_raw = str(session_state.get("order_id") or "").strip()
-    if not order_id_raw.isdigit():
-        return None
-    order = (
-        BotOrder.objects.filter(
-            id=int(order_id_raw),
-            user_id=int(bot_user.id),
-            channel="web",
-            payment_method="card",
-        )
-        .only("id", "status")
-        .first()
+    order_qs = BotOrder.objects.filter(
+        user_id=int(bot_user.id),
+        channel="web",
+        payment_method="card",
     )
+    if order_id_raw.isdigit():
+        order = order_qs.filter(id=int(order_id_raw)).only("id", "status", "paid_at").first()
+    else:
+        stale_cutoff = timezone.now() - timedelta(seconds=90)
+        order = (
+            order_qs.filter(status__in=["paid", "activating"])
+            .filter(models.Q(status="paid") | models.Q(status="activating", paid_at__lt=stale_cutoff))
+            .only("id", "status", "paid_at")
+            .order_by("-paid_at", "-id")
+            .first()
+        )
     if order is None:
-        request.session.pop(WEB_ORDER_SESSION_KEY, None)
-        request.session.modified = True
+        if order_id_raw.isdigit():
+            request.session.pop(WEB_ORDER_SESSION_KEY, None)
+            request.session.modified = True
         return None
 
     status = str(order.status or "").strip().lower()
@@ -1136,6 +1141,9 @@ def _build_dashboard_payment_state(request: HttpRequest, bot_user: BotUser | Non
             "poll_ms": 2500,
         }
     if status == "activating":
+        stale_cutoff = timezone.now() - timedelta(seconds=90)
+        if order.paid_at and order.paid_at < stale_cutoff:
+            _spawn_activation_worker(int(order.id))
         return {
             "pending": True,
             "status": status,

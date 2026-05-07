@@ -1211,6 +1211,53 @@ class VPNBot:
         )
 
     async def _send_mysub_for_message(self, message: Message, user_id: int, context: ContextTypes.DEFAULT_TYPE) -> None:
+        latest_unactivated_order = None
+        get_unactivated_order = getattr(self.db, "get_latest_unactivated_paid_order", None)
+        if callable(get_unactivated_order):
+            latest_unactivated_order = await get_unactivated_order(user_id)
+        if latest_unactivated_order:
+            await message.reply_text(
+                self._content_text(
+                    "recovering_subscription_message",
+                    "Найден оплаченный заказ. Пробую восстановить доступ...",
+                )
+            )
+            try:
+                await asyncio.wait_for(
+                    self._run_user_provision(
+                        user_id,
+                        lambda: self._activate_order_and_send_config(
+                            update=None,
+                            order_id=int(latest_unactivated_order["id"]),
+                            message=message,
+                        ),
+                    ),
+                    timeout=45,
+                )
+            except Exception:
+                LOGGER.exception(
+                    "Failed to recover unactivated paid order for user_id=%s order_id=%s",
+                    user_id,
+                    latest_unactivated_order.get("id"),
+                )
+                await message.reply_text(
+                    self._content_text(
+                        "recover_failed_message",
+                        "Не удалось автоматически восстановить доступ. Поддержка уже уведомлена, пожалуйста подождите.",
+                    )
+                )
+                if self.settings.telegram_admin_id:
+                    try:
+                        await self.app.bot.send_message(
+                            chat_id=self.settings.telegram_admin_id,
+                            text=(
+                                "⚠️ Ошибка восстановления оплаченного доступа.\n"
+                                f"user_id={user_id} paid_order_id={latest_unactivated_order.get('id')}"
+                            ),
+                        )
+                    except Exception:
+                        LOGGER.exception("Failed to notify admin about paid order recovery issue")
+
         subscriptions = await self.db.list_subscriptions(user_id)
         if not subscriptions:
             paid_order = await self.db.get_latest_paid_order(user_id)

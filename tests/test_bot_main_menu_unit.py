@@ -83,6 +83,10 @@ class FakeDB:
         del user_id
         return None
 
+    async def get_latest_unactivated_paid_order(self, user_id: int):
+        del user_id
+        return None
+
     async def record_bot_user_event(
         self,
         *,

@@ -1954,17 +1954,46 @@ class DB:
         )
         return dict(row) if row else None
 
-    async def claim_order_for_activation(self, order_id: int) -> dict[str, Any] | None:
+    async def get_latest_unactivated_paid_order(self, user_id: int, activating_stale_seconds: int = 90) -> dict[str, Any] | None:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            SELECT *
+            FROM orders
+            WHERE user_id = $1
+              AND (
+                    status = 'paid'
+                    OR (
+                        status = 'activating'
+                        AND COALESCE(paid_at, created_at) < (NOW() - make_interval(secs => $2))
+                    )
+                  )
+            ORDER BY paid_at DESC NULLS LAST, id DESC
+            LIMIT 1
+            """,
+            user_id,
+            int(activating_stale_seconds),
+        )
+        return dict(row) if row else None
+
+    async def claim_order_for_activation(self, order_id: int, activating_stale_seconds: int = 90) -> dict[str, Any] | None:
         assert self.pool is not None
         row = await self.pool.fetchrow(
             """
             UPDATE orders
             SET status = 'activating'
             WHERE id = $1
-              AND status = 'paid'
+              AND (
+                    status = 'paid'
+                    OR (
+                        status = 'activating'
+                        AND COALESCE(paid_at, created_at) < (NOW() - make_interval(secs => $2))
+                    )
+                  )
             RETURNING *
             """,
             order_id,
+            int(activating_stale_seconds),
         )
         return dict(row) if row else None
 
