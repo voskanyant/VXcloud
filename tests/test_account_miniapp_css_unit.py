@@ -27,6 +27,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-actions-utility", self.css)
+        bot_card_rule = self.css[self.css.index(".vx-account-bot .vx-bot-card {") :]
+        bot_card_rule = bot_card_rule[: bot_card_rule.index("}")]
+        self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.03)", bot_card_rule)
         access_meta_rule = self.css[self.css.index(".vx-account-bot .vx-bot-access-meta {") :]
         access_meta_rule = access_meta_rule[: access_meta_rule.index("}")]
         self.assertIn("padding: 9px 10px;", access_meta_rule)
