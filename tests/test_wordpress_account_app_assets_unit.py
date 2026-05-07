@@ -83,6 +83,8 @@ class WordPressAccountAppAssetTests(unittest.TestCase):
         self.assertIn("paymentPollTimer", self.js)
         self.assertIn("window.clearTimeout(state.paymentPollTimer)", self.js)
         self.assertIn("model.payment && model.payment.pending", self.dashboard_js)
+        self.assertIn("model.payment && model.payment.completed", self.dashboard_js)
+        self.assertIn("completedPaymentState.config_url", self.dashboard_js)
         self.assertIn("vx-payment-recovery", self.dashboard_js)
         self.assertIn("loadCurrentView();", self.dashboard_js)
         self.assertIn("paymentState.poll_ms || 2500", self.dashboard_js)

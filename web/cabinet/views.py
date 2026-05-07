@@ -1115,13 +1115,13 @@ def _build_dashboard_payment_state(request: HttpRequest, bot_user: BotUser | Non
         payment_method="card",
     )
     if order_id_raw.isdigit():
-        order = order_qs.filter(id=int(order_id_raw)).only("id", "status", "paid_at").first()
+        order = order_qs.filter(id=int(order_id_raw)).only("id", "payload", "status", "paid_at").first()
     else:
         stale_cutoff = timezone.now() - timedelta(seconds=90)
         order = (
             order_qs.filter(status__in=["paid", "activating"])
             .filter(models.Q(status="paid") | models.Q(status="activating", paid_at__lt=stale_cutoff))
-            .only("id", "status", "paid_at")
+            .only("id", "payload", "status", "paid_at")
             .order_by("-paid_at", "-id")
             .first()
         )
@@ -1157,10 +1157,41 @@ def _build_dashboard_payment_state(request: HttpRequest, bot_user: BotUser | Non
             "message": "Ждем подтверждение оплаты. После оплаты доступ появится здесь автоматически.",
             "poll_ms": 2500,
         }
+    if status == "activated" and order_id_raw.isdigit():
+        subscription_id = _target_subscription_id_for_order(bot_user, order)
+        request.session.pop(WEB_ORDER_SESSION_KEY, None)
+        request.session.modified = True
+        if subscription_id:
+            return {
+                "completed": True,
+                "status": status,
+                "message": "Доступ готов. Открываем страницу подключения.",
+                "config_url": _account_backend_url(request, f"config/{subscription_id}/"),
+            }
     if status in {"activated", "cancelled", "failed"}:
         request.session.pop(WEB_ORDER_SESSION_KEY, None)
         request.session.modified = True
     return None
+
+
+def _target_subscription_id_for_order(bot_user: BotUser, order: BotOrder) -> int | None:
+    payload = str(getattr(order, "payload", "") or "")
+    if payload.startswith("web-renew:"):
+        parts = payload.split(":")
+        if len(parts) >= 3:
+            try:
+                subscription_id = int(parts[2])
+            except (TypeError, ValueError):
+                subscription_id = 0
+            if subscription_id > 0:
+                return subscription_id
+    subscription = (
+        BotSubscription.objects.filter(user=bot_user, revoked_at__isnull=True)
+        .order_by("-id")
+        .only("id")
+        .first()
+    )
+    return int(subscription.id) if subscription else None
 
 
 def _save_web_order_session_state(
@@ -2725,6 +2756,7 @@ async def _activate_order_async(order_id: int) -> None:
             order_id=order_id,
             telegram_bot_token=app_settings.telegram_bot_token,
             user_id=result.user_id,
+            subscription_id=result.subscription_id,
         )
     except Exception:
         _log_payment_event(
@@ -2746,6 +2778,7 @@ async def _notify_user_after_card_activation(
     order_id: int,
     telegram_bot_token: str,
     user_id: int,
+    subscription_id: int | None = None,
 ) -> None:
     if not telegram_bot_token:
         return
@@ -2760,11 +2793,20 @@ async def _notify_user_after_card_activation(
 
     client_code = await db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
     subscriptions = await db.list_subscriptions(user_id)
-    message_text = _telegram_my_vpn_text_after_card_activation(
-        client_code=client_code,
-        subscriptions=subscriptions,
-    )
-    reply_markup = _telegram_my_vpn_reply_markup(subscriptions)
+    target_subscription = _telegram_find_subscription(subscriptions, subscription_id)
+    site_url = str(os.getenv("WORDPRESS_PUBLIC_SITE_URL", "") or "https://vxcloud.ru").strip().rstrip("/") or "https://vxcloud.ru"
+    if target_subscription:
+        message_text = _telegram_config_card_text_after_card_activation(
+            client_code=client_code,
+            subscription=target_subscription,
+        )
+        reply_markup = _telegram_config_card_reply_markup(target_subscription, site_url=site_url)
+    else:
+        message_text = _telegram_my_vpn_text_after_card_activation(
+            client_code=client_code,
+            subscriptions=subscriptions,
+        )
+        reply_markup = _telegram_my_vpn_reply_markup(subscriptions)
     await asyncio.to_thread(
         _send_telegram_message_sync,
         telegram_bot_token,
@@ -2772,6 +2814,107 @@ async def _notify_user_after_card_activation(
         message_text,
         reply_markup,
     )
+
+
+def _telegram_find_subscription(
+    subscriptions: list[dict[str, object]],
+    subscription_id: int | None,
+) -> dict[str, object] | None:
+    if subscription_id:
+        for sub in subscriptions:
+            try:
+                if int(sub.get("id") or 0) == int(subscription_id):
+                    return sub
+            except (TypeError, ValueError):
+                continue
+    ordered = _telegram_sorted_subscriptions(subscriptions)
+    return ordered[0] if ordered else None
+
+
+def _telegram_subscription_url(sub: dict[str, object], *, site_url: str) -> str:
+    feed_token = str(sub.get("feed_token") or "").strip()
+    if feed_token:
+        return build_bot_feed_url(site_url=site_url, feed_token=feed_token)
+    return str(sub.get("vless_url") or "").strip()
+
+
+def _telegram_open_app_url(subscription_url: str, *, site_url: str) -> str:
+    if not subscription_url:
+        return site_url
+    params = urlencode({"mode": "ios-auto", "u": subscription_url})
+    return f"{site_url}/open-app/?{params}"
+
+
+def _telegram_mini_app_url(path: str, *, site_url: str) -> str:
+    raw = str(path or "/account-app/").strip() or "/account-app/"
+    parsed = urlsplit(raw)
+    route_path = parsed.path or "/account-app/"
+    params = parse_qsl(parsed.query, keep_blank_values=True)
+    if not any(key == "embed" for key, _value in params):
+        params.append(("embed", "1"))
+    return urlunsplit(("https", urlsplit(site_url).netloc or "vxcloud.ru", route_path, urlencode(params), parsed.fragment))
+
+
+def _telegram_config_card_text_after_card_activation(
+    *,
+    client_code: str,
+    subscription: dict[str, object],
+) -> str:
+    now = timezone.now()
+    return "\n\n".join(
+        [
+            "Оплата получена, доступ активирован.",
+            f"Устройство: {_telegram_subscription_name(subscription)}",
+            f"ID: {client_code}",
+            "Статус: "
+            f"{_telegram_subscription_button_icon(subscription, now)} {_telegram_subscription_status(subscription, now)}\n"
+            f"Действует до: {_telegram_format_dt(subscription.get('expires_at'))}",
+            "Нажмите «⚡ Подключить». Если приложение не открылось, используйте «🔗 Скопировать ссылку».",
+        ]
+    )
+
+
+def _telegram_config_card_reply_markup(sub: dict[str, object], *, site_url: str) -> dict[str, object]:
+    subscription_id = int(sub.get("id") or 0)
+    subscription_url = _telegram_subscription_url(sub, site_url=site_url)
+    rows: list[list[dict[str, object]]] = []
+    if subscription_id > 0:
+        rows.append(
+            [
+                {
+                    "text": "⚡ Подключить",
+                    "url": _telegram_open_app_url(subscription_url, site_url=site_url),
+                }
+            ]
+        )
+    if subscription_url:
+        rows.append([{"text": "🔗 Скопировать ссылку", "copy_text": {"text": subscription_url}}])
+    if subscription_id > 0:
+        rows.append(
+            [
+                {
+                    "text": "📱 QR и доступ",
+                    "web_app": {"url": _telegram_mini_app_url(f"/account-app/config/{subscription_id}/", site_url=site_url)},
+                }
+            ]
+        )
+        rows.append(
+            [
+                {"text": "QR", "callback_data": f"act|cfg_qr:{subscription_id}|_"},
+                {
+                    "text": "🔄 Продлить",
+                    "web_app": {
+                        "url": _telegram_mini_app_url(
+                            f"/account-app/renew/?subscription_id={subscription_id}",
+                            site_url=site_url,
+                        )
+                    },
+                },
+            ]
+        )
+        rows.append([{"text": "Переименовать", "callback_data": f"act|cfg_rename:{subscription_id}|_"}])
+        rows.append([{"text": "Назад", "callback_data": "act|start_mysub|_"}])
+    return {"inline_keyboard": rows}
 
 
 def _telegram_subscription_name(sub: dict[str, object]) -> str:

@@ -33,6 +33,8 @@ class FakeActivationNotifyDB:
                 "expires_at": datetime.now(dt_timezone.utc) + timedelta(days=30),
                 "is_active": True,
                 "revoked_at": None,
+                "feed_token": "feed-42",
+                "vless_url": "vless://phone",
             },
             {
                 "id": 43,
@@ -40,6 +42,8 @@ class FakeActivationNotifyDB:
                 "expires_at": datetime.now(dt_timezone.utc) + timedelta(days=10),
                 "is_active": True,
                 "revoked_at": None,
+                "feed_token": "feed-43",
+                "vless_url": "vless://mac",
             },
         ]
 
@@ -77,6 +81,7 @@ class CardActivationBotNotificationUnitTests(unittest.IsolatedAsyncioTestCase):
                 order_id=1001,
                 telegram_bot_token="token",
                 user_id=123,
+                subscription_id=42,
             )
 
         self.assertEqual(len(sent), 1)
@@ -84,14 +89,16 @@ class CardActivationBotNotificationUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(token, "token")
         self.assertEqual(chat_id, 999)
         self.assertIn("Оплата получена", text)
-        self.assertIn("Мой VPN", text)
+        self.assertIn("Устройство: Tigran iPhone", text)
         self.assertIn("ID: VX-000001", text)
-        self.assertIn("активных: 2", text)
-        self.assertIn("Tigran iPhone", text)
-        self.assertIn("MacBook", text)
+        self.assertIn("Нажмите «⚡ Подключить»", text)
         self.assertIsNotNone(reply_markup)
-        self.assertEqual(reply_markup["inline_keyboard"][0][0]["callback_data"], "act|cfg_open:43|_")
-        self.assertEqual(reply_markup["inline_keyboard"][1][0]["callback_data"], "act|cfg_open:42|_")
+        self.assertEqual(reply_markup["inline_keyboard"][0][0]["text"], "⚡ Подключить")
+        self.assertIn("/open-app/?mode=ios-auto", reply_markup["inline_keyboard"][0][0]["url"])
+        self.assertEqual(reply_markup["inline_keyboard"][1][0]["copy_text"]["text"], "https://vxcloud.ru/account/feed/feed-42/")
+        self.assertEqual(reply_markup["inline_keyboard"][2][0]["text"], "📱 QR и доступ")
+        self.assertEqual(reply_markup["inline_keyboard"][3][0]["callback_data"], "act|cfg_qr:42|_")
+        self.assertEqual(reply_markup["inline_keyboard"][4][0]["callback_data"], "act|cfg_rename:42|_")
 
     async def test_card_activation_notification_is_sent_once(self):
         db = FakeActivationNotifyDB()
@@ -103,12 +110,14 @@ class CardActivationBotNotificationUnitTests(unittest.IsolatedAsyncioTestCase):
                 order_id=1001,
                 telegram_bot_token="token",
                 user_id=123,
+                subscription_id=42,
             )
             await _notify_user_after_card_activation(
                 db=db,
                 order_id=1001,
                 telegram_bot_token="token",
                 user_id=123,
+                subscription_id=42,
             )
 
         self.assertEqual(len(sent), 1)

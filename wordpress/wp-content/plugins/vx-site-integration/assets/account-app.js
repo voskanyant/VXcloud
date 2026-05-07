@@ -638,6 +638,12 @@
       ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="buy">\u041a\u0443\u043f\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f</button>'
       : "";
     const paymentState = model && model.payment && model.payment.pending ? model.payment : null;
+    const completedPaymentState = model && model.payment && model.payment.completed ? model.payment : null;
+    if (completedPaymentState && completedPaymentState.config_url) {
+      window.history.replaceState({}, "", completedPaymentState.config_url);
+      loadCurrentView();
+      return;
+    }
     const paymentRecoveryHtml = paymentState
       ? '<section class="vx-section-card vx-payment-recovery"><div class="vx-dashboard-help__copy"><strong>\u041e\u043f\u043b\u0430\u0442\u0430 \u043f\u0440\u043e\u0448\u043b\u0430</strong><span>' +
         escapeHtml(paymentState.message || "\u0413\u043e\u0442\u043e\u0432\u0438\u043c \u0434\u043e\u0441\u0442\u0443\u043f, \u0441\u043f\u0438\u0441\u043e\u043a \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u0441\u044f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438.") +

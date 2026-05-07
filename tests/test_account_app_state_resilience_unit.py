@@ -25,6 +25,7 @@ from django.utils import timezone
 from unittest.mock import patch
 
 from cabinet.views import (
+    WEB_ORDER_SESSION_KEY,
     _build_dashboard_payment_state,
     _build_public_absolute_url,
     _resolve_renew_target_subscription_id,
@@ -336,6 +337,42 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertTrue(state["pending"])
         self.assertEqual(state["status"], "paid")
         spawn_worker.assert_called_once_with(int(order.id))
+
+    def test_dashboard_payment_state_opens_config_after_card_activation(self):
+        now = timezone.now()
+        bot_user = SimpleNamespace(id=321)
+        order = SimpleNamespace(
+            id=9001,
+            payload="web-newcfg:321:abc",
+            status="activated",
+            paid_at=now,
+        )
+
+        class FakeOrderQuerySet:
+            def filter(self, *args, **kwargs):
+                return self
+
+            def only(self, *args):
+                return self
+
+            def first(self):
+                return order
+
+        request = self._request_with_session()
+        request.session[WEB_ORDER_SESSION_KEY] = {
+            "user_id": "321",
+            "idempotency_key": "idem",
+            "order_id": "9001",
+        }
+        request.session.save()
+        with patch("cabinet.views.BotOrder.objects.filter", return_value=FakeOrderQuerySet()):
+            with patch("cabinet.views._target_subscription_id_for_order", return_value=42):
+                state = _build_dashboard_payment_state(request, bot_user)
+
+        self.assertIsNotNone(state)
+        self.assertTrue(state["completed"])
+        self.assertEqual(state["config_url"], "/account-app/config/42/?embed=1")
+        self.assertNotIn(WEB_ORDER_SESSION_KEY, request.session)
 
     def test_account_app_dashboard_empty_state_is_trial_first_when_bot_exists(self):
         bot_user = SimpleNamespace(id=7, client_code="VX-000007")
