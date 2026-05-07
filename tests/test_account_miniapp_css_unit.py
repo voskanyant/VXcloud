@@ -192,6 +192,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
         )
         self.assertIn(".vx-account-bot .account-step-list li::marker", self.css)
         self.assertIn(".vx-account-bot .account-support-hint", self.css)
+        self.assertIn(".vx-account-bot .account-support-id,\n.vx-account-bot .account-support-hint", self.css)
         self.assertIn(".vx-account-bot .account-support-id-row", self.css)
         self.assertIn(".vx-account-bot .account-support-id .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .account-instructions-access .vx-bot-line", self.css)
