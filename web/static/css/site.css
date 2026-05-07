@@ -5078,6 +5078,20 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   gap: 8px;
 }
 
+.vx-account-bot .account-instructions-access .vx-bot-line,
+.vx-account-bot .account-device-headline {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
+}
+
+.vx-account-bot .account-instructions-access .vx-bot-button {
+  margin-top: 1px;
+}
+
 .vx-account-bot .account-support-id,
 .vx-account-bot .account-support-hint,
 .vx-account-bot .vx-bot-key-card {
