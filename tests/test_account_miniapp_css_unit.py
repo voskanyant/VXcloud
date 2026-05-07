@@ -68,6 +68,12 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-qr-frame", self.css)
         self.assertIn(".vx-account-bot .vx-bot-rename-form", self.css)
 
+    def test_auth_edges_use_polished_bot_controls(self):
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-shell", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-form p", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .account-message-error", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-code-value", self.css)
+
 
 if __name__ == "__main__":
     unittest.main()

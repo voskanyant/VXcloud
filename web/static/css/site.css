@@ -4947,23 +4947,34 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 6px 18px rgba(0, 0, 0, 0.04);
 }
 
+.vx-account-bot.vx-auth-bot > * {
+  min-width: 0;
+}
+
 .vx-account-bot.vx-auth-bot .vx-auth-title {
   font-size: 24px;
   line-height: 1.15;
 }
 
-.vx-account-bot.vx-auth-bot .auth-form {
+.vx-account-bot.vx-auth-bot .auth-form,
+.vx-account-bot.vx-auth-bot .auth-form p {
+  display: grid;
   gap: 12px;
+  margin: 0;
 }
 
 .vx-account-bot.vx-auth-bot .auth-field {
   gap: 6px;
 }
 
-.vx-account-bot.vx-auth-bot .auth-field label {
+.vx-account-bot.vx-auth-bot .auth-field label,
+.vx-account-bot.vx-auth-bot .auth-form p label {
   color: var(--vx-bot-eyebrow);
   font-size: 11px;
+  font-weight: 700;
   letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
 }
 
 .vx-account-bot.vx-auth-bot input[type="text"],
@@ -4991,6 +5002,23 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   outline-offset: 0;
 }
 
+.vx-account-bot.vx-auth-bot .account-message,
+.vx-account-bot.vx-auth-bot .account-message-error {
+  padding: 10px;
+  border: 0;
+  border-radius: var(--vx-bot-button-radius);
+  background: #fff5f5;
+  color: #9b2c2c;
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.vx-account-bot.vx-auth-bot .auth-field-error {
+  color: #9b2c2c;
+  font-size: 13px;
+  line-height: 1.3;
+}
+
 .vx-account-bot.vx-auth-bot .auth-submit {
   height: 54px;
   min-height: 54px;
@@ -5013,6 +5041,56 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 .vx-account-bot.vx-auth-bot .auth-meta {
   gap: 6px;
   margin-top: 0;
+}
+
+.vx-account-bot.vx-auth-bot .auth-widget-shell {
+  gap: 8px;
+  padding: 10px;
+  border: 0;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+}
+
+.vx-account-bot.vx-auth-bot .auth-widget-shell .account-summary-label {
+  color: var(--vx-bot-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.vx-account-bot.vx-auth-bot .auth-widget-shell .account-subtle,
+.vx-account-bot.vx-auth-bot .auth-note {
+  color: var(--vx-bot-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.vx-account-bot.vx-auth-bot .auth-widget-button {
+  justify-content: center;
+  min-height: 44px;
+}
+
+.vx-account-bot.vx-auth-bot .auth-divider {
+  gap: 10px;
+  color: var(--vx-bot-muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+.vx-account-bot.vx-auth-bot .auth-divider span:first-child,
+.vx-account-bot.vx-auth-bot .auth-divider span:last-child {
+  border-top-color: var(--vx-bot-line);
+}
+
+.vx-account-bot.vx-auth-bot .auth-code-panel {
+  gap: 6px;
+}
+
+.vx-account-bot.vx-auth-bot .auth-code-value {
+  color: var(--vx-bot-text);
+  font-size: 22px;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 
 .vx-open-app-shell.vx-account-bot {
