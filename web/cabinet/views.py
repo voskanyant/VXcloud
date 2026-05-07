@@ -603,6 +603,7 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
             "telegram_id": None,
             "link_url": _account_frontend_url("link/"),
         },
+        "payment": None,
         "subscriptions": [],
         "urls": {
             "dashboard": _account_frontend_url(),
@@ -627,6 +628,7 @@ def _build_dashboard_payload(request: HttpRequest) -> dict[str, object]:
         "link_url": _account_frontend_url("link/"),
     }
     empty_payload["user"]["client_code"] = getattr(bot_user, "client_code", "") or ""
+    empty_payload["payment"] = _build_dashboard_payment_state(request, bot_user)
 
     try:
         rows, active_configs, inactive_configs = _build_subscription_rows(bot_user)
@@ -1100,6 +1102,57 @@ def _load_web_order_session_state(request: HttpRequest, *, user_id: int) -> dict
         "order_id": str(raw_state.get("order_id", "")),
         "pay_url": str(raw_state.get("pay_url", "")),
     }
+
+
+def _build_dashboard_payment_state(request: HttpRequest, bot_user: BotUser | None) -> dict[str, object] | None:
+    if bot_user is None:
+        return None
+    session_state = _load_web_order_session_state(request, user_id=int(bot_user.id))
+    order_id_raw = str(session_state.get("order_id") or "").strip()
+    if not order_id_raw.isdigit():
+        return None
+    order = (
+        BotOrder.objects.filter(
+            id=int(order_id_raw),
+            user_id=int(bot_user.id),
+            channel="web",
+            payment_method="card",
+        )
+        .only("id", "status")
+        .first()
+    )
+    if order is None:
+        request.session.pop(WEB_ORDER_SESSION_KEY, None)
+        request.session.modified = True
+        return None
+
+    status = str(order.status or "").strip().lower()
+    if status == "paid":
+        _spawn_activation_worker(int(order.id))
+        return {
+            "pending": True,
+            "status": status,
+            "message": "Оплата получена. Готовим доступ, список обновится автоматически.",
+            "poll_ms": 2500,
+        }
+    if status == "activating":
+        return {
+            "pending": True,
+            "status": status,
+            "message": "Готовим доступ, список обновится автоматически.",
+            "poll_ms": 2500,
+        }
+    if status == "pending":
+        return {
+            "pending": True,
+            "status": status,
+            "message": "Ждем подтверждение оплаты. После оплаты доступ появится здесь автоматически.",
+            "poll_ms": 2500,
+        }
+    if status in {"activated", "cancelled", "failed"}:
+        request.session.pop(WEB_ORDER_SESSION_KEY, None)
+        request.session.modified = True
+    return None
 
 
 def _save_web_order_session_state(
@@ -2696,18 +2749,156 @@ async def _notify_user_after_card_activation(
     if not is_first_notification:
         return
 
-    message_text = "Оплата получена, подписка активирована"
+    client_code = await db.get_user_client_code(user_id) or f"VX-{user_id:06d}"
+    subscriptions = await db.list_subscriptions(user_id)
+    message_text = _telegram_my_vpn_text_after_card_activation(
+        client_code=client_code,
+        subscriptions=subscriptions,
+    )
+    reply_markup = _telegram_my_vpn_reply_markup(subscriptions)
     await asyncio.to_thread(
         _send_telegram_message_sync,
         telegram_bot_token,
         telegram_id,
         message_text,
+        reply_markup,
     )
 
 
-def _send_telegram_message_sync(token: str, chat_id: int, text: str) -> None:
+def _telegram_subscription_name(sub: dict[str, object]) -> str:
+    display_name = str(sub.get("display_name") or "").strip()
+    if display_name:
+        return display_name
+    client_email = str(sub.get("client_email") or "").strip()
+    if client_email:
+        return client_email
+    return f"Устройство #{sub.get('id')}"
+
+
+def _telegram_subscription_status(sub: dict[str, object], now: datetime) -> str:
+    if sub.get("revoked_at") is not None:
+        return "отозван"
+    expires_at = _telegram_aware_dt(sub.get("expires_at"))
+    if not isinstance(expires_at, datetime):
+        return "неизвестно"
+    if not bool(sub.get("is_active")):
+        return "истек" if expires_at <= now else "неактивен"
+    return "активен" if expires_at > now else "истек"
+
+
+def _telegram_subscription_badge(sub: dict[str, object], now: datetime) -> str:
+    status = _telegram_subscription_status(sub, now)
+    expires_at = _telegram_aware_dt(sub.get("expires_at"))
+    if status == "активен" and isinstance(expires_at, datetime):
+        if expires_at - now <= timedelta(days=3):
+            return "⏳ скоро закончится"
+        return "✅ активен"
+    if status == "истек":
+        return "⚠️ истек"
+    if status == "отозван":
+        return "⚠️ отозван"
+    return status
+
+
+def _telegram_subscription_button_icon(sub: dict[str, object], now: datetime) -> str:
+    badge = _telegram_subscription_badge(sub, now)
+    if badge.startswith("✅"):
+        return "✅"
+    if badge.startswith("⏳"):
+        return "⏳"
+    if badge.startswith("⚠️"):
+        return "⚠️"
+    return "•"
+
+
+def _telegram_aware_dt(value: object) -> datetime | None:
+    if not isinstance(value, datetime):
+        return None
+    if timezone.is_naive(value):
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    return value
+
+
+def _telegram_subscription_sort_key(sub: dict[str, object]) -> tuple[int, datetime, int]:
+    expires_dt = _telegram_aware_dt(sub.get("expires_at")) or datetime.max.replace(tzinfo=timezone.utc)
+    is_active = bool(sub.get("is_active")) and sub.get("revoked_at") is None and expires_dt > timezone.now()
+    return (0 if is_active else 1, expires_dt, int(sub.get("id") or 0))
+
+
+def _telegram_sorted_subscriptions(subscriptions: list[dict[str, object]]) -> list[dict[str, object]]:
+    return sorted(subscriptions, key=_telegram_subscription_sort_key)
+
+
+def _telegram_format_dt(value: object) -> str:
+    aware_value = _telegram_aware_dt(value)
+    if not isinstance(aware_value, datetime):
+        return "—"
+    local_value = timezone.localtime(aware_value)
+    return local_value.strftime("%d/%m/%Y %H:%M")
+
+
+def _telegram_my_vpn_text_after_card_activation(
+    *,
+    client_code: str,
+    subscriptions: list[dict[str, object]],
+) -> str:
+    now = timezone.now()
+    ordered = _telegram_sorted_subscriptions(subscriptions)
+    active_count = sum(1 for sub in ordered if _telegram_subscription_status(sub, now) == "активен")
+    lines = [
+        "Оплата получена, доступ активирован.",
+        "",
+        "Мой VPN",
+        "",
+        f"ID: {client_code}",
+        f"активных: {active_count}",
+    ]
+    if not ordered:
+        lines.extend(["", "Устройства пока не найдены. Нажмите «Мой VPN» ещё раз через несколько секунд."])
+        return "\n".join(lines)
+    lines.extend(["", "Устройства:", ""])
+    items: list[str] = []
+    for idx, sub in enumerate(ordered, start=1):
+        items.append(
+            f"{idx}. {_telegram_subscription_badge(sub, now)} {_telegram_subscription_name(sub)}\n"
+            f"Действует до: {_telegram_format_dt(sub.get('expires_at'))}"
+        )
+    lines.append("\n\n".join(items))
+    lines.extend(["", "Нажмите устройство, чтобы открыть QR, ссылку и управление."])
+    return "\n".join(lines)
+
+
+def _telegram_my_vpn_reply_markup(subscriptions: list[dict[str, object]]) -> dict[str, object] | None:
+    now = timezone.now()
+    rows: list[list[dict[str, str]]] = []
+    for idx, sub in enumerate(_telegram_sorted_subscriptions(subscriptions), start=1):
+        sub_id = int(sub.get("id") or 0)
+        if sub_id <= 0:
+            continue
+        rows.append(
+            [
+                {
+                    "text": f"{idx}. {_telegram_subscription_button_icon(sub, now)} {_telegram_subscription_name(sub)}",
+                    "callback_data": f"act|cfg_open:{sub_id}|_",
+                }
+            ]
+        )
+    if not rows:
+        rows.append([{"text": "🛡 Мой VPN", "callback_data": "act|start_mysub|_"}])
+    return {"inline_keyboard": rows}
+
+
+def _send_telegram_message_sync(
+    token: str,
+    chat_id: int,
+    text: str,
+    reply_markup: dict[str, object] | None = None,
+) -> None:
     api_url = f"https://api.telegram.org/bot{token}/sendMessage"
-    body = urlencode({"chat_id": str(chat_id), "text": text}).encode("utf-8")
+    payload = {"chat_id": str(chat_id), "text": text}
+    if reply_markup:
+        payload["reply_markup"] = json.dumps(reply_markup, ensure_ascii=False)
+    body = urlencode(payload).encode("utf-8")
     request = Request(api_url, data=body, method="POST")
     request.add_header("Content-Type", "application/x-www-form-urlencoded")
     with urlopen(request, timeout=10):

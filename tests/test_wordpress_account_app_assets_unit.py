@@ -78,6 +78,14 @@ class WordPressAccountAppAssetTests(unittest.TestCase):
         self.assertIn("\\u041d\\u0430\\u0447\\u043d\\u0438\\u0442\\u0435 \\u0441 \\u043f\\u0440\\u043e\\u0431\\u043d\\u043e\\u0433\\u043e \\u0434\\u043e\\u0441\\u0442\\u0443\\u043f\\u0430", self.dashboard_js)
         self.assertIn("\\u041e\\u0442\\u043a\\u0440\\u043e\\u0435\\u0442\\u0441\\u044f \\u0431\\u043e\\u0442 VXcloud", self.dashboard_js)
         self.assertIn('data-checkout="buy"', self.dashboard_js)
+
+    def test_dashboard_polls_after_card_payment_until_access_appears(self):
+        self.assertIn("paymentPollTimer", self.js)
+        self.assertIn("window.clearTimeout(state.paymentPollTimer)", self.js)
+        self.assertIn("model.payment && model.payment.pending", self.dashboard_js)
+        self.assertIn("vx-payment-recovery", self.dashboard_js)
+        self.assertIn("loadCurrentView();", self.dashboard_js)
+        self.assertIn("paymentState.poll_ms || 2500", self.dashboard_js)
         self.assertIn('accountRouteUrl({ view: "instructions" })', self.dashboard_js)
         self.assertIn("\\u041a\\u0443\\u043f\\u0438\\u0442\\u044c \\u0434\\u043e\\u0441\\u0442\\u0443\\u043f", self.dashboard_js)
         self.assertIn(".vx-native-account .vx-account-empty--dashboard", self.css)

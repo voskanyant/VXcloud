@@ -10,6 +10,7 @@
     pending: false,
     toastTimer: null,
     loadingTimer: null,
+    paymentPollTimer: null,
     loadToken: 0,
     telegramSessionSynced: false,
     telegramSessionSyncing: null,
@@ -485,6 +486,7 @@
   }
 
   function renderDashboard(model) {
+    window.clearTimeout(state.paymentPollTimer);
     const subscriptions = Array.isArray(model.subscriptions) ? model.subscriptions : [];
     const renewableSubscriptions = subscriptions.filter(function (sub) {
       return !!(sub && sub.can_renew);
@@ -597,6 +599,17 @@
     const emptySecondaryBuyHtml = trialButtonHtml
       ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="buy">\u041a\u0443\u043f\u0438\u0442\u044c \u0434\u043e\u0441\u0442\u0443\u043f</button>'
       : "";
+    const paymentState = model && model.payment && model.payment.pending ? model.payment : null;
+    const paymentRecoveryHtml = paymentState
+      ? '<section class="vx-section-card vx-payment-recovery"><div class="vx-dashboard-help__copy"><strong>\u041e\u043f\u043b\u0430\u0442\u0430 \u043f\u0440\u043e\u0448\u043b\u0430</strong><span>' +
+        escapeHtml(paymentState.message || "\u0413\u043e\u0442\u043e\u0432\u0438\u043c \u0434\u043e\u0441\u0442\u0443\u043f, \u0441\u043f\u0438\u0441\u043e\u043a \u043e\u0431\u043d\u043e\u0432\u0438\u0442\u0441\u044f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438.") +
+        "</span></div></section>"
+      : "";
+    if (paymentState) {
+      state.paymentPollTimer = window.setTimeout(function () {
+        loadCurrentView();
+      }, Number(paymentState.poll_ms || 2500));
+    }
 
     const cardsHtml = subscriptions.length
       ? subscriptions
@@ -659,6 +672,7 @@
       buyMoreActionHtml,
       "</div>",
       "</section>",
+      paymentRecoveryHtml,
       '<section class="vx-section-card"><div class="vx-section-card__head"><h2>\u0412\u0430\u0448\u0438 \u0434\u043e\u0441\u0442\u0443\u043f\u044b</h2><span>\u0410\u043a\u0442\u0438\u0432\u043d\u044b\u0445: ' +
         escapeHtml(String(activeCount)) +
         ' \u00b7 \u041d\u0435\u0430\u043a\u0442\u0438\u0432\u043d\u044b\u0445: ' +
@@ -1788,6 +1802,7 @@
   }
 
   async function loadCurrentView() {
+    window.clearTimeout(state.paymentPollTimer);
     const loadToken = ++state.loadToken;
     await syncTelegramWebAppSession();
     if (loadToken !== state.loadToken) return;
