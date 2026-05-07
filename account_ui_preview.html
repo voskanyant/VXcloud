@@ -395,7 +395,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    background: #f7f8fa;
+    background: #fbfbfc;
     border: 1px solid var(--line);
     border-radius: var(--radius-sm);
     padding: 8px 10px;
@@ -410,6 +410,18 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+  .qrbox {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 170px;
+    margin-top: 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: #fbfbfc;
+    color: #bcbcc2;
+    font-size: 12px;
   }
 </style>
 </head>
@@ -507,7 +519,7 @@
             <div class="card-line">Нажмите «Подключить». Если приложение не открылось, скопируйте ссылку.</div>
             <div class="kb">
               <div class="row"><a class="btn primary">⚡ Подключить</a></div>
-              <div class="row"><a class="btn">🔗 Скопировать ссылку</a></div>
+              <div class="row"><a class="btn"><span class="btn-icon">🔗</span><span>Скопировать ссылку</span></a></div>
             </div>
             <div class="urlbox"><span>https://vxcloud.ru/account/feed/9c4e…/</span><a class="btn" style="width:auto;padding:4px 10px;font-size:11px;">⧉</a></div>
           </div>
@@ -515,7 +527,7 @@
           <div class="card">
             <div class="card-eyebrow">Запасной способ</div>
             <div class="card-title">QR и доступ</div>
-            <div style="background:#fafafa;border:1px solid var(--line);border-radius:8px;height:170px;display:flex;align-items:center;justify-content:center;color:#bcbcc2;font-size:12px;margin-top:6px;">QR-код</div>
+            <div class="qrbox">QR-код</div>
             <div class="card-line">QR нужен только если приложение не умеет импортировать ссылку.</div>
           </div>
 
@@ -527,8 +539,8 @@
             </div>
             <div class="kb">
               <div class="row">
-                <a class="btn">🔄 Продлить</a>
-                <a class="btn">Переименовать</a>
+                <a class="btn"><span class="btn-icon">🔄</span><span>Продлить</span></a>
+                <a class="btn"><span class="btn-icon">✎</span><span>Переименовать</span></a>
               </div>
             </div>
           </div>

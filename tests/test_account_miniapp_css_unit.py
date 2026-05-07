@@ -101,6 +101,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-status-strip", self.css)
         self.assertIn(".vx-account-bot .vx-bot-url-row", self.css)
         self.assertIn(".vx-account-bot .vx-bot-qr-frame", self.css)
+        self.assertIn(".vx-account-bot .account-config-link-section", self.css)
+        self.assertIn(".vx-account-bot .account-config-data-actions", self.css)
         self.assertIn(".vx-account-bot .vx-bot-rename-form", self.css)
 
     def test_embed_url_rows_are_polished_copy_controls(self):
@@ -111,6 +113,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         )
         self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-button:focus-visible", self.css)
         self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-button:active", self.css)
+        self.assertIn("background: #fbfbfc;", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-qr-frame .account-qr-image", self.css)
 
     def test_embed_open_app_progress_is_visible(self):
         progress_rule = self.css[self.css.index(".vx-account-bot .vx-open-progress {") :]

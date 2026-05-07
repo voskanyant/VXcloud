@@ -4796,6 +4796,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   grid-template-columns: minmax(0, 1fr) 44px;
   gap: 7px;
   align-items: stretch;
+  margin-top: 1px;
 }
 
 .vx-account-bot .vx-bot-url-row .account-link-input {
@@ -4804,7 +4805,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   padding: 10px 12px;
   border: 1px solid var(--vx-bot-line);
   border-radius: var(--vx-bot-button-radius);
-  background: #f7f8fa;
+  background: #fbfbfc;
   overflow: hidden;
   color: var(--vx-bot-muted);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -4817,7 +4818,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   width: 44px;
   height: 44px;
   min-height: 44px;
-  border: 1px solid transparent;
+  border: 1px solid var(--vx-bot-line);
   border-radius: var(--vx-bot-button-radius);
   background: var(--vx-bot-secondary);
   transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
@@ -4844,6 +4845,9 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   min-height: 0;
   max-height: 180px;
   padding: 8px;
+  border: 1px solid var(--vx-bot-line);
+  border-radius: var(--vx-bot-button-radius);
+  background: #fbfbfc;
   overflow: hidden;
 }
 
@@ -4870,6 +4874,16 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 
 .vx-account-bot .vx-config-hero-card {
   gap: 5px;
+}
+
+.vx-account-bot .account-config-link-section,
+.vx-account-bot .account-section-qr,
+.vx-account-bot .account-config-rename-section {
+  gap: 8px;
+}
+
+.vx-account-bot .account-config-data-actions {
+  margin-top: 1px;
 }
 
 .vx-account-bot .vx-bot-key-grid {
