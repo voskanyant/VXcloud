@@ -66,6 +66,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-button > span:not(.vx-bot-button-icon)", self.css)
         self.assertIn(".vx-account-bot .vx-bot-button:focus-visible", self.css)
         self.assertIn("-webkit-tap-highlight-color: transparent;", button_rule)
+        self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.03);", button_rule)
         self.assertIn("transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease", button_rule)
         self.assertIn(".vx-account-bot .vx-bot-button:active", self.css)
         self.assertIn("transform: translateY(1px);", self.css)

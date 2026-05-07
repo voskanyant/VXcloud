@@ -4745,7 +4745,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   text-wrap: balance;
   word-break: normal;
   overflow-wrap: break-word;
-  box-shadow: none;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.03);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
