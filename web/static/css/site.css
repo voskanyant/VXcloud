@@ -5327,6 +5327,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 .vx-account-bot .account-install-apps:not(.account-install-apps-flat) .account-install-app-card {
   border: 1px solid var(--vx-bot-line);
   background: #f7f8fa;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
 }
 
 .vx-account-bot .account-install-app-copy {

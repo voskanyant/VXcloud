@@ -213,6 +213,12 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .account-install-app-badge-paid", self.css)
         self.assertIn(".vx-account-bot .account-install-app-card-flat .account-install-app-mark", self.css)
         self.assertIn("border: 1px solid var(--vx-bot-line);", self.css)
+        recommended_app_rule = self.css[
+            self.css.index(".vx-account-bot .account-install-apps:not(.account-install-apps-flat) .account-install-app-card {") :
+        ]
+        recommended_app_rule = recommended_app_rule[: recommended_app_rule.index("}")]
+        self.assertIn("background: #f7f8fa;", recommended_app_rule)
+        self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);", recommended_app_rule)
         self.assertIn(".vx-account-bot .account-install-note-inline strong", self.css)
         self.assertIn(".vx-account-bot .account-install-note-inline a", self.css)
         self.assertIn("Инструкция VXcloud", (REPO_ROOT / "web" / "templates" / "cabinet" / "install.html").read_text(encoding="utf-8"))
