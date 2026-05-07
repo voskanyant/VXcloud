@@ -122,6 +122,15 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-key-row span", self.css)
         self.assertIn("align-items: center;", self.css)
 
+    def test_embed_config_access_list_uses_bot_rows(self):
+        self.assertIn(".vx-account-bot .account-config-item", self.css)
+        self.assertIn('grid-template-areas:', self.css)
+        self.assertIn('"id name"', self.css)
+        self.assertIn(".vx-account-bot .account-config-item-id", self.css)
+        self.assertIn("border-radius: 999px;", self.css)
+        self.assertIn(".vx-account-bot .account-config-item-current .account-config-item-meta", self.css)
+        self.assertIn("color: rgba(255, 255, 255, 0.72);", self.css)
+
     def test_embed_url_rows_are_polished_copy_controls(self):
         self.assertIn(".vx-account-bot .vx-bot-url-row .account-link-input", self.css)
         self.assertIn(

@@ -4886,11 +4886,84 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-config-list {
-  gap: 6px;
+  gap: 7px;
 }
 
 .vx-account-bot .account-config-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "id name"
+    "id meta";
+  align-items: center;
+  min-height: 54px;
+  gap: 3px 9px;
+  padding: 9px 10px;
+  border: 1px solid var(--vx-bot-line);
   border-radius: 8px;
+  background: #f7f8fa;
+  color: var(--vx-bot-text);
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
+}
+
+.vx-account-bot a.account-config-item:hover {
+  background: var(--vx-bot-secondary);
+  color: var(--vx-bot-text);
+  text-decoration: none;
+}
+
+.vx-account-bot .account-config-item-current {
+  border-color: #202124;
+  background: #202124;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.vx-account-bot .account-config-item-id {
+  grid-area: id;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 30px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--vx-bot-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+}
+
+.vx-account-bot .account-config-item-current .account-config-item-id {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.vx-account-bot .account-config-item-name {
+  grid-area: name;
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.vx-account-bot .account-config-item-meta {
+  grid-area: meta;
+  justify-self: start;
+  color: var(--vx-bot-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: left;
+  text-transform: none;
+  white-space: normal;
+}
+
+.vx-account-bot .account-config-item-current .account-config-item-meta {
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .vx-account-bot .vx-bot-rename-form {

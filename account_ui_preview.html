@@ -494,6 +494,69 @@
     border-radius: 6px;
     background: #ffffff;
   }
+  .access-list {
+    display: grid;
+    gap: 7px;
+    margin-top: 8px;
+  }
+  .access-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "id name"
+      "id meta";
+    align-items: center;
+    min-height: 54px;
+    gap: 3px 9px;
+    padding: 9px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: #f7f8fa;
+    color: var(--ink);
+    text-decoration: none;
+    box-shadow: inset 0 0 0 1px rgba(32,33,36,.02);
+  }
+  .access-item.active {
+    border-color: #202124;
+    background: #202124;
+    color: #ffffff;
+    box-shadow: none;
+  }
+  .access-id {
+    grid-area: id;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 30px;
+    padding: 5px 8px;
+    border-radius: 999px;
+    background: #ffffff;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .access-item.active .access-id {
+    background: rgba(255,255,255,.14);
+    color: #ffffff;
+  }
+  .access-name {
+    grid-area: name;
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .access-date {
+    grid-area: meta;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+  }
+  .access-item.active .access-date { color: rgba(255,255,255,.72); }
 </style>
 </head>
 <body>
@@ -613,6 +676,23 @@
                 <a class="btn"><span class="btn-icon">🔄</span><span>Продлить</span></a>
                 <a class="btn"><span class="btn-icon">✎</span><span>Переименовать</span></a>
               </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-eyebrow">Доступы</div>
+            <div class="card-title">Все доступы</div>
+            <div class="access-list">
+              <div class="access-item active">
+                <span class="access-id">#214</span>
+                <span class="access-name">iPhone</span>
+                <span class="access-date">до 21.05.2026</span>
+              </div>
+              <a class="access-item">
+                <span class="access-id">#219</span>
+                <span class="access-name">MacBook</span>
+                <span class="access-date">до 01.06.2026</span>
+              </a>
             </div>
           </div>
 
