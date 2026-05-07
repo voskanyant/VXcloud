@@ -155,6 +155,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-form p", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .account-message-error", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-code-value", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-divider", self.css)
+        self.assertIn("text-transform: uppercase;", self.css)
 
 
 if __name__ == "__main__":
