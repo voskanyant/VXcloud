@@ -5585,7 +5585,14 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .vx-open-app-rescue .vx-bot-actions {
-  margin-top: 0;
+  margin-top: 2px;
+}
+
+.vx-account-bot .vx-open-app-rescue .vx-bot-line {
+  padding: 10px;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
 }
 
 body.vx-account-embed .account-mini-hero,

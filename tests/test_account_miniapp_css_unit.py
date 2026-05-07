@@ -158,6 +158,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-open-app-note", self.css)
         self.assertIn(".vx-account-bot .vx-open-app-manual", self.css)
         self.assertIn(".vx-account-bot .vx-open-app-rescue .vx-bot-actions", self.css)
+        self.assertIn(".vx-account-bot .vx-open-app-rescue .vx-bot-line", self.css)
+        self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);", self.css)
 
     def test_auth_edges_use_polished_bot_controls(self):
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-shell", self.css)
