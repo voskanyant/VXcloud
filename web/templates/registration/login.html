@@ -5,15 +5,15 @@
 {% block title %}{{ login_page_title }}{% endblock %}
 
 {% block content %}
-<section class="surface-card auth-shell site-auth-shell">
+<section class="surface-card auth-shell site-auth-shell vx-account-bot vx-auth-bot">
   {% cms_text "auth.login.heading" "Вход" as login_heading %}
   {% cms_text "auth.login.submit" "Войти" as login_submit %}
   {% cms_text "auth.login.no_account" "Нет аккаунта?" as login_no_account %}
   {% cms_text "auth.login.signup_action" "Регистрация" as login_signup_action %}
   {% cms_text "auth.login.forgot_password" "Забыли пароль?" as login_forgot_password %}
 
-  <div class="account-eyebrow">VXcloud account</div>
-  <h1 class="account-title-compact">{{ login_heading }}</h1>
+  <p class="vx-bot-eyebrow">VXcloud account</p>
+  <h1 class="vx-bot-title vx-auth-title">{{ login_heading }}</h1>
   {% include "partials/_telegram_auth_widget.html" %}
   {% if form.non_field_errors %}
     <div class="account-message account-message-error">

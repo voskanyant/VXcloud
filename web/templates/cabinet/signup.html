@@ -5,14 +5,14 @@
 {% block title %}{{ signup_page_title }}{% endblock %}
 
 {% block content %}
-<section class="surface-card auth-shell site-auth-shell">
+<section class="surface-card auth-shell site-auth-shell vx-account-bot vx-auth-bot">
   {% cms_text "auth.signup.heading" "Регистрация" as signup_heading %}
   {% cms_text "auth.signup.submit" "Создать аккаунт" as signup_submit %}
   {% cms_text "auth.signup.has_account" "Уже есть аккаунт?" as signup_has_account %}
   {% cms_text "auth.signup.login_action" "Войти" as signup_login_action %}
 
-  <div class="account-eyebrow">Аккаунт VXcloud</div>
-  <h1 class="account-title-compact">{{ signup_heading }}</h1>
+  <p class="vx-bot-eyebrow">Аккаунт VXcloud</p>
+  <h1 class="vx-bot-title vx-auth-title">{{ signup_heading }}</h1>
   {% include "partials/_telegram_auth_widget.html" %}
   {% if form.non_field_errors %}
     <div class="account-message account-message-error">
