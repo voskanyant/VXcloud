@@ -4643,6 +4643,10 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   margin-top: 6px;
 }
 
+.vx-account-bot .vx-bot-actions-utility > .vx-bot-button:last-child:nth-child(odd) {
+  grid-column: 1 / -1;
+}
+
 .vx-account-bot .vx-bot-button,
 .vx-account-bot .vx-bot-tab {
   display: inline-flex;

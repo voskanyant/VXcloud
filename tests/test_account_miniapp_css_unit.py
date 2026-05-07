@@ -61,6 +61,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
 
     def test_embed_subscription_actions_remain_available(self):
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-actions-utility", self.css)
         self.assertIn(".vx-account-bot .vx-bot-more summary", self.css)
 
     def test_embed_instructions_use_compact_device_tabs(self):
