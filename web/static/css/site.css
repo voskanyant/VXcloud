@@ -5097,7 +5097,29 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 
 .vx-account-bot .account-install-app-copy {
   display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.vx-account-bot .account-install-app-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--vx-bot-blue);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.vx-account-bot .account-install-app-text {
+  display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .vx-account-bot .account-install-app-copy strong {
@@ -5117,6 +5139,25 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   margin-top: 2px;
 }
 
+.vx-account-bot .account-install-app-actions .vx-bot-button {
+  height: 46px;
+  min-height: 46px;
+}
+
+.vx-account-bot .account-install-app-card-flat .account-install-app-copy {
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
+}
+
+.vx-account-bot .account-install-app-card-flat .account-install-app-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #f0f0f3;
+  color: var(--vx-bot-text);
+  font-size: 11px;
+}
+
 .vx-account-bot .account-install-app-card-flat .vx-bot-button {
   min-height: 36px;
   height: 36px;
@@ -5124,7 +5165,10 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-install-note-inline {
-  margin-top: 2px;
+  margin-top: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--vx-bot-line);
+  line-height: 1.35;
 }
 
 .vx-account-bot.vx-auth-bot {

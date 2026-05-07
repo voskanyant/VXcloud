@@ -94,6 +94,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
             ".vx-account-bot .account-install-apps:not(.account-install-apps-flat) .account-install-app-card",
             self.css,
         )
+        self.assertIn(".vx-account-bot .account-install-app-mark", self.css)
+        self.assertIn(".vx-account-bot .account-install-app-text", self.css)
+        self.assertIn(".vx-account-bot .account-install-app-card-flat .account-install-app-mark", self.css)
         self.assertIn("border: 1px solid var(--vx-bot-line);", self.css)
 
     def test_embed_config_page_is_qr_and_link_first(self):

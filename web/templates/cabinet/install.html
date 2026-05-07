@@ -242,11 +242,18 @@
 
       const copy = document.createElement('div');
       copy.className = 'account-install-app-copy';
+      const mark = document.createElement('span');
+      mark.className = 'account-install-app-mark';
+      mark.setAttribute('aria-hidden', 'true');
+      mark.textContent = (app.label || app.name || '?').trim().slice(0, 1).toUpperCase();
+      const copyText = document.createElement('div');
+      copyText.className = 'account-install-app-text';
       const title = document.createElement('strong');
       title.textContent = app.label || app.name;
       const meta = document.createElement('span');
       meta.textContent = appBadges(app);
-      copy.append(title, meta);
+      copyText.append(title, meta);
+      copy.append(mark, copyText);
 
       const actions = document.createElement('div');
       actions.className = 'account-install-app-actions';
@@ -256,7 +263,13 @@
         installLink.href = app.install_url;
         installLink.target = '_blank';
         installLink.rel = 'noopener';
-        installLink.textContent = compact ? 'Установить' : 'Установить ' + (app.label || app.name);
+        const installIcon = document.createElement('span');
+        installIcon.className = 'vx-bot-button-icon';
+        installIcon.setAttribute('aria-hidden', 'true');
+        installIcon.textContent = '↓';
+        const installText = document.createElement('span');
+        installText.textContent = compact ? 'Установить' : 'Установить ' + (app.label || app.name);
+        installLink.append(installIcon, installText);
         actions.append(installLink);
       }
 
