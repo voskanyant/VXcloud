@@ -119,6 +119,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
 
     def test_auth_edges_use_polished_bot_controls(self):
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-shell", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-copy", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-mark", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-email-panel", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-form p", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .account-message-error", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-code-value", self.css)

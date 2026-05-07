@@ -327,6 +327,19 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
                 self.assertIn("site-auth-shell vx-account-bot vx-auth-bot", html)
                 self.assertIn("vx-bot-title vx-auth-title", html)
 
+    def test_account_login_and_signup_group_email_auth_panel(self):
+        template_paths = [
+            "templates/registration/login.html",
+            "templates/cabinet/signup.html",
+        ]
+        telegram_widget_html = (WEB_ROOT / "templates/partials/_telegram_auth_widget.html").read_text(encoding="utf-8")
+        for relative_path in template_paths:
+            html = (WEB_ROOT / relative_path).read_text(encoding="utf-8-sig")
+            with self.subTest(template=relative_path):
+                self.assertIn("auth-email-panel", html)
+                self.assertIn("auth-widget-copy", telegram_widget_html)
+                self.assertIn("auth-widget-mark", telegram_widget_html)
+
     def test_account_app_config_copy_is_localized(self):
         bot_user = SimpleNamespace(id=7, client_code="VX-000007")
         subscription = SimpleNamespace(

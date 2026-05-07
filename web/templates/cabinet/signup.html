@@ -19,32 +19,34 @@
       {% for error in form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
     </div>
   {% endif %}
-  <form method="post" class="auth-form">
-    {% csrf_token %}
-    <div class="auth-field">
-      <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
-      {{ form.username }}
-      {% for error in form.username.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
+  <div class="auth-email-panel">
+    <form method="post" class="auth-form">
+      {% csrf_token %}
+      <div class="auth-field">
+        <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+        {{ form.username }}
+        {% for error in form.username.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="auth-field">
+        <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+        {{ form.email }}
+        {% for error in form.email.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="auth-field">
+        <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+        {{ form.password }}
+        {% for error in form.password.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
+      </div>
+      <div class="auth-field">
+        <label for="{{ form.password_confirm.id_for_label }}">{{ form.password_confirm.label }}</label>
+        {{ form.password_confirm }}
+        {% for error in form.password_confirm.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
+      </div>
+      <button type="submit" class="account-primary-button auth-submit">{{ signup_submit }}</button>
+    </form>
+    <div class="auth-meta">
+      <p class="account-subtle">{{ signup_has_account }} <a class="account-inline-link" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}">{{ signup_login_action }}</a></p>
     </div>
-    <div class="auth-field">
-      <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
-      {{ form.email }}
-      {% for error in form.email.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
-    </div>
-    <div class="auth-field">
-      <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
-      {{ form.password }}
-      {% for error in form.password.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
-    </div>
-    <div class="auth-field">
-      <label for="{{ form.password_confirm.id_for_label }}">{{ form.password_confirm.label }}</label>
-      {{ form.password_confirm }}
-      {% for error in form.password_confirm.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
-    </div>
-    <button type="submit" class="account-primary-button auth-submit">{{ signup_submit }}</button>
-  </form>
-  <div class="auth-meta">
-    <p class="account-subtle">{{ signup_has_account }} <a class="account-inline-link" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}">{{ signup_login_action }}</a></p>
   </div>
 </section>
 {% endblock %}

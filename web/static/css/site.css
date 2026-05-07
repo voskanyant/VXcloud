@@ -5096,6 +5096,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   border-radius: var(--vx-bot-radius);
   background: var(--vx-bot-card);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 6px 18px rgba(0, 0, 0, 0.04);
+  gap: 10px;
 }
 
 .vx-account-bot.vx-auth-bot > * {
@@ -5112,6 +5113,14 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   display: grid;
   gap: 12px;
   margin: 0;
+}
+
+.vx-account-bot.vx-auth-bot .auth-email-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
 }
 
 .vx-account-bot.vx-auth-bot .auth-field {
@@ -5195,11 +5204,40 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot.vx-auth-bot .auth-widget-shell {
+  display: grid;
   gap: 8px;
   padding: 10px;
   border: 0;
   border-radius: var(--vx-bot-button-radius);
   background: #f7f8fa;
+}
+
+.vx-account-bot.vx-auth-bot .auth-widget-copy {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+}
+
+.vx-account-bot.vx-auth-bot .auth-widget-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: var(--vx-bot-blue);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.vx-account-bot.vx-auth-bot .auth-widget-text {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
 }
 
 .vx-account-bot.vx-auth-bot .auth-widget-shell .account-summary-label {
@@ -5217,8 +5255,11 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot.vx-auth-bot .auth-widget-button {
-  justify-content: center;
+  display: grid;
+  justify-items: center;
   min-height: 44px;
+  padding-top: 8px;
+  border-top: 1px solid var(--vx-bot-line);
 }
 
 .vx-account-bot.vx-auth-bot .auth-divider {
