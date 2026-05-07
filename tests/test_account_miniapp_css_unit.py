@@ -171,6 +171,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-actions > .vx-bot-button-primary:first-child + .vx-bot-button:last-child", self.css)
 
     def test_embed_instructions_use_compact_device_tabs(self):
+        dashboard = DASHBOARD_TEMPLATE.read_text(encoding="utf-8")
+
         self.assertIn("body.vx-account-embed .account-page-shell-instructions", self.css)
         self.assertIn("body.vx-account-embed #account-instructions", self.css)
         self.assertIn("body.vx-account-embed .account-instructions-device-actions", self.css)
@@ -192,12 +194,17 @@ class AccountMiniAppCssTests(unittest.TestCase):
         )
         self.assertIn(".vx-account-bot .account-step-list li::marker", self.css)
         self.assertIn(".vx-account-bot .account-support-hint", self.css)
+        self.assertIn(".vx-account-bot .account-support-actions", self.css)
         self.assertIn(".vx-account-bot .account-support-id,\n.vx-account-bot .account-support-hint", self.css)
         self.assertIn(".vx-account-bot .account-support-id-row", self.css)
         self.assertIn(".vx-account-bot .account-support-id .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .account-instructions-access .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .account-device-headline", self.css)
         self.assertIn(".vx-account-bot .account-instructions-access .vx-bot-button", self.css)
+        self.assertLess(
+            dashboard.index("account-support-actions"),
+            dashboard.index("account-support-hint"),
+        )
 
     def test_embed_install_selector_and_app_cards_are_polished(self):
         install = (REPO_ROOT / "web" / "templates" / "cabinet" / "install.html").read_text(encoding="utf-8")

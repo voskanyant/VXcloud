@@ -91,6 +91,13 @@
         <p class="vx-bot-line">Опишите проблему одним сообщением: устройство, что не открывается и когда началось. Так мы быстрее найдем причину.</p>
       </div>
       <div class="vx-bot-card account-support-card">
+        <div class="vx-bot-actions account-support-actions">
+          {% if support_telegram_url %}
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}><span class="vx-bot-button-icon" aria-hidden="true">›</span><span>Написать в Telegram</span></a>
+          {% endif %}
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">i</span><span>Открыть инструкцию</span></a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}"><span class="vx-bot-button-icon" aria-hidden="true">⌂</span><span>Мой VPN</span></a>
+        </div>
         <div class="account-support-hint vx-bot-key-card">
           <p class="vx-bot-eyebrow">Что написать</p>
           <ol class="account-step-list">
@@ -114,13 +121,6 @@
             ><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ID клиента</span></button>
           </div>
         {% endif %}
-        <div class="vx-bot-actions">
-          {% if support_telegram_url %}
-            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}><span class="vx-bot-button-icon" aria-hidden="true">›</span><span>Написать в Telegram</span></a>
-          {% endif %}
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">i</span><span>Открыть инструкцию</span></a>
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}"><span class="vx-bot-button-icon" aria-hidden="true">⌂</span><span>Мой VPN</span></a>
-        </div>
       </div>
     </section>
 

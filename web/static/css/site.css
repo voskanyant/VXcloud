@@ -5126,6 +5126,10 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   gap: 8px;
 }
 
+.vx-account-bot .account-support-actions {
+  margin-top: 0;
+}
+
 .vx-account-bot .account-instructions-access .vx-bot-line,
 .vx-account-bot .account-device-headline {
   display: grid;
