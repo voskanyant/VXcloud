@@ -82,6 +82,22 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-qr-frame", self.css)
         self.assertIn(".vx-account-bot .vx-bot-rename-form", self.css)
 
+    def test_embed_url_rows_are_polished_copy_controls(self):
+        self.assertIn(".vx-account-bot .vx-bot-url-row .account-link-input", self.css)
+        self.assertIn(
+            "font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;",
+            self.css,
+        )
+        self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-button:focus-visible", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-button:active", self.css)
+
+    def test_embed_open_app_progress_is_visible(self):
+        progress_rule = self.css[self.css.index(".vx-account-bot .vx-open-progress {") :]
+        progress_rule = progress_rule[: progress_rule.index("}")]
+
+        self.assertIn("height: 6px;", progress_rule)
+        self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.04);", progress_rule)
+
     def test_auth_edges_use_polished_bot_controls(self):
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-shell", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-form p", self.css)

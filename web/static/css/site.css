@@ -4724,9 +4724,13 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   height: 44px;
   min-width: 0;
   padding: 10px 12px;
+  border: 1px solid var(--vx-bot-line);
   border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
   overflow: hidden;
   color: var(--vx-bot-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -4735,7 +4739,27 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   width: 44px;
   height: 44px;
   min-height: 44px;
+  border: 1px solid transparent;
   border-radius: var(--vx-bot-button-radius);
+  background: var(--vx-bot-secondary);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.vx-account-bot .vx-bot-url-row .account-link-input:focus {
+  border-color: rgba(36, 129, 204, 0.36);
+  box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.12);
+}
+
+.vx-account-bot .vx-bot-url-row .account-icon-button:hover {
+  background: var(--vx-bot-secondary-hover);
+}
+
+.vx-account-bot .vx-bot-url-row .account-icon-button:active {
+  transform: translateY(1px);
+}
+
+.vx-account-bot .vx-bot-url-row .account-icon-button:focus-visible {
+  box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.28);
 }
 
 .vx-account-bot .vx-bot-qr-frame {
@@ -5123,10 +5147,12 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .vx-open-progress {
-  height: 5px;
+  height: 6px;
+  margin: 2px 0 1px;
   overflow: hidden;
   border-radius: 999px;
   background: var(--vx-bot-secondary);
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.04);
 }
 
 .vx-account-bot .vx-open-progress span {
@@ -5135,7 +5161,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   height: 100%;
   border-radius: inherit;
   background: var(--vx-bot-blue);
-  transition: width 0.2s ease;
+  transition: width 0.25s ease;
 }
 
 body.vx-account-embed .account-mini-hero,
