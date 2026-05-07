@@ -4738,6 +4738,8 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   overflow-wrap: break-word;
   box-shadow: none;
   cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .vx-account-bot .vx-bot-button > span:not(.vx-bot-button-icon),
@@ -4775,6 +4777,11 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 .vx-account-bot .vx-bot-tab:focus-visible {
   outline: 2px solid rgba(36, 129, 204, 0.32);
   outline-offset: 2px;
+}
+
+.vx-account-bot .vx-bot-button:active,
+.vx-account-bot .vx-bot-tab:active {
+  transform: translateY(1px);
 }
 
 .vx-account-bot .vx-bot-button-primary,

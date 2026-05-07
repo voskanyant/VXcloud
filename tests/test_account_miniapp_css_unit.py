@@ -44,12 +44,19 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);", self.css)
 
     def test_embed_bot_buttons_wrap_cleanly(self):
+        button_rule = self.css[self.css.index(".vx-account-bot .vx-bot-button,\n.vx-account-bot .vx-bot-tab {") :]
+        button_rule = button_rule[: button_rule.index("}")]
+
         self.assertIn("gap: 7px;", self.css)
         self.assertIn("text-wrap: balance;", self.css)
         self.assertIn("word-break: normal;", self.css)
         self.assertIn("overflow-wrap: break-word;", self.css)
         self.assertIn(".vx-account-bot .vx-bot-button > span:not(.vx-bot-button-icon)", self.css)
         self.assertIn(".vx-account-bot .vx-bot-button:focus-visible", self.css)
+        self.assertIn("-webkit-tap-highlight-color: transparent;", button_rule)
+        self.assertIn("transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease", button_rule)
+        self.assertIn(".vx-account-bot .vx-bot-button:active", self.css)
+        self.assertIn("transform: translateY(1px);", self.css)
 
     def test_embed_more_controls_are_polished_tap_targets(self):
         more_rule = self.css[self.css.index(".vx-account-bot .vx-bot-more summary {") :]
