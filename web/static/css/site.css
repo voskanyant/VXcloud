@@ -4551,6 +4551,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   color: var(--vx-bot-text);
   font-size: 15px;
   font-weight: 800;
+  font-variant-numeric: tabular-nums;
   text-align: right;
   overflow-wrap: anywhere;
 }
@@ -4605,6 +4606,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   background: #f7f8fa;
   color: var(--vx-bot-muted);
   font-size: 14px;
+  font-variant-numeric: tabular-nums;
   line-height: 1.25;
   box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
 }

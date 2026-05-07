@@ -34,6 +34,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
         access_meta_rule = access_meta_rule[: access_meta_rule.index("}")]
         self.assertIn("padding: 9px 10px;", access_meta_rule)
         self.assertIn("background: #f7f8fa;", access_meta_rule)
+        self.assertIn("font-variant-numeric: tabular-nums;", access_meta_rule)
+        summary_value_rule = self.css[self.css.index(".vx-account-bot .vx-bot-summary-row strong {") :]
+        summary_value_rule = summary_value_rule[: summary_value_rule.index("}")]
+        self.assertIn("font-variant-numeric: tabular-nums;", summary_value_rule)
         pill_rule = self.css[self.css.index(".vx-account-bot .vx-bot-pill {") :]
         pill_rule = pill_rule[: pill_rule.index("}")]
         self.assertIn("gap: 5px;", pill_rule)
