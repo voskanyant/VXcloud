@@ -2041,6 +2041,7 @@ def _is_safe_subscription_import_url(request: HttpRequest, url: str) -> bool:
 
 def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
     encoded_url = quote(subscription_url, safe="")
+    shadowrocket_subscription = base64.b64encode(subscription_url.encode("utf-8")).decode("ascii")
     return [
         {
             "label": "Streisand",
@@ -2049,6 +2050,10 @@ def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
         {
             "label": "V2Box",
             "url": f"v2box://install-sub?url={encoded_url}&name=VXcloud",
+        },
+        {
+            "label": "Shadowrocket",
+            "url": f"shadowrocket://add/sub://{shadowrocket_subscription}?remarks=VXcloud",
         },
         {
             "label": "v2RayTun",
