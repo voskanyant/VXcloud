@@ -15,7 +15,8 @@
     <p class="account-subtle">{{ open_app_description }}</p>
     {% if auto_sequence %}
       <div class="account-message account-message-info">
-        Если Streisand открылся впервые и показал ошибку после запроса сети, вернитесь на эту страницу - мы попробуем открыть его еще раз.
+        При первом запуске Streisand разрешите WLAN & Mobile и вернитесь в Telegram - импорт продолжится автоматически.
+        Если Streisand все равно показал ошибку после запроса сети, вернитесь на эту страницу - мы попробуем открыть его еще раз.
         V2Box может добавить подписку, но не выбрать ее автоматически. Если открылся V2Box: Configs -> VXcloud -> Home -> Connect.
       </div>
     {% endif %}
@@ -39,6 +40,20 @@
         let index = 0;
         let hiddenAt = 0;
         let streisandRetried = false;
+        let streisandWarmupPending = false;
+        const streisandWarmupKey = 'vxcloud_streisand_network_ready_v1';
+        function storageGet(key) {
+          try {
+            return window.localStorage ? window.localStorage.getItem(key) : '';
+          } catch (_error) {
+            return '';
+          }
+        }
+        function storageSet(key, value) {
+          try {
+            if (window.localStorage) window.localStorage.setItem(key, value);
+          } catch (_error) {}
+        }
         function openNext() {
           if (!links[index] || !links[index].url) return;
           const url = links[index].url;
@@ -58,6 +73,14 @@
             }
             const firstLink = links[0] && links[0].url ? links[0].url : '';
             const wasJustInApp = hiddenAt && Date.now() - hiddenAt < 45000;
+            if (streisandWarmupPending && wasJustInApp && firstLink.indexOf('streisand://') === 0) {
+              streisandWarmupPending = false;
+              storageSet(streisandWarmupKey, '1');
+              setTimeout(function () {
+                if (!document.hidden) openNext();
+              }, 700);
+              return;
+            }
             if (!streisandRetried && index === 1 && wasJustInApp && firstLink.indexOf('streisand://') === 0) {
               streisandRetried = true;
               setTimeout(function () {
@@ -66,7 +89,22 @@
             }
           });
         }
-        setTimeout(openNext, 80);
+        setTimeout(function () {
+          const firstLink = links[0] && links[0].url ? links[0].url : '';
+          if (autoSequence && firstLink.indexOf('streisand://') === 0 && storageGet(streisandWarmupKey) !== '1') {
+            streisandWarmupPending = true;
+            window.location.href = 'streisand://';
+            setTimeout(function () {
+              if (!document.hidden && streisandWarmupPending) {
+                streisandWarmupPending = false;
+                index = 1;
+                openNext();
+              }
+            }, 1600);
+            return;
+          }
+          openNext();
+        }, 80);
       })();
       function copyLink() {
         const box = document.getElementById('deeplink-box');
