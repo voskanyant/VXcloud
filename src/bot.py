@@ -1521,7 +1521,7 @@ class VPNBot:
             "Устройства:\n\n"
             "{items}\n\n"
             "Нажмите устройство, чтобы открыть QR, ссылку и управление.",
-        ).replace("{client_code}", client_code).replace("{summary}", self._subscription_count_summary(subscriptions, now)).replace("{items}", "\n".join(items))
+        ).replace("{client_code}", client_code).replace("{summary}", self._subscription_count_summary(subscriptions, now)).replace("{items}", "\n\n".join(items))
 
     def _configs_list_markup(self, subscriptions: list[dict[str, object]]) -> InlineKeyboardMarkup:
         rows: list[list[InlineKeyboardButton]] = []
