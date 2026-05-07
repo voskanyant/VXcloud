@@ -148,11 +148,28 @@
     text-align: right;
     overflow-wrap: anywhere;
   }
+  .access-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .access-meta > span:first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   /* status pill */
   .pill {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
     min-height: 22px;
     font-size: 11px;
     font-weight: 700;
@@ -411,7 +428,7 @@
           <div class="card">
             <div class="card-eyebrow">Доступ</div>
             <div class="card-title">iPhone</div>
-            <div class="card-line">действует до 21.05.2026 · <span class="pill ok">Активен</span></div>
+            <div class="access-meta"><span>действует до 21.05.2026</span><span class="pill ok">Активен</span></div>
             <div class="kb">
               <div class="row"><a class="btn primary">⚡ Подключить</a></div>
               <div class="row">
@@ -430,7 +447,7 @@
           <div class="card">
             <div class="card-eyebrow">Доступ</div>
             <div class="card-title">MacBook</div>
-            <div class="card-line">действует до 14.06.2026 · <span class="pill ok">Активен</span></div>
+            <div class="access-meta"><span>действует до 14.06.2026</span><span class="pill ok">Активен</span></div>
             <div class="kb">
               <div class="row"><a class="btn primary">⚡ Подключить</a></div>
               <div class="row">

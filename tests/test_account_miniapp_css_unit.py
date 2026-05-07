@@ -21,6 +21,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("body.vx-account-embed .account-page-shell-mini", self.css)
         self.assertIn(".vx-account-bot .vx-bot-card", self.css)
         self.assertIn(".vx-account-bot .vx-bot-summary-row", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-access-meta", self.css)
         self.assertIn(".vx-account-bot .vx-bot-title", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
 

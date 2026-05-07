@@ -4590,9 +4590,33 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   font-weight: 700;
 }
 
+.vx-account-bot .vx-bot-access-card {
+  gap: 7px;
+}
+
+.vx-account-bot .vx-bot-access-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  color: var(--vx-bot-muted);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.vx-account-bot .vx-bot-access-meta > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .vx-account-bot .vx-bot-pill {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
   min-height: 22px;
   padding: 3px 8px;
   border-radius: 999px;

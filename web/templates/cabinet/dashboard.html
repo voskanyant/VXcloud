@@ -21,10 +21,10 @@
         <article class="vx-bot-card vx-bot-access-card">
           <p class="vx-bot-eyebrow">Доступ</p>
           <h2 class="vx-bot-title">{{ row.display_name }}</h2>
-          <p class="vx-bot-line">
-            {% if row.expires_at %}действует до {{ row.expires_at|date:'d.m.Y' }}{% else %}бессрочный доступ{% endif %}
-            · <span class="vx-bot-pill{% if row.is_active %} vx-bot-pill-active{% endif %}">{% if row.is_active %}Активен{% else %}Истёк{% endif %}</span>
-          </p>
+          <div class="vx-bot-access-meta">
+            <span>{% if row.expires_at %}действует до {{ row.expires_at|date:'d.m.Y' }}{% else %}бессрочный доступ{% endif %}</span>
+            <span class="vx-bot-pill{% if row.is_active %} vx-bot-pill-active{% endif %}">{% if row.is_active %}Активен{% else %}Истёк{% endif %}</span>
+          </div>
           <div class="vx-bot-actions">
             <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ row.auto_import_url }}">⚡ Подключить</a>
             <button
