@@ -65,10 +65,6 @@
         const progressEl = document.getElementById('open-app-progress');
         const currentLink = document.getElementById('open-app-current');
         const nextButton = document.getElementById('open-app-next');
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const telegramWebApp = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
-        const useHiddenLauncher = isIOS && !(telegramWebApp && telegramWebApp.initData);
-        let launchFrame = null;
         let index = 0;
 
         function setButtonContent(button, iconText, labelText) {
@@ -131,29 +127,10 @@
           }
         }
 
-        function openCurrent(forceTopLevel) {
+        function openCurrent() {
           const item = links[index];
           if (!item || !item.url) {
             copyLink();
-            return;
-          }
-          if (useHiddenLauncher && !forceTopLevel) {
-            if (!launchFrame) {
-              launchFrame = document.createElement('iframe');
-              launchFrame.setAttribute('aria-hidden', 'true');
-              launchFrame.tabIndex = -1;
-              launchFrame.style.position = 'absolute';
-              launchFrame.style.width = '1px';
-              launchFrame.style.height = '1px';
-              launchFrame.style.left = '-9999px';
-              launchFrame.style.top = '-9999px';
-              launchFrame.style.opacity = '0';
-              document.body.appendChild(launchFrame);
-            }
-            launchFrame.src = 'about:blank';
-            setTimeout(function () {
-              launchFrame.src = item.url;
-            }, 0);
             return;
           }
           window.location.href = item.url;
@@ -227,15 +204,7 @@
             }
             index += 1;
             renderState();
-            openCurrent(true);
-          });
-        }
-
-        if (currentLink) {
-          currentLink.addEventListener('click', function (event) {
-            if (!useHiddenLauncher) return;
-            event.preventDefault();
-            openCurrent(true);
+            openCurrent();
           });
         }
 
