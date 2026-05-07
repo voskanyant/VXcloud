@@ -4643,6 +4643,15 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   margin-top: 6px;
 }
 
+.vx-account-bot .vx-bot-utility {
+  gap: 8px;
+}
+
+.vx-account-bot .vx-bot-actions-utility {
+  gap: 6px;
+  margin-top: 0;
+}
+
 .vx-account-bot .vx-bot-actions-utility > .vx-bot-button:last-child:nth-child(odd) {
   grid-column: 1 / -1;
 }
@@ -4673,6 +4682,22 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   overflow-wrap: break-word;
   box-shadow: none;
   cursor: pointer;
+}
+
+.vx-account-bot .vx-bot-button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 18px;
+  line-height: 1;
+}
+
+.vx-account-bot .vx-bot-actions-utility .vx-bot-button {
+  height: 48px;
+  min-height: 48px;
+  padding: 10px;
+  gap: 7px;
 }
 
 .vx-account-bot .vx-bot-actions > .vx-bot-button:not(.vx-bot-button-primary) {

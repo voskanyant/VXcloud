@@ -216,6 +216,17 @@
   .btn.primary { background: var(--accent); color: var(--accent-ink); }
   .btn.danger  { background: #fbecec; color: var(--danger); }
   .btn .glyph { opacity: .9; }
+  .btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 18px;
+    line-height: 1;
+  }
+  .utility-card { display: grid; gap: 8px; }
+  .utility-card .kb { margin-top: 0; gap: 6px; }
+  .utility-card .btn { min-height: 48px; padding: 10px; gap: 7px; }
 
   details summary {
     display: flex;
@@ -457,15 +468,15 @@
             </div>
           </div>
 
-          <div class="card tight">
+          <div class="card tight utility-card">
             <div class="card-eyebrow">Быстрые действия</div>
-            <div class="card-line">Купить ещё доступ или открыть инструкцию.</div>
+            <div class="card-line">Покупка, инструкция и поддержка рядом.</div>
             <div class="kb">
               <div class="row">
-                <a class="btn">💳 Купить</a>
-                <a class="btn">📖 Инструкция</a>
+                <a class="btn"><span class="btn-icon">💳</span><span>Купить</span></a>
+                <a class="btn"><span class="btn-icon">📖</span><span>Инструкция</span></a>
               </div>
-              <div class="row"><a class="btn">🆘 Поддержка</a></div>
+              <div class="row"><a class="btn"><span class="btn-icon">🆘</span><span>Поддержка</span></a></div>
             </div>
           </div>
 
