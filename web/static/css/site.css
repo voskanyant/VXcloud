@@ -4651,7 +4651,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .vx-bot-access-card {
-  gap: 7px;
+  gap: 8px;
 }
 
 .vx-account-bot .vx-bot-access-meta {
@@ -4714,7 +4714,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .vx-bot-actions-secondary {
-  margin-top: 6px;
+  margin-top: 0;
 }
 
 .vx-account-bot .vx-bot-utility {

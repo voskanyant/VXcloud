@@ -43,6 +43,12 @@ class AccountMiniAppCssTests(unittest.TestCase):
         title_rule = title_rule[: title_rule.index("}")]
         self.assertIn("font-size: 17px;", title_rule)
         self.assertIn("font-weight: 700;", title_rule)
+        access_card_rule = self.css[self.css.index(".vx-account-bot .vx-bot-access-card {") :]
+        access_card_rule = access_card_rule[: access_card_rule.index("}")]
+        self.assertIn("gap: 8px;", access_card_rule)
+        secondary_actions_rule = self.css[self.css.index(".vx-account-bot .vx-bot-actions-secondary {") :]
+        secondary_actions_rule = secondary_actions_rule[: secondary_actions_rule.index("}")]
+        self.assertIn("margin-top: 0;", secondary_actions_rule)
         bot_card_rule = self.css[self.css.index(".vx-account-bot .vx-bot-card {") :]
         bot_card_rule = bot_card_rule[: bot_card_rule.index("}")]
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.03)", bot_card_rule)
