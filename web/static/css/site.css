@@ -4615,9 +4615,15 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   text-align: center;
   text-decoration: none;
   white-space: normal;
-  overflow-wrap: anywhere;
+  text-wrap: balance;
+  word-break: normal;
+  overflow-wrap: break-word;
   box-shadow: none;
   cursor: pointer;
+}
+
+.vx-account-bot .vx-bot-actions > .vx-bot-button:not(.vx-bot-button-primary) {
+  padding-inline: 8px;
 }
 
 .vx-account-bot .vx-bot-button:hover,

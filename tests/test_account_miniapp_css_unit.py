@@ -28,6 +28,11 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("background: var(--vx-bot-blue);", self.css)
         self.assertIn("grid-column: 1 / -1;", self.css)
 
+    def test_embed_bot_buttons_wrap_cleanly(self):
+        self.assertIn("text-wrap: balance;", self.css)
+        self.assertIn("word-break: normal;", self.css)
+        self.assertIn("overflow-wrap: break-word;", self.css)
+
     def test_embed_subscription_list_hides_expanded_details(self):
         self.assertIn(
             "body.vx-account-embed #account-subscriptions .account-inline-form",
