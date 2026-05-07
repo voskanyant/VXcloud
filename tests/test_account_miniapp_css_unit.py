@@ -44,6 +44,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-button-primary", self.css)
         self.assertIn("background: var(--vx-bot-blue);", self.css)
         self.assertIn("grid-column: 1 / -1;", self.css)
+        primary_rule = self.css[self.css.index(".vx-account-bot .vx-bot-button-primary,\n.vx-account-bot .vx-bot-actions > .vx-bot-button-primary:first-child {") :]
+        primary_rule = primary_rule[: primary_rule.index("}")]
+        self.assertIn("box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 8px 16px rgba(36, 129, 204, 0.16);", primary_rule)
 
     def test_embed_empty_dashboard_state_is_polished(self):
         self.assertIn(".vx-account-bot .account-mini-empty", self.css)

@@ -4808,11 +4808,13 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   grid-column: 1 / -1;
   background: var(--vx-bot-blue);
   color: #ffffff;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 8px 16px rgba(36, 129, 204, 0.16);
 }
 
 .vx-account-bot .vx-bot-button-primary:hover {
   background: var(--vx-bot-blue-hover);
   color: #ffffff;
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.14), 0 9px 18px rgba(36, 129, 204, 0.18);
 }
 
 .vx-account-bot .account-secondary-button-current,
