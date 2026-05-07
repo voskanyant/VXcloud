@@ -4756,6 +4756,16 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   line-height: 1;
 }
 
+.vx-account-bot .vx-bot-button:not(.vx-bot-button-primary) .vx-bot-button-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: #ffffff;
+  color: var(--vx-bot-text);
+  font-size: 13px;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.04);
+}
+
 .vx-account-bot .vx-bot-actions-utility .vx-bot-button {
   height: 48px;
   min-height: 48px;
