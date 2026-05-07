@@ -31,7 +31,7 @@
             <span class="vx-bot-pill{% if row.is_active %} vx-bot-pill-active{% endif %}">{% if row.is_active %}Активен{% else %}Истёк{% endif %}</span>
           </div>
           <div class="vx-bot-actions">
-            <a class="account-primary-button vx-bot-button vx-bot-button-primary js-smart-import" href="{{ row.auto_import_url }}" data-first-import-url="{{ row.first_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ row.auto_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
             <button
               type="button"
               class="account-secondary-button vx-bot-button js-copy-config"
