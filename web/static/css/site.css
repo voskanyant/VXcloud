@@ -5063,6 +5063,25 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   line-height: 1.15;
 }
 
+.vx-account-bot .account-support-id-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.vx-account-bot .account-support-id-row strong {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.vx-account-bot .account-support-id .vx-bot-line {
+  padding-top: 8px;
+  border-top: 1px solid var(--vx-bot-line);
+  font-size: 13px;
+}
+
 .vx-account-bot .account-support-hint .account-step-list {
   margin: 0;
   padding-top: 9px;

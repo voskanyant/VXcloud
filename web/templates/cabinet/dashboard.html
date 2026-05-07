@@ -93,8 +93,11 @@
         </div>
         {% if support_client_code %}
           <div class="account-support-id vx-bot-key-card">
-            <span>ID клиента</span>
-            <strong>{{ support_client_code }}</strong>
+            <div class="account-support-id-row">
+              <span>ID клиента</span>
+              <strong>{{ support_client_code }}</strong>
+            </div>
+            <p class="vx-bot-line">Скопируйте ID и отправьте вместе с сообщением, так мы быстрее найдем ваш доступ.</p>
             <button
               type="button"
               class="account-secondary-button vx-bot-button js-copy-config"

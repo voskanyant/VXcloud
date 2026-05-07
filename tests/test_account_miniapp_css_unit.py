@@ -94,6 +94,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         )
         self.assertIn(".vx-account-bot .account-step-list li::marker", self.css)
         self.assertIn(".vx-account-bot .account-support-hint", self.css)
+        self.assertIn(".vx-account-bot .account-support-id-row", self.css)
+        self.assertIn(".vx-account-bot .account-support-id .vx-bot-line", self.css)
 
     def test_embed_install_selector_and_app_cards_are_polished(self):
         self.assertIn(".vx-account-bot .vx-install-tabs", self.css)
