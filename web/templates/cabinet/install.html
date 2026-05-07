@@ -94,8 +94,11 @@
       windows: 'Windows',
       macos: 'Mac',
     };
+    const searchParams = new URLSearchParams(window.location.search || '');
+    const shouldAutoStart = searchParams.get('autostart') === '1';
     let selectedPlatform = detectPlatform();
     let showAllApps = false;
+    let autoStarted = false;
 
     function detectPlatform() {
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -111,8 +114,37 @@
       return 'ios';
     }
 
+    function copyAccessUrlFast() {
+      if (!accessUrl) return false;
+      let copied = false;
+      const input = document.getElementById('install-copy-input');
+      const copySource = input || document.createElement('textarea');
+      if (!input) {
+        copySource.value = accessUrl;
+        copySource.setAttribute('readonly', 'readonly');
+        copySource.style.position = 'fixed';
+        copySource.style.top = '-1000px';
+        copySource.style.left = '-1000px';
+        document.body.appendChild(copySource);
+      }
+      try {
+        copySource.focus();
+        copySource.select();
+        copySource.setSelectionRange(0, copySource.value.length);
+        copied = document.execCommand('copy') || copied;
+      } catch (_error) {}
+      if (!input && copySource.parentNode) {
+        copySource.parentNode.removeChild(copySource);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(accessUrl).catch(() => {});
+      }
+      return copied;
+    }
+
     async function copyAccessUrl() {
       if (!accessUrl) return false;
+      const copied = copyAccessUrlFast();
       try {
         await navigator.clipboard.writeText(accessUrl);
         return true;
@@ -121,7 +153,7 @@
         if (!input) return false;
         input.focus();
         input.select();
-        return document.execCommand('copy');
+        return document.execCommand('copy') || copied;
       }
     }
 
@@ -138,29 +170,32 @@
       if (app.recommended) bits.push('рекомендуем');
       if (app.paid) bits.push('платное');
       if (app.import_url_template) bits.push('быстрый импорт');
+      if (app.open_url_template) bits.push('откроем приложение');
       return bits.length ? bits.join(' · ') : 'импорт из буфера';
     }
 
-    function buildImportUrl(template) {
+    function buildAppUrl(template) {
       return String(template || '').replace('{url}', encodeURIComponent(accessUrl));
     }
 
-    async function handleAppOpen(app) {
-      await copyAccessUrl();
-      if (app.import_url_template) {
+    function handleAppOpen(app, options) {
+      const isAutomatic = Boolean(options && options.automatic);
+      copyAccessUrlFast();
+      const openTemplate = app.import_url_template || app.open_url_template || '';
+      if (openTemplate) {
         let leftPage = false;
         const markHidden = () => {
           if (document.hidden) leftPage = true;
         };
         document.addEventListener('visibilitychange', markHidden, { once: true });
         setStatus('Ссылка скопирована. Пробуем открыть ' + app.name + '.');
-        window.location.href = buildImportUrl(app.import_url_template);
+        window.location.href = buildAppUrl(openTemplate);
         window.setTimeout(() => {
           if (!leftPage) {
             setStatus(app.name + ' не открылся автоматически. Импортируйте ссылку из буфера.');
             showManual();
           }
-        }, 1500);
+        }, isAutomatic ? 1800 : 1400);
         return;
       }
       setStatus('Ссылка скопирована. Откройте ' + app.name + ' и выберите импорт из буфера.');
@@ -196,7 +231,7 @@
         const openButton = document.createElement('button');
         openButton.type = 'button';
         openButton.className = app.recommended ? 'account-primary-button' : 'account-secondary-button';
-        openButton.textContent = app.import_url_template ? 'Подключить' : 'Скопировать';
+        openButton.textContent = app.import_url_template || app.open_url_template ? 'Подключить' : 'Скопировать';
         openButton.addEventListener('click', () => handleAppOpen(app));
         actions.append(openButton);
 
@@ -216,6 +251,11 @@
 
       if (showMoreButton) {
         showMoreButton.hidden = apps.length <= 1 || showAllApps;
+      }
+
+      if (shouldAutoStart && !autoStarted && apps.length) {
+        autoStarted = true;
+        window.setTimeout(() => handleAppOpen(apps[0], { automatic: true }), 120);
       }
     }
 

@@ -352,6 +352,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("Большинства этих приложений нет в российском App Store", html)
         self.assertIn("https://support.apple.com/en-us/118283", html)
         self.assertIn("Streisand", html)
+        self.assertIn("streisand://", html)
+        self.assertIn("shouldAutoStart", html)
         self.assertIn("V2Box", html)
         self.assertIn("Shadowrocket", html)
         self.assertIn("v2rayNG", html)

@@ -12,7 +12,7 @@
     </div>
     <div class="account-config-hero-actions">
       <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
-      <a class="account-primary-button" href="{{ backend_install_prefix }}{{ subscription.id }}/">Подключить</a>
+      <a class="account-primary-button" href="{{ backend_install_prefix }}{{ subscription.id }}/?autostart=1">Подключить</a>
       {% if can_renew %}
         <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
       {% endif %}

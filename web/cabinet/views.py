@@ -70,7 +70,7 @@ INSTALL_APP_MATRIX: dict[str, list[dict[str, object]]] = {
             "label": "Streisand",
             "recommended": True,
             "install_url": "https://apps.apple.com/us/app/streisand/id6450534064",
-            "import_url_template": "streisand://import/{url}#VXcloud",
+            "open_url_template": "streisand://",
         },
         {
             "key": "v2box",
