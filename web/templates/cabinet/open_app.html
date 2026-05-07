@@ -15,6 +15,7 @@
     <p class="account-subtle">{{ open_app_description }}</p>
     {% if auto_sequence %}
       <div class="account-message account-message-info">
+        Если Streisand открылся впервые и показал ошибку после запроса сети, вернитесь на эту страницу - мы попробуем открыть его еще раз.
         V2Box может добавить подписку, но не выбрать ее автоматически. Если открылся V2Box: Configs -> VXcloud -> Home -> Connect.
       </div>
     {% endif %}
@@ -34,7 +35,10 @@
         }
         const linksEl = document.getElementById('open-app-links');
         const links = linksEl ? JSON.parse(linksEl.textContent || '[]') : [];
+        const autoSequence = {% if auto_sequence %}true{% else %}false{% endif %};
         let index = 0;
+        let hiddenAt = 0;
+        let streisandRetried = false;
         function openNext() {
           if (!links[index] || !links[index].url) return;
           const url = links[index].url;
@@ -45,6 +49,22 @@
               if (!document.hidden) openNext();
             }, 1600);
           }
+        }
+        if (autoSequence) {
+          document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+              hiddenAt = Date.now();
+              return;
+            }
+            const firstLink = links[0] && links[0].url ? links[0].url : '';
+            const wasJustInApp = hiddenAt && Date.now() - hiddenAt < 45000;
+            if (!streisandRetried && index === 1 && wasJustInApp && firstLink.indexOf('streisand://') === 0) {
+              streisandRetried = true;
+              setTimeout(function () {
+                if (!document.hidden) window.location.href = firstLink;
+              }, 700);
+            }
+          });
         }
         setTimeout(openNext, 80);
       })();

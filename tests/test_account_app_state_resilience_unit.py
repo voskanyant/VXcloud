@@ -395,6 +395,9 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertLess(html.find(shadowrocket_url), html.find(v2raytun_url))
         self.assertLess(html.find(v2raytun_url), html.find(happ_url))
         self.assertLess(html.find(happ_url), html.find(hiddify_url))
+        self.assertIn("попробуем открыть его еще раз", html)
+        self.assertIn("streisandRetried", html)
+        self.assertIn("visibilitychange", html)
         self.assertIn("Configs -> VXcloud -> Home -> Connect", html)
         self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
 
