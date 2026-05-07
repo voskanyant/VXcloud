@@ -133,6 +133,40 @@
       });
     }
 
+    function initSmartImportButtons() {
+      document.querySelectorAll(".js-smart-import[data-first-import-url]").forEach((link) => {
+        if (link.dataset.smartImportReady === "1") return;
+        link.dataset.smartImportReady = "1";
+        link.addEventListener("click", (event) => {
+          const firstUrl = link.getAttribute("data-first-import-url") || "";
+          const fallbackUrl = link.href || "";
+          if (!firstUrl || !fallbackUrl) return;
+          event.preventDefault();
+
+          let fallbackTimer = null;
+          const clearFallback = () => {
+            if (fallbackTimer !== null) {
+              window.clearTimeout(fallbackTimer);
+              fallbackTimer = null;
+            }
+          };
+          const fallback = () => {
+            if (document.hidden) return;
+            window.location.href = fallbackUrl;
+          };
+
+          document.addEventListener("visibilitychange", () => {
+            if (document.hidden) clearFallback();
+          }, { once: true });
+          window.addEventListener("pagehide", clearFallback, { once: true });
+
+          window.location.href = firstUrl;
+          fallbackTimer = window.setTimeout(fallback, 1400);
+        });
+      });
+    }
+
+
     function initSiteMobileMenu() {
       const toggle = document.querySelector('[data-site-menu-toggle]');
       const panel = document.querySelector('[data-site-menu-panel]');
@@ -338,6 +372,7 @@
     })();
 
     enhanceSiteForms();
+    initSmartImportButtons();
     initSiteMobileMenu();
     syncTelegramWebAppSession();
   </script>

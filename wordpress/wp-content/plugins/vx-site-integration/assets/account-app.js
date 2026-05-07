@@ -76,6 +76,36 @@
     window.location.assign(targetUrl);
   }
 
+  function openSmartImport(firstUrl, fallbackUrl) {
+    const first = String(firstUrl || "").trim();
+    const fallbackTarget = String(fallbackUrl || "").trim();
+    if (!first || !fallbackTarget) return false;
+
+    let fallbackTimer = null;
+    const clearFallback = function () {
+      if (fallbackTimer !== null) {
+        window.clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+    };
+    const fallback = function () {
+      if (document.hidden) return;
+      window.location.href = fallbackTarget;
+    };
+
+    document.addEventListener(
+      "visibilitychange",
+      function () {
+        if (document.hidden) clearFallback();
+      },
+      { once: true }
+    );
+    window.addEventListener("pagehide", clearFallback, { once: true });
+    window.location.href = first;
+    fallbackTimer = window.setTimeout(fallback, 1400);
+    return true;
+  }
+
   function syncTelegramWebAppSession() {
     if (state.telegramSessionSynced) return Promise.resolve(false);
     if (state.telegramSessionSyncing) return state.telegramSessionSyncing;
@@ -503,6 +533,8 @@
       return !!(sub && sub.is_active);
     });
     const activeImportUrl = activeSubscription && activeSubscription.auto_import_url ? String(activeSubscription.auto_import_url) : "";
+    const activeFirstImportUrl =
+      activeSubscription && activeSubscription.first_import_url ? String(activeSubscription.first_import_url) : "";
     const trialUrl = String(cfg.telegramTrialUrl || cfg.telegramBotUrl || cfg.supportTelegramUrl || "").trim();
     const trialButtonHtml = trialUrl
       ? '<a class="vx-button vx-button--primary" href="' +
@@ -575,6 +607,8 @@
       activeImportUrl
         ? '<a class="vx-button vx-button--primary" href="' +
           escapeHtml(activeImportUrl) +
+          '" data-smart-import-first="' +
+          escapeHtml(activeFirstImportUrl) +
           '" target="_top" rel="noopener">\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c</a>'
         : activeSubscription && activeSubscription.config_url
           ? '<button type="button" class="vx-button vx-button--primary" data-nav="' +
@@ -602,6 +636,7 @@
       ? subscriptions
           .map(function (sub) {
             const autoImportUrl = sub && sub.auto_import_url ? String(sub.auto_import_url) : "";
+            const firstImportUrl = sub && sub.first_import_url ? String(sub.first_import_url) : "";
             return [
               '<article class="vx-config-card">',
               '<div class="vx-config-card__head">',
@@ -618,6 +653,8 @@
                 (autoImportUrl
                   ? '<a class="vx-button vx-button--primary" href="' +
                     escapeHtml(autoImportUrl) +
+                    '" data-smart-import-first="' +
+                    escapeHtml(firstImportUrl) +
                     '" target="_top" rel="noopener">\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c</a><button type="button" class="vx-button vx-button--ghost" data-nav="' +
                     escapeHtml(sub.config_url) +
                     '">QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</button>'
@@ -814,6 +851,7 @@
     const dashboardUrl = model.dashboard_url || cfg.accountUrl || "/account/";
     const copyText = model.copy_text || "";
     const autoImportUrl = model.auto_import_url || "";
+    const firstImportUrl = model.first_import_url || "";
     const guideUrl = accountRouteUrl({ view: "instructions" });
     const renewButtonHtml = model.can_renew
       ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew" data-subscription-id="' +
@@ -844,6 +882,8 @@
       autoImportUrl
         ? '<a class="vx-button vx-button--primary" href="' +
           escapeHtml(autoImportUrl) +
+          '" data-smart-import-first="' +
+          escapeHtml(firstImportUrl) +
           '" target="_top" rel="noopener">Подключить</a><button type="button" class="vx-button vx-button--ghost" data-copy-text="' +
           escapeHtml(copyText) +
           '">Скопировать ссылку</button>'
@@ -1522,6 +1562,15 @@
         if (!url) return;
         event.preventDefault();
         openTelegramLink(url);
+      });
+    });
+
+    mount.querySelectorAll("[data-smart-import-first]").forEach(function (link) {
+      link.addEventListener("click", function (event) {
+        const firstUrl = link.getAttribute("data-smart-import-first") || "";
+        const fallbackUrl = link.getAttribute("href") || "";
+        if (!openSmartImport(firstUrl, fallbackUrl)) return;
+        event.preventDefault();
       });
     });
 

@@ -30,7 +30,7 @@
     <p class="vx-bot-eyebrow">Подключение</p>
     <h1 class="vx-bot-title vx-install-title">Подключить {{ display_name }}</h1>
     <p class="vx-bot-line">Если приложение уже установлено, откроем импорт одной кнопкой.</p>
-    <a class="account-primary-button vx-bot-button vx-bot-button-primary vx-install-main-cta" href="{{ auto_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
+    <a class="account-primary-button vx-bot-button vx-bot-button-primary vx-install-main-cta js-smart-import" href="{{ auto_import_url }}" data-first-import-url="{{ first_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
   </section>
 
   <section class="vx-bot-card">
@@ -121,7 +121,7 @@
         <strong>Если одно из приложений уже установлено</strong>
         <span>Нажмите кнопку ниже. Мы откроем импорт и переберем поддерживаемые приложения автоматически.</span>
       </div>
-      <a class="account-primary-button" href="{{ auto_import_url }}">Подключить</a>
+      <a class="account-primary-button js-smart-import" href="{{ auto_import_url }}" data-first-import-url="{{ first_import_url }}">Подключить</a>
     </div>
 
     <button type="button" class="account-secondary-button account-install-more" id="install-show-manual">

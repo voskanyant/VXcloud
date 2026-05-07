@@ -5,6 +5,7 @@ import unittest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITE_CSS = REPO_ROOT / "web" / "static" / "css" / "site.css"
 DASHBOARD_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "dashboard.html"
+BASE_TEMPLATE = REPO_ROOT / "web" / "templates" / "base.html"
 CONFIG_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "config.html"
 INSTALL_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "install.html"
 OPEN_APP_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "open_app.html"
@@ -318,6 +319,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
 
     def test_embed_open_app_progress_is_visible(self):
         open_app = OPEN_APP_TEMPLATE.read_text(encoding="utf-8")
+        base = BASE_TEMPLATE.read_text(encoding="utf-8")
         progress_rule = self.css[self.css.index(".vx-account-bot .vx-open-progress {") :]
         progress_rule = progress_rule[: progress_rule.index("}")]
 
@@ -335,6 +337,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("function setButtonContent", open_app)
         self.assertIn("setButtonContent(currentLink, '↗', 'Открыть ' + item.label)", open_app)
         self.assertIn("setButtonContent(nextButton, '⧉', 'Скопировать ссылку')", open_app)
+        self.assertIn("function initSmartImportButtons()", base)
+        self.assertIn('.js-smart-import[data-first-import-url]', base)
+        self.assertIn("window.location.href = firstUrl;", base)
+        self.assertIn("window.setTimeout(fallback, 1400)", base)
 
     def test_auth_edges_use_polished_bot_controls(self):
         login = (REPO_ROOT / "web" / "templates" / "registration" / "login.html").read_text(encoding="utf-8")

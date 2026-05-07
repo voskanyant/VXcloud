@@ -24,7 +24,7 @@
     <h2 class="vx-bot-title">Ссылка подписки</h2>
     <p class="vx-bot-line">Нажмите «Подключить». Если приложение не открылось, скопируйте ссылку.</p>
     <div class="vx-bot-actions">
-      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
+      <a class="account-primary-button vx-bot-button vx-bot-button-primary js-smart-import" href="{{ auto_import_url }}" data-first-import-url="{{ first_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
       <button type="button" class="account-secondary-button vx-bot-button account-config-copy-main" id="copy-config-main"><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ссылку</span></button>
     </div>
     <div class="vx-bot-url-row">
@@ -106,7 +106,7 @@
     </div>
     <div class="account-config-hero-actions">
       <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
-      <a class="account-primary-button" href="{{ auto_import_url }}">Подключить</a>
+      <a class="account-primary-button js-smart-import" href="{{ auto_import_url }}" data-first-import-url="{{ first_import_url }}">Подключить</a>
       {% if can_renew %}
         <a class="account-primary-button" href="{{ renew_url }}">Продлить</a>
       {% endif %}

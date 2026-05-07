@@ -236,6 +236,16 @@ def _account_auto_import_url(request: HttpRequest, subscription_url: str) -> str
     return _build_public_absolute_url(request, f"/open-app/?{params}")
 
 
+def _account_first_ios_import_url(subscription_url: str) -> str:
+    raw = str(subscription_url or "").strip()
+    if not raw:
+        return ""
+    links = _build_ios_auto_import_links(raw)
+    if not links:
+        return ""
+    return str(links[0].get("url") or "")
+
+
 def _account_embed_mode(request: HttpRequest) -> bool:
     path = str(getattr(request, "path", "") or "")
     next_value = str(request.GET.get("next", "") or "")
@@ -570,6 +580,7 @@ def _serialize_subscription_row(request: HttpRequest, row: dict[str, object]) ->
         "config_url": _account_frontend_url(f"config/{int(row['id'])}/"),
         "install_url": _account_frontend_url(f"install/{int(row['id'])}/"),
         "auto_import_url": _account_auto_import_url(request, primary_link),
+        "first_import_url": _account_first_ios_import_url(primary_link),
         "renew_url": _account_frontend_renew_url(int(row["id"])),
         "feed_url": feed_url,
         "vless_url": vless_url,
@@ -809,6 +820,7 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
                 "feed_url": feed_url,
                 "vless_url": raw_vless_url,
                 "auto_import_url": _account_auto_import_url(request, primary_link),
+                "first_import_url": _account_first_ios_import_url(primary_link),
                 "qr_image_data_url": f"data:image/png;base64,{qr_b64}",
                 "dashboard_url": _account_frontend_url(),
                 "renew_url": _account_frontend_renew_url(int(sub.id)),
@@ -1195,6 +1207,7 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
                 "feed_url": feed_url,
                 "vless_url": vless_url,
                 "auto_import_url": _account_auto_import_url(request, feed_url or vless_url),
+                "first_import_url": _account_first_ios_import_url(feed_url or vless_url),
             }
         )
     active_configs = sum(1 for row in subscription_rows if bool(row["is_active"]))
@@ -1323,6 +1336,7 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
             "feed_url": feed_url,
             "vless_url": raw_vless_url,
             "auto_import_url": auto_import_url,
+            "first_import_url": _account_first_ios_import_url(qr_data),
             "can_renew": bool(_subscription_state(sub)["can_renew"]),
             "renew_url": _account_renew_url(request, int(sub.id)),
             **_account_template_urls(request),
@@ -1360,6 +1374,7 @@ def account_install(request: HttpRequest, subscription_id: int) -> HttpResponse:
             "feed_url": feed_url,
             "vless_url": raw_vless_url,
             "auto_import_url": auto_import_url,
+            "first_import_url": _account_first_ios_import_url(copy_text),
             "is_active": bool(state["is_active"]),
             "can_renew": bool(state["can_renew"]),
             "renew_url": _account_renew_url(request, int(sub.id)),
