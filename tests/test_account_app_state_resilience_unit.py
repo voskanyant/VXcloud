@@ -380,7 +380,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         html = response.content.decode("utf-8")
         streisand_url = "streisand://import/https://vxcloud.ru/account/feed/feed-token/#VXcloud"
         v2box_url = "v2box://install-sub?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F&amp;name=VXcloud"
-        shadowrocket_url = "sub://https://vxcloud.ru/account/feed/feed-token/"
+        shadowrocket_url = "shadowrocket://add/https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F"
         v2raytun_url = "v2raytun://import/https://vxcloud.ru/account/feed/feed-token/"
         happ_url = "happ://add/https://vxcloud.ru/account/feed/feed-token/"
         hiddify_url = "hiddify://install-config/?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F"

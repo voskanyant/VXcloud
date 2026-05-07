@@ -63,7 +63,7 @@ ALLOWED_DEEPLINK_SCHEMES = (
     "tuic://",
     "streisand://",
     "v2box://",
-    "sub://",
+    "shadowrocket://",
     "v2raytun://",
     "happ://",
     "hiddify://",
@@ -1979,7 +1979,7 @@ def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
         },
         {
             "label": "Shadowrocket",
-            "url": f"sub://{subscription_url}",
+            "url": f"shadowrocket://add/{encoded_url}",
         },
         {
             "label": "v2RayTun",
