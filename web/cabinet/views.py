@@ -227,6 +227,14 @@ def _subscription_feed_url(request: HttpRequest, subscription: BotSubscription) 
     return build_bot_feed_url(site_url=_public_site_base_url(request), feed_token=token)
 
 
+def _account_auto_import_url(request: HttpRequest, subscription_url: str) -> str:
+    raw = str(subscription_url or "").strip()
+    if not raw:
+        return ""
+    params = urlencode({"mode": "ios-auto", "u": raw})
+    return _build_public_absolute_url(request, f"/open-app/?{params}")
+
+
 def _account_embed_mode(request: HttpRequest) -> bool:
     path = str(getattr(request, "path", "") or "")
     next_value = str(request.GET.get("next", "") or "")
@@ -551,6 +559,7 @@ def _serialize_subscription_row(request: HttpRequest, row: dict[str, object]) ->
     subscription = row["obj"]
     vless_url = str(getattr(subscription, "vless_url", "") or "").strip()
     feed_url = _subscription_feed_url(request, subscription)
+    primary_link = feed_url or vless_url
     return {
         "id": int(row["id"]),
         "display_name": str(row["display_name"]),
@@ -559,6 +568,7 @@ def _serialize_subscription_row(request: HttpRequest, row: dict[str, object]) ->
         "expires_at": _format_dt_label(row.get("expires_at")),
         "config_url": _account_frontend_url(f"config/{int(row['id'])}/"),
         "install_url": _account_frontend_url(f"install/{int(row['id'])}/"),
+        "auto_import_url": _account_auto_import_url(request, primary_link),
         "renew_url": _account_frontend_renew_url(int(row["id"])),
         "feed_url": feed_url,
         "vless_url": vless_url,
@@ -796,6 +806,7 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
                 "primary_link": primary_link,
                 "feed_url": feed_url,
                 "vless_url": raw_vless_url,
+                "auto_import_url": _account_auto_import_url(request, primary_link),
                 "qr_image_data_url": f"data:image/png;base64,{qr_b64}",
                 "dashboard_url": _account_frontend_url(),
                 "renew_url": _account_frontend_renew_url(int(sub.id)),
@@ -1161,6 +1172,13 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
     subscription_rows: list[dict[str, object]] = []
     for item in subscriptions:
         state = _subscription_state(item, now=now)
+        feed_url = _subscription_feed_url(request, item)
+        vless_url = _normalize_vless_public_endpoint(
+            getattr(item, "vless_url", "") or "",
+            host=_vpn_public_host(),
+            port=_vpn_public_port(),
+            tag=_vpn_tag(),
+        )
         subscription_rows.append(
             {
                 "obj": item,
@@ -1172,13 +1190,9 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
                 "status_text": str(state["status_text"]),
                 "expires_at": state["expires_at"],
                 "renew_url": _account_renew_url(request, int(item.id)),
-                "feed_url": _subscription_feed_url(request, item),
-                "vless_url": _normalize_vless_public_endpoint(
-                    getattr(item, "vless_url", "") or "",
-                    host=_vpn_public_host(),
-                    port=_vpn_public_port(),
-                    tag=_vpn_tag(),
-                ),
+                "feed_url": feed_url,
+                "vless_url": vless_url,
+                "auto_import_url": _account_auto_import_url(request, feed_url or vless_url),
             }
         )
     active_configs = sum(1 for row in subscription_rows if bool(row["is_active"]))
@@ -1286,6 +1300,7 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
     feed_url = _subscription_feed_url(request, sub)
     raw_vless_url = str(getattr(sub, "vless_url", "") or "").strip()
     qr_data = feed_url or raw_vless_url
+    auto_import_url = _account_auto_import_url(request, qr_data)
     img = qrcode.make(qr_data)
     buff = io.BytesIO()
     img.save(buff, format="PNG")
@@ -1305,6 +1320,7 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
             "primary_link": qr_data,
             "feed_url": feed_url,
             "vless_url": raw_vless_url,
+            "auto_import_url": auto_import_url,
             "can_renew": bool(_subscription_state(sub)["can_renew"]),
             "renew_url": _account_renew_url(request, int(sub.id)),
             **_account_template_urls(request),
@@ -1328,6 +1344,7 @@ def account_install(request: HttpRequest, subscription_id: int) -> HttpResponse:
     feed_url = _subscription_feed_url(request, sub)
     raw_vless_url = str(getattr(sub, "vless_url", "") or "").strip()
     copy_text = feed_url or raw_vless_url
+    auto_import_url = _account_auto_import_url(request, copy_text)
     state = _subscription_state(sub)
 
     return render(
@@ -1340,6 +1357,7 @@ def account_install(request: HttpRequest, subscription_id: int) -> HttpResponse:
             "copy_text": copy_text,
             "feed_url": feed_url,
             "vless_url": raw_vless_url,
+            "auto_import_url": auto_import_url,
             "is_active": bool(state["is_active"]),
             "can_renew": bool(state["can_renew"]),
             "renew_url": _account_renew_url(request, int(sub.id)),

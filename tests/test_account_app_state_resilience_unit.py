@@ -277,7 +277,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
         actions_html = html.split('class="account-mini-actions"', 1)[1].split("</section>", 1)[0]
-        self.assertIn("/account-app/install/42/", actions_html)
+        self.assertIn("/open-app/?mode=ios-auto", actions_html)
+        self.assertIn("u=http%3A%2F%2Ftestserver%2Faccount%2Ffeed%2Ffeed-token%2F", actions_html)
         self.assertIn("/account-app/config/42/", actions_html)
         self.assertLess(actions_html.index("Подключить"), actions_html.index("QR и доступ"))
 
@@ -362,6 +363,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("V2RayRun", html)
         self.assertIn("Furious", html)
         self.assertIn("У меня другое приложение", html)
+        self.assertIn("/open-app/?mode=ios-auto", html)
         self.assertIn("data-access-url=\"http://testserver/account/feed/feed-token/\"", html)
         self.assertNotIn("Конфиг и QR", html)
         self.assertNotIn("Состояние конфига", html)
