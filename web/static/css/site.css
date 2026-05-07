@@ -5377,9 +5377,22 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   box-shadow: none;
 }
 
+.vx-account-bot .vx-open-app-active,
+.vx-account-bot .vx-open-app-rescue {
+  gap: 8px;
+}
+
+.vx-account-bot .vx-open-app-note {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+}
+
 .vx-account-bot .vx-open-progress {
   height: 6px;
-  margin: 2px 0 1px;
+  margin: 1px 0 0;
   overflow: hidden;
   border-radius: 999px;
   background: var(--vx-bot-secondary);
@@ -5393,6 +5406,18 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   border-radius: inherit;
   background: var(--vx-bot-blue);
   transition: width 0.25s ease;
+}
+
+.vx-account-bot .vx-open-app-manual {
+  padding: 10px;
+}
+
+.vx-account-bot .vx-open-app-manual .vx-bot-url-row {
+  margin-top: 8px;
+}
+
+.vx-account-bot .vx-open-app-rescue .vx-bot-actions {
+  margin-top: 0;
 }
 
 body.vx-account-embed .account-mini-hero,

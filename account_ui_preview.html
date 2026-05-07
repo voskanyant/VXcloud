@@ -366,6 +366,13 @@
   }
   .progress span.active { background: var(--accent); }
   .progress span.done   { background: #b6d7f1; }
+  .open-note {
+    display: grid;
+    gap: 4px;
+    padding: 10px;
+    border-radius: var(--radius-sm);
+    background: #f7f8fa;
+  }
 
   /* divider line label */
   .divider {
@@ -653,11 +660,13 @@
           <div class="card">
             <div class="card-eyebrow">Шаг 1 из 3</div>
             <div class="card-title">Пробуем открыть Streisand</div>
-            <div class="card-line">Если приложение установлено, импорт откроется автоматически. Если нет, попробуем следующее.</div>
-            <div class="card-line">При первом запуске разрешите доступ к сети, затем вернитесь сюда.</div>
             <div class="progress"><span class="active"></span><span></span><span></span></div>
+            <div class="open-note">
+              <div class="card-line">Если приложение установлено, импорт откроется автоматически. Если нет, попробуем следующее.</div>
+              <div class="card-line">При первом запуске разрешите доступ к сети, затем вернитесь сюда.</div>
+            </div>
             <div class="kb">
-              <div class="row"><a class="btn primary">Открыть Streisand</a></div>
+              <div class="row"><a class="btn primary">↗ Открыть Streisand</a></div>
               <div class="row"><a class="btn">Не открылось — попробовать V2Box</a></div>
             </div>
           </div>
@@ -673,9 +682,9 @@
 
           <div class="card tight">
             <div class="kb">
-              <div class="row"><a class="btn">Установить рекомендуемое приложение</a></div>
-              <div class="row"><a class="btn">📖 Открыть инструкцию</a></div>
-              <div class="row"><a class="btn">🆘 Поддержка</a></div>
+              <div class="row"><a class="btn"><span class="btn-icon">↓</span><span>Установить приложение</span></a></div>
+              <div class="row"><a class="btn"><span class="btn-icon">📖</span><span>Открыть инструкцию</span></a></div>
+              <div class="row"><a class="btn"><span class="btn-icon">💬</span><span>Поддержка</span></a></div>
             </div>
           </div>
 

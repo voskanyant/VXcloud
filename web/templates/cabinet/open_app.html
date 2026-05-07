@@ -11,10 +11,12 @@
       <p class="vx-bot-eyebrow" id="open-app-step">Шаг 1 из {{ deeplinks|length }}</p>
       <h1 class="vx-bot-title" id="open-app-title">Пробуем открыть {{ deeplinks.0.label }}</h1>
       <div class="vx-open-progress" aria-hidden="true"><span id="open-app-progress"></span></div>
-      <p class="vx-bot-line">Если приложение установлено, импорт откроется автоматически. Если нет, попробуем следующее.</p>
-      <p class="vx-bot-line">При первом запуске разрешите доступ к сети, затем вернитесь сюда.</p>
+      <div class="vx-open-app-note">
+        <p class="vx-bot-line">Если приложение установлено, импорт откроется автоматически. Если нет, попробуем следующее.</p>
+        <p class="vx-bot-line">При первом запуске разрешите доступ к сети, затем вернитесь сюда.</p>
+      </div>
       <div class="vx-bot-actions">
-        <a class="account-primary-button vx-bot-button vx-bot-button-primary" id="open-app-current" href="{{ deeplinks.0.url }}">Открыть {{ deeplinks.0.label }}</a>
+        <a class="account-primary-button vx-bot-button vx-bot-button-primary" id="open-app-current" href="{{ deeplinks.0.url }}">↗ Открыть {{ deeplinks.0.label }}</a>
         <button type="button" class="account-secondary-button vx-bot-button" id="open-app-next">Не открылось — попробовать дальше</button>
       </div>
     </article>
@@ -34,10 +36,10 @@
       <p class="vx-bot-eyebrow">Если ничего не помогло</p>
       <div class="vx-bot-actions">
         {% if recommended_install_url %}
-          <a class="account-secondary-button vx-bot-button" href="{{ recommended_install_url }}" target="_blank" rel="noopener">Установить рекомендуемое приложение</a>
+          <a class="account-secondary-button vx-bot-button" href="{{ recommended_install_url }}" target="_blank" rel="noopener"><span class="vx-bot-button-icon" aria-hidden="true">↓</span><span>Установить приложение</span></a>
         {% endif %}
-        <a class="account-secondary-button vx-bot-button" href="{{ instructions_url }}">📖 Открыть инструкцию</a>
-        <a class="account-secondary-button vx-bot-button" href="{{ support_url }}">Поддержка</a>
+        <a class="account-secondary-button vx-bot-button" href="{{ instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📖</span><span>Открыть инструкцию</span></a>
+        <a class="account-secondary-button vx-bot-button" href="{{ support_url }}"><span class="vx-bot-button-icon" aria-hidden="true">💬</span><span>Поддержка</span></a>
       </div>
     </article>
 
@@ -79,7 +81,7 @@
           if (currentLink) {
             currentLink.hidden = false;
             currentLink.href = item.url;
-            currentLink.textContent = 'Открыть ' + item.label;
+            currentLink.textContent = '↗ Открыть ' + item.label;
           }
           if (nextButton) {
             const next = links[index + 1];
