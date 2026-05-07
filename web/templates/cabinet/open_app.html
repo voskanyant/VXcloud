@@ -131,13 +131,13 @@
           }
         }
 
-        function openCurrent() {
+        function openCurrent(forceTopLevel) {
           const item = links[index];
           if (!item || !item.url) {
             copyLink();
             return;
           }
-          if (useHiddenLauncher) {
+          if (useHiddenLauncher && !forceTopLevel) {
             if (!launchFrame) {
               launchFrame = document.createElement('iframe');
               launchFrame.setAttribute('aria-hidden', 'true');
@@ -227,7 +227,7 @@
             }
             index += 1;
             renderState();
-            openCurrent();
+            openCurrent(true);
           });
         }
 
@@ -235,7 +235,7 @@
           currentLink.addEventListener('click', function (event) {
             if (!useHiddenLauncher) return;
             event.preventDefault();
-            openCurrent();
+            openCurrent(true);
           });
         }
 
