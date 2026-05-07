@@ -26,8 +26,8 @@ fallback and can use a wider layout.
   body should fit under the inherited WordPress shell.
 - The embedded dashboard is a separate mobile-first account surface, not the
   desktop account page squeezed into Telegram.
-- The first dashboard screen is connect-first: `Мой VPN`, `Ваши доступы`, and
-  `Подключить` must be visible before QR or secondary management.
+- The first dashboard screen is link-first: `Мой VPN`, `Ваши доступы`, and
+  `Скопировать ссылку` must be visible before QR or secondary management.
 - Each active access should include a short mini instruction: copy the
   subscription link, open Streisand/V2Box/v2rayNG, press `+`, import from
   clipboard.
@@ -60,10 +60,10 @@ fallback and can use a wider layout.
   - access name;
   - active/inactive status;
   - expiration label;
-  - primary connection actions in this order: `Подключить`,
-    `Скопировать ссылку`, `QR и доступ`, `Настроить вручную`.
-- On dashboard subscription cards, `Подключить` is the primary daily action.
-  Renewal is secondary and must still target an explicit subscription id.
+  - primary actions such as renew, QR, and open details.
+- On dashboard subscription cards, opening `QR и доступ` is the primary daily
+  action; renewal is secondary and must still target an explicit subscription
+  id.
 - The dashboard hero CTA should also be contextual: if the user has an active
   access, the primary action opens that access's `QR и доступ`; buying another
   access becomes secondary. If the user has no access at all, the primary action
@@ -151,11 +151,12 @@ fallback and can use a wider layout.
 ## Account Page Redesign Notes
 
 - The public `/account/` page and the native `/account-app/` dashboard share the
-  same customer priorities: connect first, then copy the subscription link,
-  then show QR/manual setup, then expose renewal and management actions.
-- The public account page should use the same compact account structure as the
-  Mini App. It may center the content on desktop, but it should not become a
-  separate desktop dashboard.
+  same customer priorities: copy the subscription link first, then show QR as a
+  fallback, then expose renewal and management actions.
+- The public account page may use a wider two-column layout with a quiet account
+  sidebar, but it must still stay mobile-first. On phones, the first screen
+  should show `Мой VPN`, the primary buy/renew/instruction actions, and the
+  start of `Ваши доступы`.
 - The Mini App dashboard must not be a squeezed desktop page. It uses compact
   rounded blocks, a short identity line, link-first access cards, and one-tap
   `Скопировать ссылку` actions.

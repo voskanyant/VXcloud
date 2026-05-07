@@ -11,14 +11,11 @@
       <p class="account-intro">Основной способ подключения — ссылка подписки. Скопируйте ее и импортируйте в VPN-приложение. QR оставлен как запасной вариант.</p>
     </div>
     <div class="account-config-hero-actions">
+      <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
       <a class="account-primary-button" href="{{ auto_import_url }}">Подключить</a>
-      <button type="button" class="account-secondary-button" onclick="copyCfg()">Скопировать ссылку</button>
-      <a class="account-secondary-button" href="#qr">QR и доступ</a>
-      <a class="account-secondary-button" href="{{ backend_install_prefix }}{{ subscription.id }}/">Настроить вручную</a>
       {% if can_renew %}
         <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
       {% endif %}
-      <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
     </div>
   </section>
 

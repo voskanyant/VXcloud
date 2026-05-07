@@ -503,8 +503,6 @@
       return !!(sub && sub.is_active);
     });
     const activeImportUrl = activeSubscription && activeSubscription.auto_import_url ? String(activeSubscription.auto_import_url) : "";
-    const activeCopyText = activeSubscription ? String(activeSubscription.feed_url || activeSubscription.vless_url || "") : "";
-    const activeInstallUrl = activeSubscription && activeSubscription.install_url ? String(activeSubscription.install_url) : "";
     const trialUrl = String(cfg.telegramTrialUrl || cfg.telegramBotUrl || cfg.supportTelegramUrl || "").trim();
     const trialButtonHtml = trialUrl
       ? '<a class="vx-button vx-button--primary" href="' +
@@ -577,22 +575,7 @@
       activeImportUrl
         ? '<a class="vx-button vx-button--primary" href="' +
           escapeHtml(activeImportUrl) +
-          '" target="_top" rel="noopener">\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c</a>' +
-          (activeCopyText
-            ? '<button type="button" class="vx-button vx-button--ghost" data-copy-text="' +
-              escapeHtml(activeCopyText) +
-              '">\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443</button>'
-            : "") +
-          (activeSubscription && activeSubscription.config_url
-            ? '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
-              escapeHtml(activeSubscription.config_url) +
-              '">QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</button>'
-            : "") +
-          (activeInstallUrl
-            ? '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
-              escapeHtml(activeInstallUrl) +
-              '">\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u0432\u0440\u0443\u0447\u043d\u0443\u044e</button>'
-            : "")
+          '" target="_top" rel="noopener">\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c</a>'
         : activeSubscription && activeSubscription.config_url
           ? '<button type="button" class="vx-button vx-button--primary" data-nav="' +
             escapeHtml(activeSubscription.config_url) +
@@ -619,8 +602,6 @@
       ? subscriptions
           .map(function (sub) {
             const autoImportUrl = sub && sub.auto_import_url ? String(sub.auto_import_url) : "";
-            const copyText = sub ? String(sub.feed_url || sub.vless_url || "") : "";
-            const installUrl = sub && sub.install_url ? String(sub.install_url) : "";
             return [
               '<article class="vx-config-card">',
               '<div class="vx-config-card__head">',
@@ -637,23 +618,12 @@
                 (autoImportUrl
                   ? '<a class="vx-button vx-button--primary" href="' +
                     escapeHtml(autoImportUrl) +
-                    '" target="_top" rel="noopener">\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c</a>'
+                    '" target="_top" rel="noopener">\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c</a><button type="button" class="vx-button vx-button--ghost" data-nav="' +
+                    escapeHtml(sub.config_url) +
+                    '">QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</button>'
                   : '<button type="button" class="vx-button vx-button--primary" data-nav="' +
                     escapeHtml(sub.config_url) +
                     '">QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</button>') +
-                (copyText
-                  ? '<button type="button" class="vx-button vx-button--ghost" data-copy-text="' +
-                    escapeHtml(copyText) +
-                    '">\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443</button>'
-                  : "") +
-                '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
-                escapeHtml(sub.config_url) +
-                '">QR \u0438 \u0434\u043e\u0441\u0442\u0443\u043f</button>' +
-                (installUrl
-                  ? '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
-                    escapeHtml(installUrl) +
-                    '">\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u0432\u0440\u0443\u0447\u043d\u0443\u044e</button>'
-                  : "") +
                 (sub.can_renew
                   ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew" data-subscription-id="' +
                     escapeHtml(String(sub.id)) +
@@ -844,7 +814,6 @@
     const dashboardUrl = model.dashboard_url || cfg.accountUrl || "/account/";
     const copyText = model.copy_text || "";
     const autoImportUrl = model.auto_import_url || "";
-    const installUrl = model.install_url || "";
     const guideUrl = accountRouteUrl({ view: "instructions" });
     const renewButtonHtml = model.can_renew
       ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew" data-subscription-id="' +
@@ -877,12 +846,7 @@
           escapeHtml(autoImportUrl) +
           '" target="_top" rel="noopener">Подключить</a><button type="button" class="vx-button vx-button--ghost" data-copy-text="' +
           escapeHtml(copyText) +
-          '">Скопировать ссылку</button>' +
-          (installUrl
-            ? '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
-              escapeHtml(installUrl) +
-              '">Настроить вручную</button>'
-            : "")
+          '">Скопировать ссылку</button>'
         : '<button type="button" class="vx-button vx-button--primary" data-copy-text="' +
           escapeHtml(copyText) +
           '">Скопировать ссылку</button>',
@@ -952,7 +916,6 @@
     const dashboardUrl = model.dashboard_url || cfg.accountUrl || "/account/";
     const copyText = model.copy_text || "";
     const autoImportUrl = model.auto_import_url || "";
-    const installUrl = model.install_url || "";
     const guideUrl = accountRouteUrl({ view: "instructions" });
     const renewButtonHtml = model.can_renew
       ? '<button type="button" class="vx-button vx-button--ghost" data-checkout="renew" data-subscription-id="' +
@@ -985,12 +948,7 @@
           escapeHtml(autoImportUrl) +
           '" target="_top" rel="noopener">\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0438\u0442\u044c</a><button type="button" class="vx-button vx-button--ghost" data-copy-text="' +
           escapeHtml(copyText) +
-          '">\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443</button>' +
-          (installUrl
-            ? '<button type="button" class="vx-button vx-button--ghost" data-nav="' +
-              escapeHtml(installUrl) +
-              '">\u041d\u0430\u0441\u0442\u0440\u043e\u0438\u0442\u044c \u0432\u0440\u0443\u0447\u043d\u0443\u044e</button>'
-            : "")
+          '">\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443</button>'
         : '<button type="button" class="vx-button vx-button--primary" data-copy-text="' +
           escapeHtml(copyText) +
           '">\u0421\u043a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c \u0441\u0441\u044b\u043b\u043a\u0443</button>',

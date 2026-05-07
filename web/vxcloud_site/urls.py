@@ -28,7 +28,6 @@ urlpatterns = [
     path("account/", include("cabinet.urls")),
     path("open-app/", open_app_link, name="open_app_link"),
     path("legacy/", include("blog.urls")),
-    path("instructions/app-store-country/", blog_views.app_store_country, name="app_store_country"),
     path("instructions/", blog_views.index, name="instructions"),
     path("", blog_views.home, name="home"),
     path("<path:path>/", blog_views.page_by_path, name="site_page"),

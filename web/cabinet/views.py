@@ -74,7 +74,7 @@ PENDING_CARD_CHECKOUT_TTL = timedelta(minutes=30)
 LOGGER = logging.getLogger(__name__)
 WEB_ORDER_SESSION_KEY = "web_order_checkout_state_v1"
 WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
-APPLE_ACCOUNT_COUNTRY_HELP_URL = "/instructions/app-store-country/"
+APPLE_ACCOUNT_COUNTRY_HELP_URL = "https://support.apple.com/en-us/118283"
 INSTALL_APP_MATRIX: dict[str, list[dict[str, object]]] = {
     "ios": [
         {

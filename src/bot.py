@@ -813,19 +813,14 @@ class VPNBot:
             ]
         )
 
-    def _trial_success_markup(self, subscription_id: int, subscription_url: str | None = None) -> InlineKeyboardMarkup:
-        rows: list[list[InlineKeyboardButton]] = []
-        if subscription_url:
-            rows.append([InlineKeyboardButton(text="Подключить", url=self._auto_import_url(subscription_url))])
-            rows.append([InlineKeyboardButton(text="Скопировать ссылку", api_kwargs={"copy_text": {"text": subscription_url}})])
-        rows.extend(
+    def _trial_success_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("QR и доступ", f"/account/config/{subscription_id}/")],
-                [self._mini_app_button("Настроить вручную", f"/account/install/{subscription_id}/")],
+                [self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")],
+                [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
                 [InlineKeyboardButton(text="📖 Как подключить", callback_data="nav|menu_instructions|_")],
             ]
         )
-        return InlineKeyboardMarkup(rows)
 
     def _trial_success_text(self, expires_at: datetime) -> str:
         return (
@@ -869,24 +864,13 @@ class VPNBot:
         )
         return InlineKeyboardMarkup(rows)
 
-    def _post_payment_ready_markup(
-        self,
-        subscription_id: int,
-        account_url: str,
-        subscription_url: str | None = None,
-    ) -> InlineKeyboardMarkup:
-        del account_url
-        rows: list[list[InlineKeyboardButton]] = []
-        if subscription_url:
-            rows.append([InlineKeyboardButton(text="Подключить", url=self._auto_import_url(subscription_url))])
-            rows.append([InlineKeyboardButton(text="Скопировать ссылку", api_kwargs={"copy_text": {"text": subscription_url}})])
-        rows.extend(
+    def _post_payment_ready_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("QR и доступ", f"/account/config/{subscription_id}/")],
-                [self._mini_app_button("Настроить вручную", f"/account/install/{subscription_id}/")],
+                [self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")],
+                [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
             ]
         )
-        return InlineKeyboardMarkup(rows)
 
     async def _renew_offer_markup(self, user_id: int | None, subscription_id: int | None = None) -> InlineKeyboardMarkup:
         next_path = "/account/renew/"
@@ -987,13 +971,13 @@ class VPNBot:
         rows.append([InlineKeyboardButton(text=self._with_stars_price("⭐ Купить за Stars"), callback_data="act|buy_new|_")])
         return InlineKeyboardMarkup(rows)
 
-    def _renew_success_markup(
-        self,
-        subscription_id: int,
-        account_url: str,
-        subscription_url: str | None = None,
-    ) -> InlineKeyboardMarkup:
-        return self._post_payment_ready_markup(subscription_id, account_url, subscription_url)
+    def _renew_success_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")],
+                [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
+            ]
+        )
 
     @staticmethod
     def _payment_success_text(*, is_renew: bool, expiry_text: str | None = None) -> str:
@@ -1531,23 +1515,25 @@ class VPNBot:
         can_delete: bool,
         renewal_first: bool = False,
     ) -> InlineKeyboardMarkup:
-        connect_button = InlineKeyboardButton(text="Подключить", url=self._auto_import_url(copy_text))
-        cabinet_button = self._mini_app_button("QR и доступ", f"/account/config/{subscription_id}/")
-        install_button = self._mini_app_button("Настроить вручную", f"/account/install/{subscription_id}/")
+        cabinet_button = self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")
+        install_button = self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")
         qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")
         renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")
-        copy_row = [InlineKeyboardButton(text="Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
-        rows = [
-            [connect_button],
-            copy_row,
-            [cabinet_button],
-            [install_button],
-        ]
+        copy_row = [InlineKeyboardButton(text="🔗 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
         if renewal_first:
-            rows.append([renew_button])
-            rows.append([qr_button])
+            rows = [
+                [renew_button],
+                copy_row,
+                [install_button],
+                [cabinet_button, qr_button],
+            ]
         else:
-            rows.append([qr_button, renew_button])
+            rows = [
+                copy_row,
+                [install_button],
+                [cabinet_button],
+                [qr_button, renew_button],
+            ]
         manage_row = [InlineKeyboardButton(text="Переименовать", callback_data=f"act|cfg_rename:{subscription_id}|_")]
         if can_delete:
             manage_row.append(InlineKeyboardButton(text="Удалить", callback_data=f"act|cfg_delete_request:{subscription_id}|_"))
@@ -2956,29 +2942,23 @@ class VPNBot:
                 return
 
             account_url = await self._account_url(user_id)
-            target_sub = subscriptions[0]
-            target_id = int(target_sub["id"])
-            target_exp = target_sub.get("expires_at")
+            target_id = int(subscriptions[0]["id"])
+            target_exp = subscriptions[0].get("expires_at")
             if is_renew:
                 if renew_subscription_id:
                     selected = await self.db.get_subscription(user_id, renew_subscription_id)
                     if selected:
-                        target_sub = selected
                         target_id = renew_subscription_id
                         target_exp = selected.get("expires_at")
                 expiry_text = self._format_local_dt(target_exp) if isinstance(target_exp, datetime) else "—"
-                target_url = await self._subscription_feed_url(target_id, str(target_sub.get("feed_token") or ""))
-                target_url = target_url or str(target_sub.get("vless_url") or "")
                 await update.message.reply_text(
                     self._payment_success_text(is_renew=True, expiry_text=expiry_text),
-                    reply_markup=self._renew_success_markup(target_id, account_url, target_url),
+                    reply_markup=self._renew_success_markup(target_id, account_url),
                 )
             else:
-                target_url = await self._subscription_feed_url(target_id, str(target_sub.get("feed_token") or ""))
-                target_url = target_url or str(target_sub.get("vless_url") or "")
                 await update.message.reply_text(
                     self._payment_success_text(is_renew=False),
-                    reply_markup=self._post_payment_ready_markup(target_id, account_url, target_url),
+                    reply_markup=self._post_payment_ready_markup(target_id, account_url),
                 )
         except Exception:
             _log_payment_event(
@@ -3150,15 +3130,11 @@ class VPNBot:
 
         sub_row = await self.db.get_active_subscription(user_id)
         subscription_id = int(sub_row["id"]) if sub_row else 0
-        subscription_url = None
-        if sub_row and subscription_id:
-            subscription_url = await self._subscription_feed_url(subscription_id, str(sub_row.get("feed_token") or ""))
-            subscription_url = subscription_url or str(sub_row.get("vless_url") or "")
         message = update.message or (update.callback_query.message if update.callback_query else None)
         if message is not None:
             await message.reply_text(
                 self._trial_success_text(new_exp),
-                reply_markup=self._trial_success_markup(subscription_id, subscription_url) if subscription_id else None,
+                reply_markup=self._trial_success_markup(subscription_id) if subscription_id else None,
             )
 
     async def _create_or_extend_for_user(
@@ -3295,11 +3271,9 @@ class VPNBot:
         copy_label = "🔗 Скопировать ссылку" if subscription_url else "🔗 Скопировать ссылку"
         buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
-            connect_url = self._auto_import_url(link_for_copy) if subscription_url else self._open_app_url(link_for_copy)
-            buttons.append([InlineKeyboardButton(text="Подключить", url=connect_url)])
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
-            buttons.append([self._mini_app_button("QR и доступ", f"/account/config/{subscription_id}/")])
-            buttons.append([self._mini_app_button("Настроить вручную", f"/account/install/{subscription_id}/")])
+            buttons.append([self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")])
+            buttons.append([self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")])
             buttons.append([self._mini_app_button("🔄 Продлить", renew_path)])
         else:
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])

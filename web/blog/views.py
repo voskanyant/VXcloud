@@ -42,10 +42,6 @@ def index(request: HttpRequest) -> HttpResponse:
     return render(request, "blog/index.html", {"posts": posts})
 
 
-def app_store_country(request: HttpRequest) -> HttpResponse:
-    return render(request, "blog/app_store_country.html")
-
-
 def category_detail(request: HttpRequest, slug: str) -> HttpResponse:
     now = timezone.now()
     category = get_object_or_404(Category, slug=slug, is_active=True)
