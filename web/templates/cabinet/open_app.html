@@ -156,6 +156,10 @@
               renderState();
               return;
             }
+            if (!links[launchedIndex + 1]) {
+              renderState();
+              return;
+            }
             index += 1;
             renderState();
             if (autoSequence && links[index]) {
