@@ -102,6 +102,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
         )
         self.assertIn(".vx-account-bot .account-install-app-mark", self.css)
         self.assertIn(".vx-account-bot .account-install-app-text", self.css)
+        self.assertIn(".vx-account-bot .account-install-app-badges", self.css)
+        self.assertIn(".vx-account-bot .account-install-app-badge-primary", self.css)
+        self.assertIn(".vx-account-bot .account-install-app-badge-paid", self.css)
         self.assertIn(".vx-account-bot .account-install-app-card-flat .account-install-app-mark", self.css)
         self.assertIn("border: 1px solid var(--vx-bot-line);", self.css)
 

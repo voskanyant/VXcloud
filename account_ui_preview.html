@@ -331,19 +331,27 @@
     font-weight: 800;
     line-height: 1;
   }
-  .app-text { display: grid; gap: 2px; min-width: 0; }
+  .app-text { display: grid; gap: 6px; min-width: 0; }
   .app-card strong {
     display: block;
     color: var(--ink);
     font-size: 16px;
     line-height: 1.2;
   }
-  .app-card span {
-    display: block;
-    margin-top: 2px;
+  .app-badges { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+  .app-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 20px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #ffffff;
     color: var(--muted);
-    font-size: 13px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
   }
+  .app-badge.primary { background: #e6f1fb; color: #1f74ba; }
   .app-note {
     margin-top: 0;
     padding-top: 8px;
@@ -616,7 +624,11 @@
                 <span class="app-mark">S</span>
                 <div class="app-text">
                   <strong>Streisand</strong>
-                  <span>рекомендуем для iPhone и iPad · бесплатно в App Store (US)</span>
+                  <div class="app-badges">
+                    <span class="app-badge primary">рекомендуем</span>
+                    <span class="app-badge">бесплатно</span>
+                    <span class="app-badge">App Store US</span>
+                  </div>
                 </div>
               </div>
               <div class="kb" style="margin-top:0;">

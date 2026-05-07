@@ -5131,7 +5131,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 
 .vx-account-bot .account-install-app-text {
   display: grid;
-  gap: 2px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -5141,10 +5141,39 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   line-height: 1.2;
 }
 
-.vx-account-bot .account-install-app-copy span,
 .vx-account-bot .account-install-note-inline {
   color: var(--vx-bot-muted);
   font-size: 13px;
+}
+
+.vx-account-bot .account-install-app-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.vx-account-bot .account-install-app-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--vx-bot-muted);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.vx-account-bot .account-install-app-badge-primary {
+  background: #e6f1fb;
+  color: #1f74ba;
+}
+
+.vx-account-bot .account-install-app-badge-paid {
+  background: #fff4d8;
+  color: #8a6500;
 }
 
 .vx-account-bot .account-install-app-actions {

@@ -225,9 +225,10 @@
 
     function appBadges(app) {
       const bits = [];
-      if (app.recommended) bits.push('рекомендуем для этого устройства');
+      if (app.recommended) bits.push('рекомендуем');
       if (app.paid) bits.push('платное');
-      return bits.length ? bits.join(' · ') : 'подходит';
+      if (!app.paid) bits.push('бесплатно');
+      return bits.length ? bits : ['подходит'];
     }
 
     function platformGuideUrl(platform) {
@@ -250,8 +251,16 @@
       copyText.className = 'account-install-app-text';
       const title = document.createElement('strong');
       title.textContent = app.label || app.name;
-      const meta = document.createElement('span');
-      meta.textContent = appBadges(app);
+      const meta = document.createElement('div');
+      meta.className = 'account-install-app-badges';
+      appBadges(app).forEach((badgeText) => {
+        const badge = document.createElement('span');
+        badge.className = 'account-install-app-badge';
+        if (app.recommended && badgeText === 'рекомендуем') badge.classList.add('account-install-app-badge-primary');
+        if (app.paid && badgeText === 'платное') badge.classList.add('account-install-app-badge-paid');
+        badge.textContent = badgeText;
+        meta.appendChild(badge);
+      });
       copyText.append(title, meta);
       copy.append(mark, copyText);
 
