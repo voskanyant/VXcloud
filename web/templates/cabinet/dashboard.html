@@ -139,7 +139,7 @@
 
       <div class="account-instructions-device-actions">
         {% for device in instructions_payload.devices %}
-          <a class="account-secondary-button vx-bot-tab{% if device.key == instructions_payload.device %} account-secondary-button-current{% endif %}" href="{{ device.url }}">{{ device.label }}</a>
+          <a class="account-secondary-button vx-bot-tab{% if device.key == instructions_payload.device %} account-secondary-button-current{% endif %}" href="{{ device.url }}"{% if device.key == instructions_payload.device %} aria-current="page"{% endif %}>{{ device.label }}</a>
         {% endfor %}
       </div>
 

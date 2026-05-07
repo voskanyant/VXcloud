@@ -22,10 +22,10 @@
 
   <section class="vx-bot-card vx-install-start-card">
     <div class="account-install-device-tabs vx-install-tabs" aria-label="Выбор устройства">
-      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="ios">iPhone</button>
-      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="android">Android</button>
-      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="windows">Windows</button>
-      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="macos">Mac</button>
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="ios" aria-pressed="false">iPhone</button>
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="android" aria-pressed="false">Android</button>
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="windows" aria-pressed="false">Windows</button>
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="macos" aria-pressed="false">Mac</button>
     </div>
     <p class="vx-bot-eyebrow">Подключение</p>
     <h1 class="vx-bot-title vx-install-title">Подключить {{ display_name }}</h1>
@@ -102,10 +102,10 @@
     </div>
 
     <div class="account-install-device-tabs" aria-label="Выбор устройства">
-      <button type="button" class="account-secondary-button" data-platform-choice="ios">iPhone</button>
-      <button type="button" class="account-secondary-button" data-platform-choice="android">Android</button>
-      <button type="button" class="account-secondary-button" data-platform-choice="windows">Windows</button>
-      <button type="button" class="account-secondary-button" data-platform-choice="macos">Mac</button>
+      <button type="button" class="account-secondary-button" data-platform-choice="ios" aria-pressed="false">iPhone</button>
+      <button type="button" class="account-secondary-button" data-platform-choice="android" aria-pressed="false">Android</button>
+      <button type="button" class="account-secondary-button" data-platform-choice="windows" aria-pressed="false">Windows</button>
+      <button type="button" class="account-secondary-button" data-platform-choice="macos" aria-pressed="false">Mac</button>
     </div>
 
     <div class="account-install-note account-install-note-ios" id="install-ios-note" hidden>
@@ -327,6 +327,7 @@
       document.querySelectorAll('[data-platform-choice]').forEach((button) => {
         const isCurrent = button.dataset.platformChoice === selectedPlatform;
         button.classList.toggle('account-secondary-button-current', isCurrent);
+        button.setAttribute('aria-pressed', isCurrent ? 'true' : 'false');
       });
 
       if (recommendedRoot && recommended) {

@@ -197,6 +197,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
             ".vx-account-bot .account-instructions-device-actions .vx-bot-tab.account-secondary-button-current",
             self.css,
         )
+        self.assertIn('.vx-account-bot .account-instructions-device-actions .vx-bot-tab[aria-current="page"]', self.css)
         self.assertIn(".vx-account-bot .account-step-list li::marker", self.css)
         self.assertIn(".vx-account-bot .account-support-hint", self.css)
         self.assertIn(".vx-account-bot .account-support-actions", self.css)
@@ -215,6 +216,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
             dashboard.index("account-support-actions"),
             dashboard.index("account-support-hint"),
         )
+        self.assertIn('aria-current="page"', dashboard)
 
     def test_embed_install_selector_and_app_cards_are_polished(self):
         install = (REPO_ROOT / "web" / "templates" / "cabinet" / "install.html").read_text(encoding="utf-8")
@@ -222,6 +224,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-install-tabs", self.css)
         self.assertIn("padding: 3px;", self.css)
         self.assertIn(".vx-account-bot .vx-install-tabs .vx-bot-tab.account-secondary-button-current", self.css)
+        self.assertIn('.vx-account-bot .vx-install-tabs .vx-bot-tab[aria-pressed="true"]', self.css)
         self.assertIn(
             ".vx-account-bot .account-install-apps:not(.account-install-apps-flat) .account-install-app-card",
             self.css,
@@ -251,6 +254,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("function setButtonContent", install)
         self.assertIn("setButtonContent(\n          showAppsButton,", install)
         self.assertIn("appsRoot.hidden ? '▦' : '×'", install)
+        self.assertIn('data-platform-choice="ios" aria-pressed="false"', install)
+        self.assertIn("button.setAttribute('aria-pressed', isCurrent ? 'true' : 'false')", install)
 
     def test_embed_config_page_is_qr_and_link_first(self):
         self.assertIn("body.vx-account-embed .account-page-shell-config", self.css)

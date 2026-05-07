@@ -5215,7 +5215,8 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   background: #ffffff;
 }
 
-.vx-account-bot .account-instructions-device-actions .vx-bot-tab.account-secondary-button-current {
+.vx-account-bot .account-instructions-device-actions .vx-bot-tab.account-secondary-button-current,
+.vx-account-bot .account-instructions-device-actions .vx-bot-tab[aria-current="page"] {
   background: var(--vx-bot-text);
   color: #ffffff;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
@@ -5288,7 +5289,8 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   background: #ffffff;
 }
 
-.vx-account-bot .vx-install-tabs .vx-bot-tab.account-secondary-button-current {
+.vx-account-bot .vx-install-tabs .vx-bot-tab.account-secondary-button-current,
+.vx-account-bot .vx-install-tabs .vx-bot-tab[aria-pressed="true"] {
   background: var(--vx-bot-text);
   color: #ffffff;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
