@@ -68,7 +68,7 @@
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}" />
       <input id="cfg-rename" type="text" class="account-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Название доступа" />
-      <button type="submit" class="account-primary-button vx-bot-button vx-bot-button-primary">Сохранить</button>
+      <button type="submit" class="account-primary-button vx-bot-button vx-bot-button-primary"><span class="vx-bot-button-icon" aria-hidden="true">✓</span><span>Сохранить</span></button>
     </form>
   </article>
 

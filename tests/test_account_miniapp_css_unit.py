@@ -9,6 +9,7 @@ CONFIG_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "config.html"
 INSTALL_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "install.html"
 OPEN_APP_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "open_app.html"
 ACCOUNT_PREVIEW = REPO_ROOT / "account_ui_preview.html"
+LINK_TELEGRAM_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "link_telegram.html"
 
 
 class AccountMiniAppCssTests(unittest.TestCase):
@@ -142,13 +143,17 @@ class AccountMiniAppCssTests(unittest.TestCase):
         config = CONFIG_TEMPLATE.read_text(encoding="utf-8")
         install = INSTALL_TEMPLATE.read_text(encoding="utf-8")
         open_app = OPEN_APP_TEMPLATE.read_text(encoding="utf-8")
+        link_telegram = LINK_TELEGRAM_TEMPLATE.read_text(encoding="utf-8")
 
         self.assertIn('aria-hidden="true">⧉</span><span>Скопировать ссылку', config)
         self.assertIn('aria-hidden="true">↻</span><span>Продлить', config)
+        self.assertIn('aria-hidden="true">✓</span><span>Сохранить', config)
         self.assertIn('aria-hidden="true">⧉</span><span>Скопировать ссылку', install)
         self.assertIn('aria-hidden="true">i</span><span>Подробная инструкция', install)
         self.assertIn('aria-hidden="true">i</span><span>Открыть инструкцию', open_app)
         self.assertIn('aria-hidden="true">?</span><span>Поддержка', open_app)
+        self.assertIn('aria-hidden="true">›</span><span>{{ cabinet_link_open_bot_action }}', link_telegram)
+        self.assertIn('aria-hidden="true">↻</span><span>{{ cabinet_link_regen_action }}', link_telegram)
 
     def test_bot_style_pages_have_compact_topbars(self):
         dashboard = DASHBOARD_TEMPLATE.read_text(encoding="utf-8")

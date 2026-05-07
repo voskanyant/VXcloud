@@ -27,7 +27,7 @@
 
   {% if deep_link %}
     <div class="vx-bot-actions">
-      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ deep_link }}" target="_blank" rel="noopener">{{ cabinet_link_open_bot_action }}</a>
+      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ deep_link }}" target="_blank" rel="noopener"><span class="vx-bot-button-icon" aria-hidden="true">›</span><span>{{ cabinet_link_open_bot_action }}</span></a>
     </div>
     <p class="vx-bot-line auth-note">Если кнопка не сработала, отправьте боту команду: <code>/start link_{{ link_code }}</code>.</p>
   {% else %}
@@ -37,7 +37,7 @@
 
   <form method="post" class="vx-bot-actions" action="{{ backend_link_url }}">
     {% csrf_token %}
-    <button type="submit" class="account-secondary-button vx-bot-button">{{ cabinet_link_regen_action }}</button>
+    <button type="submit" class="account-secondary-button vx-bot-button"><span class="vx-bot-button-icon" aria-hidden="true">↻</span><span>{{ cabinet_link_regen_action }}</span></button>
   </form>
 </section>
 {% endblock %}
