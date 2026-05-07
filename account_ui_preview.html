@@ -173,6 +173,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 5px;
     flex: 0 0 auto;
     min-height: 22px;
     font-size: 11px;
@@ -183,6 +184,13 @@
     color: #5a5a60;
   }
   .pill.ok { background: #e6f4ea; color: #1f7a3a; }
+  .pill.ok::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: currentColor;
+  }
   .pill.warn { background: #fff4d8; color: #8a6500; }
   .pill.bad { background: #fde8e8; color: #a62828; }
 

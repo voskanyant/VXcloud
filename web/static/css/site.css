@@ -4620,6 +4620,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 5px;
   flex: 0 0 auto;
   min-height: 22px;
   padding: 3px 8px;
@@ -4635,6 +4636,14 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 .vx-account-bot .vx-bot-pill-active {
   background: #e7f5e9;
   color: #2e7d32;
+}
+
+.vx-account-bot .vx-bot-pill-active::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
 }
 
 .vx-account-bot .vx-bot-actions {

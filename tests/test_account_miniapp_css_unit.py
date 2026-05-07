@@ -23,6 +23,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-summary-row", self.css)
         self.assertIn(".vx-account-bot .vx-bot-access-meta", self.css)
         self.assertIn(".vx-account-bot .vx-bot-title", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-pill-active::before", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-actions-utility", self.css)
@@ -30,6 +31,11 @@ class AccountMiniAppCssTests(unittest.TestCase):
         access_meta_rule = access_meta_rule[: access_meta_rule.index("}")]
         self.assertIn("padding: 9px 10px;", access_meta_rule)
         self.assertIn("background: #f7f8fa;", access_meta_rule)
+        pill_rule = self.css[self.css.index(".vx-account-bot .vx-bot-pill {") :]
+        pill_rule = pill_rule[: pill_rule.index("}")]
+        self.assertIn("gap: 5px;", pill_rule)
+        self.assertIn("width: 6px;", self.css)
+        self.assertIn("background: currentColor;", self.css)
 
     def test_embed_dashboard_is_connect_first(self):
         self.assertIn(".vx-account-bot .vx-bot-button-primary", self.css)
