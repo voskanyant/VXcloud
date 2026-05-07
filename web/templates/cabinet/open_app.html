@@ -15,11 +15,8 @@
     <p class="account-subtle">{{ open_app_description }}</p>
     {% if auto_sequence %}
       <div class="account-message account-message-info">
-        Если приложение при первом запуске спросило доступ к сети и показало ошибку, разрешите WLAN & Mobile, вернитесь сюда и нажмите нужное приложение еще раз.
+        Если Streisand или V2Box при первом запуске спросил доступ к сети и показал ошибку, разрешите WLAN & Mobile и нажмите нужное приложение ниже еще раз.
         V2Box может добавить подписку, но не выбрать ее автоматически. Если открылся V2Box: Configs -> VXcloud -> Home -> Connect.
-      </div>
-      <div class="account-message account-message-info" id="open-app-ios-note" hidden>
-        В Safari iPhone нельзя тихо проверить, какие VPN-приложения установлены. Выберите приложение, которое уже есть на телефоне, или скопируйте ссылку для ручного импорта.
       </div>
     {% endif %}
     <div class="auth-actions">
@@ -40,11 +37,6 @@
         const links = linksEl ? JSON.parse(linksEl.textContent || '[]') : [];
         const autoSequence = {% if auto_sequence %}true{% else %}false{% endif %};
         let index = 0;
-        const ua = navigator.userAgent || '';
-        const isIosBrowser = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-        const isTelegramBrowser = /Telegram/i.test(ua) || !!(window.Telegram && window.Telegram.WebApp);
-        const canAutoRun = autoSequence && (!isIosBrowser || isTelegramBrowser);
-        const iosNote = document.getElementById('open-app-ios-note');
         function openNext() {
           if (!links[index] || !links[index].url) return;
           const url = links[index].url;
@@ -56,10 +48,7 @@
             }, 1600);
           }
         }
-        if (autoSequence && !canAutoRun && iosNote) {
-          iosNote.hidden = false;
-        }
-        if (canAutoRun) {
+        if (autoSequence) {
           setTimeout(openNext, 80);
         }
       })();
