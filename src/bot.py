@@ -1515,8 +1515,8 @@ class VPNBot:
         can_delete: bool,
         renewal_first: bool = False,
     ) -> InlineKeyboardMarkup:
-        cabinet_button = self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")
-        install_button = InlineKeyboardButton(text="⚡ Подключить", url=self._auto_import_url(copy_text))
+        cabinet_button = self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")
+        install_button = self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")
         qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")
         renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")
         copy_row = [InlineKeyboardButton(text="🔗 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
@@ -3272,8 +3272,8 @@ class VPNBot:
         buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
-            buttons.append([InlineKeyboardButton(text="⚡ Подключить", url=self._auto_import_url(link_for_copy))])
-            buttons.append([self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")])
+            buttons.append([self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")])
+            buttons.append([self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")])
             buttons.append([self._mini_app_button("🔄 Продлить", renew_path)])
         else:
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])

@@ -628,9 +628,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
             markup.inline_keyboard[0][0].api_kwargs["copy_text"]["text"],
             "https://vxcloud.ru/account/feed/token/",
         )
-        self.assertEqual(markup.inline_keyboard[1][0].text, "⚡ Подключить")
-        self.assertIn("https://vxcloud.ru/open-app/?mode=ios-auto", markup.inline_keyboard[1][0].url)
-        self.assertIn("account%2Ffeed%2Ftoken", markup.inline_keyboard[1][0].url)
+        self.assertEqual(markup.inline_keyboard[1][0].text, "📱 Настроить")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "📱 QR и доступ")
         self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
         self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
         self.assertEqual(markup.inline_keyboard[4][0].text, "📖 Как подключить")
@@ -837,8 +837,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Устройство: Phone", text)
         self.assertNotIn("Выберите устройство", text)
         self.assertEqual(markup.inline_keyboard[0][0].api_kwargs["copy_text"]["text"], "https://vxcloud.ru/account/feed/feed-42/")
-        self.assertEqual(markup.inline_keyboard[1][0].text, "⚡ Подключить")
-        self.assertIn("https://vxcloud.ru/open-app/?mode=ios-auto", markup.inline_keyboard[1][0].url)
+        self.assertEqual(markup.inline_keyboard[1][0].text, "📱 Настроить")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "📱 QR и доступ")
         self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
 
     async def test_my_vpn_empty_state_points_to_mini_app_buy(self):
@@ -887,8 +888,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Устройство: Phone", text)
         self.assertIn("Статус: ✅ активен", text)
         self.assertEqual(markup.inline_keyboard[0][0].api_kwargs["copy_text"]["text"], "https://vxcloud.ru/account/feed/feed-42/")
-        self.assertEqual(markup.inline_keyboard[1][0].text, "⚡ Подключить")
-        self.assertIn("https://vxcloud.ru/open-app/?mode=ios-auto", markup.inline_keyboard[1][0].url)
+        self.assertEqual(markup.inline_keyboard[1][0].text, "📱 Настроить")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "📱 QR и доступ")
         self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
 
     async def test_customer_slash_commands_clear_text_input_state(self):
@@ -992,9 +994,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(markup.inline_keyboard[0][0].text, "🔗 Скопировать ссылку")
         self.assertEqual(markup.inline_keyboard[0][0].api_kwargs["copy_text"]["text"], "https://vxcloud.ru/account/feed/token/")
-        self.assertEqual(markup.inline_keyboard[1][0].text, "⚡ Подключить")
-        self.assertIn("https://vxcloud.ru/open-app/?mode=ios-auto", markup.inline_keyboard[1][0].url)
-        self.assertEqual(markup.inline_keyboard[2][0].text, "📱 Открыть доступ")
+        self.assertEqual(markup.inline_keyboard[1][0].text, "📱 Настроить")
+        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "📱 QR и доступ")
         self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
         self.assertEqual(markup.inline_keyboard[3][0].text, "QR")
         self.assertEqual(markup.inline_keyboard[3][0].callback_data, "act|cfg_qr:42|_")
@@ -1022,9 +1024,9 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "🔗 Скопировать ссылку")
         self.assertEqual(markup.inline_keyboard[1][0].api_kwargs["copy_text"]["text"], "https://vxcloud.ru/account/feed/token/")
-        self.assertEqual(markup.inline_keyboard[2][0].text, "⚡ Подключить")
-        self.assertIn("https://vxcloud.ru/open-app/?mode=ios-auto", markup.inline_keyboard[2][0].url)
-        self.assertEqual(markup.inline_keyboard[3][0].text, "📱 Открыть доступ")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "📱 Настроить")
+        self.assertEqual(markup.inline_keyboard[2][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[3][0].text, "📱 QR и доступ")
         self.assertEqual(markup.inline_keyboard[3][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
         self.assertEqual(markup.inline_keyboard[3][1].text, "QR")
         self.assertEqual(markup.inline_keyboard[3][1].callback_data, "act|cfg_qr:42|_")
@@ -1151,8 +1153,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("vless://", query.message.photos[0][1])
         self.assertIsInstance(query.message.photos[0][2], InlineKeyboardMarkup)
         self.assertEqual(query.message.photos[0][2].inline_keyboard[0][0].text, "🔗 Скопировать ссылку")
-        self.assertEqual(query.message.photos[0][2].inline_keyboard[1][0].text, "⚡ Подключить")
-        self.assertEqual(query.message.photos[0][2].inline_keyboard[2][0].text, "📱 Открыть доступ")
+        self.assertEqual(query.message.photos[0][2].inline_keyboard[1][0].text, "📱 Настроить")
+        self.assertEqual(query.message.photos[0][2].inline_keyboard[2][0].text, "📱 QR и доступ")
 
     async def test_expired_qr_caption_warns_and_puts_renewal_first(self):
         db = FakeDB()
@@ -1180,8 +1182,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].text, "🔄 Продлить")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "🔗 Скопировать ссылку")
-        self.assertEqual(markup.inline_keyboard[2][0].text, "⚡ Подключить")
-        self.assertEqual(markup.inline_keyboard[3][0].text, "📱 Открыть доступ")
+        self.assertEqual(markup.inline_keyboard[2][0].text, "📱 Настроить")
+        self.assertEqual(markup.inline_keyboard[3][0].text, "📱 QR и доступ")
 
     async def test_delete_request_shows_confirmation_without_deleting(self):
         db = FakeDB()

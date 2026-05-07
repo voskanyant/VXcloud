@@ -804,6 +804,7 @@ def _build_config_payload(request: HttpRequest, subscription_id: int) -> tuple[d
                 "client_code": (getattr(getattr(sub, "user", None), "client_code", "") or ""),
                 "copy_text": primary_link,
                 "primary_link": primary_link,
+                "install_url": _account_frontend_url(f"install/{int(sub.id)}/"),
                 "feed_url": feed_url,
                 "vless_url": raw_vless_url,
                 "auto_import_url": _account_auto_import_url(request, primary_link),
