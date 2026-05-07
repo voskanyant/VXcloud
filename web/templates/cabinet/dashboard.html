@@ -67,83 +67,83 @@
 </div>
 {% else %}
 
-<div class="account-page-shell{% if instructions_view %} account-page-shell-instructions{% endif %}{% if support_view %} account-page-shell-support{% endif %}">
+<div class="account-page-shell{% if instructions_view %} account-page-shell-instructions{% endif %}{% if support_view %} account-page-shell-support{% endif %} vx-account-bot">
   {% if support_view %}
-    <section class="account-surface account-support-layout" id="account-support">
-      <div class="account-surface-main">
-        <p class="account-kicker">Поддержка</p>
-        <h1 class="account-title">Поддержка VXcloud</h1>
-        <p class="account-intro">Опишите проблему одним сообщением: устройство, что не открывается и когда началось. Так мы быстрее найдем причину.</p>
+    <section class="vx-bot-stack account-support-layout" id="account-support">
+      <div class="vx-bot-card">
+        <p class="vx-bot-eyebrow">Поддержка</p>
+        <h1 class="vx-bot-title vx-bot-title-large">Поддержка VXcloud</h1>
+        <p class="vx-bot-line">Опишите проблему одним сообщением: устройство, что не открывается и когда началось. Так мы быстрее найдем причину.</p>
       </div>
-      <div class="account-support-card">
+      <div class="vx-bot-card account-support-card">
         {% if support_client_code %}
-          <div class="account-support-id">
+          <div class="account-support-id vx-bot-key-card">
             <span>ID клиента</span>
             <strong>{{ support_client_code }}</strong>
             <button
               type="button"
-              class="account-secondary-button js-copy-config"
+              class="account-secondary-button vx-bot-button js-copy-config"
               data-copy-text="{{ support_client_code }}"
               data-copy-success="ID скопирован"
             >Скопировать ID</button>
           </div>
         {% endif %}
-        <div class="account-device-actions">
+        <div class="vx-bot-actions">
           {% if support_telegram_url %}
-            <a class="account-primary-button" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Написать в Telegram</a>
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Написать в Telegram</a>
           {% endif %}
-          <a class="account-secondary-button" href="{{ backend_instructions_url }}">Открыть инструкцию</a>
-          <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}">Открыть инструкцию</a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
         </div>
       </div>
     </section>
 
   {% elif instructions_view %}
-    <section class="account-surface account-instructions-section" id="account-instructions">
-      <div class="account-section-head account-section-head-large">
-        <div>
-          <p class="account-kicker">Инструкция</p>
-          <h1 class="account-title">{{ instructions_payload.title }}</h1>
-          <p class="account-intro">{{ instructions_payload.subtitle }}</p>
-        </div>
+    <section class="vx-bot-stack account-instructions-section" id="account-instructions">
+      <div class="vx-bot-card">
+        <p class="vx-bot-eyebrow">Инструкция</p>
+        <h1 class="vx-bot-title vx-bot-title-large">{{ instructions_payload.title }}</h1>
+        <p class="vx-bot-line">{{ instructions_payload.subtitle }}</p>
       </div>
 
-      <div class="account-device-actions account-instructions-device-actions">
+      <div class="account-instructions-device-actions">
         {% for device in instructions_payload.devices %}
-          <a class="account-secondary-button{% if device.key == instructions_payload.device %} account-secondary-button-current{% endif %}" href="{{ device.url }}">{{ device.label }}</a>
+          <a class="account-secondary-button vx-bot-tab{% if device.key == instructions_payload.device %} account-secondary-button-current{% endif %}" href="{{ device.url }}">{{ device.label }}</a>
         {% endfor %}
       </div>
 
-      <div class="account-instruction-grid">
-        <article class="account-message account-instructions-access">
+      <div class="vx-bot-stack account-instruction-grid">
+        <article class="vx-bot-card account-instructions-access">
           {% if instructions_payload.primary_subscription %}
-            <strong>{{ instructions_payload.primary_subscription.display_name }}</strong>
-            <span>Скопируйте ссылку подписки для этого доступа. QR — запасной способ.</span>
+            <p class="vx-bot-eyebrow">Доступ</p>
+            <h2 class="vx-bot-title">{{ instructions_payload.primary_subscription.display_name }}</h2>
+            <p class="vx-bot-line">Скопируйте ссылку подписки для этого доступа. QR — запасной способ.</p>
             <button
               type="button"
-              class="account-primary-button js-copy-config"
+              class="account-primary-button vx-bot-button vx-bot-button-primary js-copy-config"
               data-copy-text="{{ instructions_payload.primary_subscription.feed_url|default:instructions_payload.primary_subscription.vless_url|default:'' }}"
-            >Скопировать ссылку</button>
+            >🔗 Скопировать ссылку</button>
           {% else %}
-            <strong>Пока нет активного доступа</strong>
-            <span>Сначала активируйте пробный период или купите доступ.</span>
+            <p class="vx-bot-eyebrow">Доступ</p>
+            <h2 class="vx-bot-title">Пока нет активного доступа</h2>
+            <p class="vx-bot-line">Сначала активируйте пробный период или купите доступ.</p>
           {% endif %}
         </article>
 
-        <article class="account-device-card account-guide-card">
+        <article class="vx-bot-card account-device-card account-guide-card">
           <div class="account-device-headline">
             {% if instructions_payload.device == 'iphone' %}
-              <div class="account-device-name">iPhone</div>
-              <div class="account-subtle">Установите Streisand или V2Box, затем добавьте подписку через импорт из буфера.</div>
+              <h2 class="vx-bot-title account-device-name">iPhone</h2>
+              <p class="vx-bot-line">Установите Streisand или V2Box, затем добавьте подписку через импорт из буфера.</p>
             {% elif instructions_payload.device == 'android' %}
-              <div class="account-device-name">Android</div>
-              <div class="account-subtle">Установите v2rayNG, нажмите «+» и импортируйте ссылку из буфера.</div>
+              <h2 class="vx-bot-title account-device-name">Android</h2>
+              <p class="vx-bot-line">Установите v2rayNG, нажмите «+» и импортируйте ссылку из буфера.</p>
             {% elif instructions_payload.device == 'desktop' %}
-              <div class="account-device-name">Windows/macOS</div>
-              <div class="account-subtle">Установите Hiddify или Nekoray и добавьте профиль из буфера обмена.</div>
+              <h2 class="vx-bot-title account-device-name">Windows/macOS</h2>
+              <p class="vx-bot-line">Установите Hiddify или Nekoray и добавьте профиль из буфера обмена.</p>
             {% else %}
-              <div class="account-device-name">Быстрый старт</div>
-              <div class="account-subtle">Выберите устройство выше, затем скопируйте ссылку подписки.</div>
+              <h2 class="vx-bot-title account-device-name">Быстрый старт</h2>
+              <p class="vx-bot-line">Выберите устройство выше, затем скопируйте ссылку подписки.</p>
             {% endif %}
           </div>
           <ol class="account-step-list">
@@ -151,13 +151,13 @@
             <li>Скопируйте ссылку подписки.</li>
             <li>В приложении нажмите «+» и импортируйте из буфера.</li>
           </ol>
-          <div class="account-device-actions">
+          <div class="vx-bot-actions">
             {% if instructions_payload.primary_subscription %}
-              <a class="account-primary-button" href="{{ instructions_payload.primary_subscription.config_url }}">Открыть доступ</a>
+              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}">Открыть доступ</a>
             {% else %}
-              <a class="account-primary-button" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
+              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
             {% endif %}
-            <a class="account-secondary-button" href="{{ instructions_payload.support_url }}">Поддержка</a>
+            <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}">Поддержка</a>
           </div>
         </article>
       </div>

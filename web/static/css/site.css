@@ -4549,6 +4549,10 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   line-height: 1.25;
 }
 
+.vx-account-bot .vx-bot-title-large {
+  font-size: 20px;
+}
+
 .vx-account-bot .vx-bot-line {
   margin: 0;
   color: var(--vx-bot-muted);
@@ -4740,6 +4744,72 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   grid-template-columns: 1fr;
   gap: 7px;
   margin-top: 4px;
+}
+
+.vx-account-bot.account-page-shell-support,
+.vx-account-bot.account-page-shell-instructions {
+  gap: 10px;
+}
+
+.vx-account-bot .account-support-layout,
+.vx-account-bot .account-instruction-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.vx-account-bot .account-support-card,
+.vx-account-bot .account-guide-card {
+  gap: 8px;
+}
+
+.vx-account-bot .account-support-id,
+.vx-account-bot .vx-bot-key-card {
+  padding: 10px;
+  border: 0;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+}
+
+.vx-account-bot .account-support-id span {
+  color: var(--vx-bot-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vx-account-bot .account-support-id strong {
+  color: var(--vx-bot-text);
+  font-size: 16px;
+}
+
+.vx-account-bot .account-instructions-device-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.vx-account-bot .account-instructions-device-actions .vx-bot-tab {
+  height: 40px;
+  min-height: 40px;
+  padding: 8px;
+  font-size: 13px;
+}
+
+.vx-account-bot .account-instructions-device-actions .vx-bot-tab:nth-child(3) {
+  grid-column: 1 / -1;
+}
+
+.vx-account-bot .account-step-list {
+  gap: 8px;
+  padding: 10px 10px 10px 28px;
+  border: 0;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+  color: var(--vx-bot-text);
+  font-size: 14px;
+}
+
+.vx-account-bot .account-step-list li {
+  padding-left: 0;
 }
 
 .vx-account-bot .account-install-device-tabs {
