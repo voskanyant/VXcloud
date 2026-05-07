@@ -493,7 +493,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("setTimeout(openNext, 80)", html)
         self.assertIn("autoSequence", html)
         self.assertIn("renderState();\n            openCurrent();", html)
-        self.assertIn("leftPage || document.hidden || index !== launchedIndex", html)
+        self.assertIn("leftPage || lostFocus || document.hidden || index !== launchedIndex", html)
         self.assertIn("v2box://", html)
         self.assertIn("shadowrocket://add/sub://", html)
         self.assertNotIn("retriedLinks", html)

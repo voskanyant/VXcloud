@@ -139,14 +139,20 @@
         function openNext() {
           const launchedIndex = index;
           let leftPage = false;
+          let lostFocus = false;
           function markLeftPage() {
             if (document.hidden) leftPage = true;
           }
+          function markLostFocus() {
+            lostFocus = true;
+          }
           document.addEventListener('visibilitychange', markLeftPage);
+          window.addEventListener('blur', markLostFocus, { once: true });
           openCurrent();
           setTimeout(function () {
             document.removeEventListener('visibilitychange', markLeftPage);
-            if (leftPage || document.hidden || index !== launchedIndex) {
+            window.removeEventListener('blur', markLostFocus);
+            if (leftPage || lostFocus || document.hidden || index !== launchedIndex) {
               renderState();
               return;
             }
