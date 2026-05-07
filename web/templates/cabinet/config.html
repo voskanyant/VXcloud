@@ -5,6 +5,11 @@
 {% block content %}
 {% if subscription %}
 <div class="account-page-shell account-page-shell-config vx-account-bot">
+  <header class="vx-bot-topbar" aria-label="Доступ">
+    <a class="vx-bot-topbar-back" href="{{ backend_dashboard_url }}" aria-label="Мой VPN">‹</a>
+    <h1 class="vx-bot-topbar-title">Доступ</h1>
+    <a class="vx-bot-topbar-action" href="{{ support_url }}" aria-label="Поддержка">⋯</a>
+  </header>
   <section class="vx-bot-card vx-bot-status-strip vx-config-hero-card">
     <p class="vx-bot-eyebrow">Доступ</p>
     <h1 class="vx-bot-title vx-bot-title-large">{{ display_name }}</h1>

@@ -2042,6 +2042,7 @@ def open_app_link(request: HttpRequest) -> HttpResponse:
             "copy_text": copy_text,
             "auto_sequence": mode == "ios-auto",
             "recommended_install_url": str(INSTALL_APP_MATRIX["ios"][0].get("install_url") or ""),
+            "dashboard_url": _account_frontend_url(),
             "instructions_url": _account_frontend_url("?view=instructions"),
             "support_url": _account_frontend_url("?view=support"),
         },

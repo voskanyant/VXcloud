@@ -11,6 +11,11 @@
   data-auto-import-url="{{ auto_import_url }}"
   data-instructions-url="{{ backend_instructions_url }}"
 >
+  <header class="vx-bot-topbar" aria-label="Подключить">
+    <a class="vx-bot-topbar-back" href="{{ backend_dashboard_url }}" aria-label="Мой VPN">‹</a>
+    <h1 class="vx-bot-topbar-title">Подключить</h1>
+    <a class="vx-bot-topbar-action" href="{{ support_url }}" aria-label="Поддержка">⋯</a>
+  </header>
   {% if not is_active %}
     <div class="account-message account-message-warning">Этот доступ неактивен. Продлите его перед подключением.</div>
   {% endif %}

@@ -79,6 +79,11 @@
 
 <div class="account-page-shell{% if instructions_view %} account-page-shell-instructions{% endif %}{% if support_view %} account-page-shell-support{% endif %} vx-account-bot">
   {% if support_view %}
+    <header class="vx-bot-topbar" aria-label="Поддержка">
+      <a class="vx-bot-topbar-back" href="{{ backend_dashboard_url }}" aria-label="Мой VPN">‹</a>
+      <h1 class="vx-bot-topbar-title">Поддержка</h1>
+      <span class="vx-bot-topbar-action" aria-hidden="true"></span>
+    </header>
     <section class="vx-bot-stack account-support-layout" id="account-support">
       <div class="vx-bot-card">
         <p class="vx-bot-eyebrow">Поддержка</p>
@@ -120,6 +125,11 @@
     </section>
 
   {% elif instructions_view %}
+    <header class="vx-bot-topbar" aria-label="Инструкция">
+      <a class="vx-bot-topbar-back" href="{{ backend_dashboard_url }}" aria-label="Мой VPN">‹</a>
+      <h1 class="vx-bot-topbar-title">Инструкция</h1>
+      <a class="vx-bot-topbar-action" href="{{ support_url }}" aria-label="Поддержка">⋯</a>
+    </header>
     <section class="vx-bot-stack account-instructions-section" id="account-instructions">
       <div class="vx-bot-card">
         <p class="vx-bot-eyebrow">Инструкция</p>

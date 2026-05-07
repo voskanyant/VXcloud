@@ -7,6 +7,11 @@
 {% block content %}
 <section class="surface-card auth-shell site-auth-shell vx-account-bot vx-open-app-shell">
   {% if deeplinks %}
+    <header class="vx-bot-topbar" aria-label="Открытие приложения">
+      <a class="vx-bot-topbar-back" href="{{ dashboard_url }}" aria-label="Мой VPN">‹</a>
+      <h1 class="vx-bot-topbar-title">Открытие приложения</h1>
+      <a class="vx-bot-topbar-action" href="{{ support_url }}" aria-label="Поддержка">⋯</a>
+    </header>
     <article class="vx-bot-card vx-open-app-active">
       <p class="vx-bot-eyebrow" id="open-app-step">Шаг 1 из {{ deeplinks|length }}</p>
       <h1 class="vx-bot-title" id="open-app-title">Пробуем открыть {{ deeplinks.0.label }}</h1>

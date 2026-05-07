@@ -8,6 +8,7 @@ DASHBOARD_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "dashboard.ht
 CONFIG_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "config.html"
 INSTALL_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "install.html"
 OPEN_APP_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "open_app.html"
+ACCOUNT_PREVIEW = REPO_ROOT / "account_ui_preview.html"
 
 
 class AccountMiniAppCssTests(unittest.TestCase):
@@ -148,6 +149,20 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn('aria-hidden="true">i</span><span>Подробная инструкция', install)
         self.assertIn('aria-hidden="true">i</span><span>Открыть инструкцию', open_app)
         self.assertIn('aria-hidden="true">?</span><span>Поддержка', open_app)
+
+    def test_bot_style_pages_have_compact_topbars(self):
+        dashboard = DASHBOARD_TEMPLATE.read_text(encoding="utf-8")
+        config = CONFIG_TEMPLATE.read_text(encoding="utf-8")
+        install = INSTALL_TEMPLATE.read_text(encoding="utf-8")
+        open_app = OPEN_APP_TEMPLATE.read_text(encoding="utf-8")
+        preview = ACCOUNT_PREVIEW.read_text(encoding="utf-8")
+
+        self.assertIn('aria-label="Поддержка"', dashboard)
+        self.assertIn('aria-label="Инструкция"', dashboard)
+        self.assertIn('<h1 class="vx-bot-topbar-title">Доступ</h1>', config)
+        self.assertIn('<h1 class="vx-bot-topbar-title">Подключить</h1>', install)
+        self.assertIn('<h1 class="vx-bot-topbar-title">Открытие приложения</h1>', open_app)
+        self.assertNotIn("‹ Мой VPN", preview)
         self.assertIn("width: 24px;", self.css)
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.04);", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions-utility .vx-bot-button", self.css)
