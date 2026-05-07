@@ -137,14 +137,25 @@
         }
 
         function openNext() {
-          openCurrent();
-          index += 1;
-          renderState();
-          if (autoSequence && links[index]) {
-            setTimeout(function () {
-              if (!document.hidden) openNext();
-            }, 1600);
+          const launchedIndex = index;
+          let leftPage = false;
+          function markLeftPage() {
+            if (document.hidden) leftPage = true;
           }
+          document.addEventListener('visibilitychange', markLeftPage);
+          openCurrent();
+          setTimeout(function () {
+            document.removeEventListener('visibilitychange', markLeftPage);
+            if (leftPage || document.hidden || index !== launchedIndex) {
+              renderState();
+              return;
+            }
+            index += 1;
+            renderState();
+            if (autoSequence && links[index]) {
+              openNext();
+            }
+          }, 1600);
         }
 
         if (nextButton) {
