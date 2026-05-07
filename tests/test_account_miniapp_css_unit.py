@@ -175,6 +175,14 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-actions:not(:has(> .vx-bot-button-primary:first-child))", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions > .vx-bot-button-primary:first-child + .vx-bot-button:last-child", self.css)
 
+    def test_dashboard_template_drops_legacy_browser_dashboard_branch(self):
+        dashboard = DASHBOARD_TEMPLATE.read_text(encoding="utf-8")
+
+        self.assertNotIn("account-dashboard-shell", dashboard)
+        self.assertNotIn("account-hero-redesigned", dashboard)
+        self.assertNotIn("account-access-card", dashboard)
+        self.assertNotIn("account-dashboard-side", dashboard)
+
     def test_embed_instructions_use_compact_device_tabs(self):
         dashboard = DASHBOARD_TEMPLATE.read_text(encoding="utf-8")
 
