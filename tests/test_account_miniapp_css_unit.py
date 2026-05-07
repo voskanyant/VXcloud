@@ -33,6 +33,15 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("word-break: normal;", self.css)
         self.assertIn("overflow-wrap: break-word;", self.css)
 
+    def test_embed_more_controls_are_polished_tap_targets(self):
+        more_rule = self.css[self.css.index(".vx-account-bot .vx-bot-more summary {") :]
+        more_rule = more_rule[: more_rule.index("}")]
+
+        self.assertIn("min-height: 44px;", more_rule)
+        self.assertIn("text-wrap: balance;", more_rule)
+        self.assertIn("-webkit-tap-highlight-color: transparent;", more_rule)
+        self.assertIn("transition: background-color 0.15s ease", more_rule)
+
     def test_embed_subscription_list_hides_expanded_details(self):
         self.assertIn(
             "body.vx-account-embed #account-subscriptions .account-inline-form",

@@ -183,16 +183,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 38px;
-    padding: 8px 10px;
+    min-height: 44px;
+    padding: 10px 12px;
     border-radius: var(--radius-sm);
     background: #f0f0f3;
     color: var(--ink);
     font-size: 14px;
     font-weight: 600;
     line-height: 1.15;
+    text-align: center;
+    text-wrap: balance;
+    word-break: normal;
     list-style: none;
     cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .15s ease, transform .15s ease, box-shadow .15s ease;
   }
   details summary::-webkit-details-marker { display: none; }
   details summary::after {
@@ -205,6 +211,10 @@
     transform: translateY(-2px) rotate(45deg);
   }
   details[open] summary::after { transform: translateY(2px) rotate(225deg); }
+  details[open] summary,
+  details summary:hover { background: #e8e8ed; }
+  details summary:active { transform: translateY(1px); }
+  details summary:focus-visible { outline: none; box-shadow: 0 0 0 2px rgba(36,129,204,.28); }
 
   /* small list inside a card (e.g. step list) */
   .steps {
