@@ -5456,6 +5456,21 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   font-weight: 700;
 }
 
+.vx-account-bot .vx-install-manual-card {
+  gap: 8px;
+}
+
+.vx-account-bot .vx-install-manual-card .vx-bot-line {
+  padding: 10px;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
+}
+
+.vx-account-bot .vx-install-manual-card .vx-bot-url-row {
+  margin-top: 0;
+}
+
 .vx-account-bot.vx-auth-bot {
   width: min(100%, 390px);
   margin: 0 auto;
