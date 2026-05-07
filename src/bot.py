@@ -476,13 +476,13 @@ class VPNBot:
 
     @staticmethod
     def _checkout_buy_path() -> str:
-        return "/account-app/?checkout=buy"
+        return "/account-app/buy/"
 
     @staticmethod
     def _checkout_renew_path(subscription_id: int | None = None) -> str:
-        path = "/account-app/?checkout=renew"
+        path = "/account-app/renew/"
         if isinstance(subscription_id, int) and subscription_id > 0:
-            return f"{path}&subscription_id={subscription_id}"
+            return f"{path}?subscription_id={subscription_id}"
         return path
 
     def _mini_app_button(self, text: str, next_path: str | None = None) -> InlineKeyboardButton:
