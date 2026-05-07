@@ -54,7 +54,15 @@ from payments.providers import get_payment_provider
 from src.subscription_links import build_bot_feed_url, encode_subscription_payload
 
 
-ALLOWED_DEEPLINK_SCHEMES = ("vless://", "vmess://", "trojan://", "ss://", "hysteria2://", "tuic://")
+ALLOWED_DEEPLINK_SCHEMES = (
+    "vless://",
+    "vmess://",
+    "trojan://",
+    "ss://",
+    "hysteria2://",
+    "tuic://",
+    "v2box://",
+)
 PAYMENT_SUCCESS_STATUSES = {"success", "succeeded", "paid", "approved"}
 PAYMENT_CANCELLED_STATUSES = {"canceled", "cancelled", "expired", "failed"}
 PENDING_CARD_CHECKOUT_TTL = timedelta(minutes=30)
