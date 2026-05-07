@@ -257,9 +257,16 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-url-row .account-icon-glyph", self.css)
         self.assertIn("font-weight: 800;", self.css)
         self.assertIn("background: #fbfbfc;", self.css)
+        qr_frame_rule = self.css[self.css.index(".vx-account-bot .vx-bot-qr-frame {") :]
+        qr_frame_rule = qr_frame_rule[: qr_frame_rule.index("}")]
+        self.assertIn("display: flex;", qr_frame_rule)
+        self.assertIn("align-items: center;", qr_frame_rule)
+        self.assertIn("justify-content: center;", qr_frame_rule)
+        self.assertIn("height: 188px;", qr_frame_rule)
         self.assertIn(".vx-account-bot .vx-bot-qr-frame .account-qr-image", self.css)
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);", self.css)
         self.assertIn("padding: 6px;", self.css)
+        self.assertIn("0 8px 16px rgba(32, 33, 36, 0.04);", self.css)
 
     def test_embed_open_app_progress_is_visible(self):
         progress_rule = self.css[self.css.index(".vx-account-bot .vx-open-progress {") :]
