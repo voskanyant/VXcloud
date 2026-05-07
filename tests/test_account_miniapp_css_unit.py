@@ -68,6 +68,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-button-icon", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions-utility .vx-bot-button", self.css)
         self.assertIn(".vx-account-bot .vx-bot-more summary", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-actions > .vx-bot-button:only-child", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-actions:not(:has(> .vx-bot-button-primary:first-child))", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-actions > .vx-bot-button-primary:first-child + .vx-bot-button:last-child", self.css)
 
     def test_embed_instructions_use_compact_device_tabs(self):
         self.assertIn("body.vx-account-embed .account-page-shell-instructions", self.css)

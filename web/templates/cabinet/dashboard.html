@@ -40,7 +40,7 @@
               {% if row.can_renew %}
                 <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">🔄</span><span>Продлить</span></a>
               {% endif %}
-              <a class="account-secondary-button vx-bot-button" href="{{ backend_install_prefix }}{{ row.id }}/">Настроить вручную</a>
+              <a class="account-secondary-button vx-bot-button" href="{{ backend_install_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">⚙</span><span>Настроить вручную</span></a>
             </div>
           </details>
         </article>
@@ -52,10 +52,10 @@
         <span>{% if telegram_trial_url %}Без карты: активируйте 7 дней бесплатно в боте. Оплата картой останется рядом.{% else %}Купите доступ картой. После оплаты ссылка подписки появится здесь.{% endif %}</span>
         <div class="vx-bot-actions">
         {% if telegram_trial_url %}
-          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ telegram_trial_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">7</span><span>7 дней бесплатно</span></a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">💳</span><span>Купить доступ</span></a>
         {% else %}
-          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">💳</span><span>Купить доступ</span></a>
         {% endif %}
         </div>
       </div>
@@ -108,7 +108,7 @@
             <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}><span class="vx-bot-button-icon" aria-hidden="true">💬</span><span>Написать в Telegram</span></a>
           {% endif %}
           <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📖</span><span>Открыть инструкцию</span></a>
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}"><span class="vx-bot-button-icon" aria-hidden="true">⌂</span><span>Мой VPN</span></a>
         </div>
       </div>
     </section>
@@ -170,7 +170,7 @@
             {% if instructions_payload.primary_subscription %}
               <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📱</span><span>Открыть доступ</span></a>
             {% else %}
-              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
+              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.dashboard_url }}"><span class="vx-bot-button-icon" aria-hidden="true">⌂</span><span>Мой VPN</span></a>
             {% endif %}
             <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}"><span class="vx-bot-button-icon" aria-hidden="true">💬</span><span>Поддержка</span></a>
           </div>

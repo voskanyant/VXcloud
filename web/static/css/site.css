@@ -4652,7 +4652,9 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   margin-top: 0;
 }
 
-.vx-account-bot .vx-bot-actions-utility > .vx-bot-button:last-child:nth-child(odd) {
+.vx-account-bot .vx-bot-actions > .vx-bot-button:only-child,
+.vx-account-bot .vx-bot-actions:not(:has(> .vx-bot-button-primary:first-child)) > .vx-bot-button:last-child:nth-child(odd),
+.vx-account-bot .vx-bot-actions > .vx-bot-button-primary:first-child + .vx-bot-button:last-child {
   grid-column: 1 / -1;
 }
 
