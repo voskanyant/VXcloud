@@ -89,9 +89,24 @@
     color: #2a2a30;
     box-shadow: 0 1px 0 rgba(32,33,36,.02);
   }
-  .tg-bar .back { width: 22px; color: var(--accent); font-weight: 700; }
+  .tg-bar .back,
+  .tg-bar .more {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .15s ease, color .15s ease, transform .15s ease;
+  }
+  .tg-bar .back { color: var(--accent); font-weight: 700; }
   .tg-bar .title { flex: 1; font-weight: 700; }
   .tg-bar .more { color: #9a9aa0; font-weight: 600; letter-spacing: 2px; }
+  .tg-bar .back:hover,
+  .tg-bar .more:hover { background: #f0f0f3; color: #202124; }
+  .tg-bar .back:active,
+  .tg-bar .more:active { transform: translateY(1px); }
 
   /* scroll area */
   .body {

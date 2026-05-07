@@ -33,6 +33,12 @@ class AccountMiniAppCssTests(unittest.TestCase):
         topbar_rule = topbar_rule[: topbar_rule.index("}")]
         self.assertIn("grid-template-columns: 28px minmax(0, 1fr) 28px;", topbar_rule)
         self.assertIn("min-height: 44px;", topbar_rule)
+        topbar_action_rule = self.css[self.css.index(".vx-account-bot .vx-bot-topbar-back,\n.vx-account-bot .vx-bot-topbar-action {") :]
+        topbar_action_rule = topbar_action_rule[: topbar_action_rule.index("}")]
+        self.assertIn("-webkit-tap-highlight-color: transparent;", topbar_action_rule)
+        self.assertIn("transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;", topbar_action_rule)
+        self.assertIn(".vx-account-bot .vx-bot-topbar-back:hover", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-topbar-action:active", self.css)
         title_rule = self.css[self.css.index(".vx-account-bot .vx-bot-title {") :]
         title_rule = title_rule[: title_rule.index("}")]
         self.assertIn("font-size: 17px;", title_rule)

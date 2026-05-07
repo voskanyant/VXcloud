@@ -4541,11 +4541,28 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   font-weight: 700;
   line-height: 1;
   text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .vx-account-bot .vx-bot-topbar-action {
   color: #9a9aa0;
   letter-spacing: 2px;
+}
+
+.vx-account-bot .vx-bot-topbar-back:hover,
+.vx-account-bot .vx-bot-topbar-action:hover,
+.vx-account-bot .vx-bot-topbar-back:focus-visible,
+.vx-account-bot .vx-bot-topbar-action:focus-visible {
+  background: var(--vx-bot-secondary);
+  color: var(--vx-bot-text);
+  outline: none;
+  text-decoration: none;
+}
+
+.vx-account-bot .vx-bot-topbar-back:active,
+.vx-account-bot .vx-bot-topbar-action:active {
+  transform: translateY(1px);
 }
 
 .vx-account-bot .vx-bot-stack {
