@@ -44,7 +44,7 @@
     <h2 class="vx-bot-title">Выберите свое приложение</h2>
     <p class="vx-bot-line">Покажем остальные варианты для выбранного устройства.</p>
     <div class="vx-bot-actions">
-      <button type="button" class="account-secondary-button vx-bot-button" id="install-show-apps">У меня другое приложение</button>
+      <button type="button" class="account-secondary-button vx-bot-button" id="install-show-apps"><span class="vx-bot-button-icon" aria-hidden="true">▦</span><span>У меня другое приложение</span></button>
     </div>
     <div class="account-install-apps account-install-apps-flat" id="install-apps" hidden></div>
   </section>
@@ -241,6 +241,23 @@
       return instructionsUrl + joiner + 'device=' + encodeURIComponent(device);
     }
 
+    function setButtonContent(button, iconText, labelText) {
+      if (!button) return;
+      let icon = button.querySelector('.vx-bot-button-icon');
+      let label = icon ? icon.nextElementSibling : null;
+      if (!icon || !label) {
+        button.textContent = '';
+        icon = document.createElement('span');
+        icon.className = 'vx-bot-button-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        label = document.createElement('span');
+        button.appendChild(icon);
+        button.appendChild(label);
+      }
+      icon.textContent = iconText;
+      label.textContent = labelText;
+    }
+
     function renderApp(app, compact) {
       const card = document.createElement('article');
       card.className = compact ? 'account-install-app-card account-install-app-card-flat' : 'account-install-app-card';
@@ -332,7 +349,11 @@
     if (showAppsButton) {
       showAppsButton.addEventListener('click', () => {
         appsRoot.hidden = !appsRoot.hidden;
-        showAppsButton.textContent = appsRoot.hidden ? 'У меня другое приложение' : 'Скрыть список приложений';
+        setButtonContent(
+          showAppsButton,
+          appsRoot.hidden ? '▦' : '×',
+          appsRoot.hidden ? 'У меня другое приложение' : 'Скрыть список приложений',
+        );
       });
     }
 

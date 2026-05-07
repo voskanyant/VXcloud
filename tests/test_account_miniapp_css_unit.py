@@ -242,6 +242,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn('class="vx-bot-card vx-install-manual-card" id="install-manual"', install)
         self.assertIn("<h2 class=\"vx-bot-title\">Настроить вручную</h2>", install)
         self.assertNotIn('<details class="vx-bot-more" id="install-manual">', install)
+        self.assertIn('id="install-show-apps"><span class="vx-bot-button-icon" aria-hidden="true">▦</span><span>У меня другое приложение', install)
+        self.assertIn("function setButtonContent", install)
+        self.assertIn("setButtonContent(\n          showAppsButton,", install)
+        self.assertIn("appsRoot.hidden ? '▦' : '×'", install)
 
     def test_embed_config_page_is_qr_and_link_first(self):
         self.assertIn("body.vx-account-embed .account-page-shell-config", self.css)
