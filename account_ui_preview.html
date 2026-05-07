@@ -228,25 +228,51 @@
   /* device tab strip */
   .tabs {
     display: grid;
-    grid-auto-flow: column;
-    grid-auto-columns: 1fr;
-    gap: 6px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 3px;
     margin: 8px 0 0;
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    background: #f7f8fa;
   }
   .tab {
-    background: #f0f0f3;
-    border-radius: 999px;
+    background: transparent;
+    border-radius: 7px;
     padding: 8px 6px;
     font-size: 12px;
     color: var(--ink);
     text-align: center;
     border: 1px solid transparent;
   }
+  .tab:hover { background: #ffffff; }
   .tab.active {
     background: #202124;
     border-color: #202124;
     color: #ffffff;
     font-weight: 700;
+    box-shadow: 0 1px 0 rgba(0,0,0,.04);
+  }
+
+  .app-card {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: #f7f8fa;
+  }
+  .app-card strong {
+    display: block;
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.2;
+  }
+  .app-card span {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 13px;
   }
 
   /* progress strip for auto-import */
@@ -487,9 +513,14 @@
           <div class="card">
             <div class="card-eyebrow">Если приложения нет</div>
             <div class="card-title">Установите приложение</div>
-            <div class="card-line"><strong>Streisand</strong> — рекомендуем для iPhone и iPad. Бесплатно в App Store (US).</div>
-            <div class="kb">
-              <div class="row"><a class="btn primary">Установить Streisand</a></div>
+            <div class="app-card">
+              <div>
+                <strong>Streisand</strong>
+                <span>рекомендуем для iPhone и iPad · бесплатно в App Store (US)</span>
+              </div>
+              <div class="kb" style="margin-top:0;">
+                <div class="row"><a class="btn primary">Установить Streisand</a></div>
+              </div>
             </div>
             <div class="card-line" style="margin-top:8px;">App Store: большинства VPN-приложений нет в RU. Смените страну на US — пара минут. <a href="#" style="color:var(--accent);">Инструкция</a></div>
           </div>

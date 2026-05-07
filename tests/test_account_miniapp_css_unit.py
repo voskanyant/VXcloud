@@ -75,6 +75,16 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".account-step-list", self.css)
         self.assertIn("body.vx-account-embed #account-instructions .account-step-list", self.css)
 
+    def test_embed_install_selector_and_app_cards_are_polished(self):
+        self.assertIn(".vx-account-bot .vx-install-tabs", self.css)
+        self.assertIn("padding: 3px;", self.css)
+        self.assertIn(".vx-account-bot .vx-install-tabs .vx-bot-tab.account-secondary-button-current", self.css)
+        self.assertIn(
+            ".vx-account-bot .account-install-apps:not(.account-install-apps-flat) .account-install-app-card",
+            self.css,
+        )
+        self.assertIn("border: 1px solid var(--vx-bot-line);", self.css)
+
     def test_embed_config_page_is_qr_and_link_first(self):
         self.assertIn("body.vx-account-embed .account-page-shell-config", self.css)
         self.assertIn(".vx-account-bot .vx-bot-status-strip", self.css)
