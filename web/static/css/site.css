@@ -4994,10 +4994,10 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-config-item-current {
-  border-color: #202124;
-  background: #202124;
-  color: #ffffff;
-  box-shadow: none;
+  border-color: rgba(32, 33, 36, 0.18);
+  background: #ffffff;
+  color: var(--vx-bot-text);
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.04);
 }
 
 .vx-account-bot .account-config-item-id {
@@ -5019,7 +5019,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-config-item-current .account-config-item-id {
-  background: rgba(255, 255, 255, 0.14);
+  background: #202124;
   color: #ffffff;
 }
 
@@ -5044,7 +5044,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-config-item-current .account-config-item-meta {
-  color: rgba(255, 255, 255, 0.72);
+  color: var(--vx-bot-muted);
 }
 
 .vx-account-bot .vx-bot-rename-form {
