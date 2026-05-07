@@ -474,6 +474,17 @@ class VPNBot:
             (site.scheme or "https", site.netloc or "vxcloud.ru", path, urlencode(params), parsed.fragment)
         )
 
+    @staticmethod
+    def _checkout_buy_path() -> str:
+        return "/account-app/?checkout=buy"
+
+    @staticmethod
+    def _checkout_renew_path(subscription_id: int | None = None) -> str:
+        path = "/account-app/?checkout=renew"
+        if isinstance(subscription_id, int) and subscription_id > 0:
+            return f"{path}&subscription_id={subscription_id}"
+        return path
+
     def _mini_app_button(self, text: str, next_path: str | None = None) -> InlineKeyboardButton:
         return InlineKeyboardButton(text=text, web_app=WebAppInfo(url=self._mini_app_url(next_path)))
 
@@ -815,7 +826,7 @@ class VPNBot:
     async def _trial_used_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
         rows = await self._mini_app_with_fallback_rows(
             user_id=user_id,
-            next_path="/account/buy/",
+            next_path=self._checkout_buy_path(),
             web_app_text=self._with_card_price("💳 Купить картой"),
             include_fallback=False,
         )
@@ -832,7 +843,7 @@ class VPNBot:
                 [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
                 [
                     InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_"),
-                    self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}"),
+                    self._mini_app_button("🔄 Продлить", self._checkout_renew_path(subscription_id)),
                 ],
             ]
         )
@@ -857,7 +868,7 @@ class VPNBot:
     async def _buy_offer_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
         rows = await self._mini_app_with_fallback_rows(
             user_id=user_id,
-            next_path="/account/buy/",
+            next_path=self._checkout_buy_path(),
             web_app_text=self._with_card_price("💳 Купить картой"),
             include_fallback=False,
         )
@@ -871,19 +882,16 @@ class VPNBot:
     async def _buy_card_markup(self, user_id: int | None) -> InlineKeyboardMarkup:
         rows = await self._mini_app_with_fallback_rows(
             user_id=user_id,
-            next_path="/account/buy/",
+            next_path=self._checkout_buy_path(),
             web_app_text=self._with_card_price("💳 Купить картой"),
             include_fallback=False,
         )
         return InlineKeyboardMarkup(rows)
 
     async def _renew_card_markup(self, user_id: int | None, subscription_id: int | None = None) -> InlineKeyboardMarkup:
-        next_path = "/account/renew/"
-        if isinstance(subscription_id, int) and subscription_id > 0:
-            next_path = f"{next_path}?subscription_id={subscription_id}"
         rows = await self._mini_app_with_fallback_rows(
             user_id=user_id,
-            next_path=next_path,
+            next_path=self._checkout_renew_path(subscription_id),
             web_app_text=self._with_card_price("💳 Продлить картой"),
             include_fallback=False,
         )
@@ -904,12 +912,9 @@ class VPNBot:
         )
 
     async def _renew_offer_markup(self, user_id: int | None, subscription_id: int | None = None) -> InlineKeyboardMarkup:
-        next_path = "/account/renew/"
-        if isinstance(subscription_id, int) and subscription_id > 0:
-            next_path = f"{next_path}?subscription_id={subscription_id}"
         rows = await self._mini_app_with_fallback_rows(
             user_id=user_id,
-            next_path=next_path,
+            next_path=self._checkout_renew_path(subscription_id),
             web_app_text=self._with_card_price("💳 Продлить картой"),
             include_fallback=False,
         )
@@ -928,7 +933,7 @@ class VPNBot:
     ) -> InlineKeyboardMarkup:
         rows = await self._mini_app_with_fallback_rows(
             user_id=user_id,
-            next_path="/account/buy/",
+            next_path=self._checkout_buy_path(),
             web_app_text=self._with_card_price("💳 Купить ещё устройство"),
             include_fallback=False,
         )
@@ -995,7 +1000,7 @@ class VPNBot:
         ]
         rows.extend(await self._mini_app_with_fallback_rows(
             user_id=user_id,
-            next_path="/account/buy/",
+            next_path=self._checkout_buy_path(),
             web_app_text=self._with_card_price("💳 Купить картой"),
             include_fallback=False,
         ))
@@ -1050,7 +1055,7 @@ class VPNBot:
     def _reminder_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")],
+                [self._mini_app_button("🔄 Продлить", self._checkout_renew_path(subscription_id))],
                 [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
             ]
         )
@@ -1586,7 +1591,7 @@ class VPNBot:
             )
         if not subscriptions:
             rows.append([InlineKeyboardButton(text="🎁 7 дней бесплатно", callback_data="act|start_trial|_")])
-            rows.append([self._mini_app_button(self._with_card_price("💳 Купить картой"), "/account/buy/")])
+            rows.append([self._mini_app_button(self._with_card_price("💳 Купить картой"), self._checkout_buy_path())])
             rows.append([InlineKeyboardButton(text=self._with_stars_price("⭐ Купить за Stars"), callback_data="act|buy_new|_")])
         return InlineKeyboardMarkup(rows)
 
@@ -1602,7 +1607,7 @@ class VPNBot:
         connect_button = self._connect_button(subscription_id, copy_text)
         cabinet_button = self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")
         qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")
-        renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")
+        renew_button = self._mini_app_button("🔄 Продлить", self._checkout_renew_path(subscription_id))
         copy_row = [InlineKeyboardButton(text="🔗 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
         if renewal_first:
             rows = [
@@ -3372,17 +3377,13 @@ class VPNBot:
         qr_payload = link_for_copy
         qr_title = "QR доступа" if subscription_url else "QR подключения"
 
-        renew_path = "/account/renew/"
-        if isinstance(subscription_id, int) and subscription_id > 0:
-            renew_path = f"{renew_path}?subscription_id={subscription_id}"
-
         copy_label = "🔗 Скопировать ссылку" if subscription_url else "🔗 Скопировать ссылку"
         buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
             buttons.append([self._connect_button(subscription_id, subscription_url)])
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
             buttons.append([self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")])
-            buttons.append([self._mini_app_button("🔄 Продлить", renew_path)])
+            buttons.append([self._mini_app_button("🔄 Продлить", self._checkout_renew_path(subscription_id))])
         else:
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
             buttons.append([self._mini_app_button("📱 Открыть кабинет")])

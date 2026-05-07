@@ -1478,7 +1478,7 @@ def _start_checkout_flow(
     pending_cutoff = now - PENDING_CARD_CHECKOUT_TTL
 
     pending_method = "card"
-    return_url = _build_public_absolute_url(request, _account_frontend_url())
+    return_url = _build_public_absolute_url(request, _account_backend_url(request))
     pending_payload_prefix = (
         f"web-newcfg:{bot_user.id}:"
         if flow_mode == "buynew"

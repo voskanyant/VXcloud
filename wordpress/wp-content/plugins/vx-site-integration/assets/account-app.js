@@ -156,6 +156,23 @@
     return normalizePath(cfg.accountPath || "/account/") + (query.toString() ? "?" + query.toString() : "");
   }
 
+  function autoCheckoutStorageKey(route) {
+    const view = route && route.view ? String(route.view) : "";
+    const subscriptionId = route && route.subscriptionId ? String(route.subscriptionId) : "";
+    return "vx_account_checkout_started:" + view + ":" + subscriptionId;
+  }
+
+  function autoCheckoutWasRecentlyStarted(route) {
+    if (!route || !route.autoCheckout || !window.sessionStorage) return false;
+    const value = Number(sessionStorage.getItem(autoCheckoutStorageKey(route)) || 0);
+    return value > 0 && Date.now() - value < 5 * 60 * 1000;
+  }
+
+  function markAutoCheckoutStarted(route) {
+    if (!route || !route.autoCheckout || !window.sessionStorage) return;
+    sessionStorage.setItem(autoCheckoutStorageKey(route), String(Date.now()));
+  }
+
   function accountDashboardReturnPath() {
     const currentPath = window.location.pathname || "";
     const basePath = currentPath.indexOf("/account-app") === 0 ? "/account-app/" : cfg.accountPath || "/account/";
@@ -178,6 +195,26 @@
     const path = window.location.pathname;
     const search = new URLSearchParams(window.location.search || "");
     const queryView = String(search.get("view") || "").trim().toLowerCase();
+    const queryCheckout = String(search.get("checkout") || "").trim().toLowerCase();
+    if (queryCheckout === "buy") {
+      return {
+        view: "checkout-buy",
+        subscriptionId: null,
+        device: "",
+        path: accountDashboardReturnPath(),
+        autoCheckout: true,
+      };
+    }
+    if (queryCheckout === "renew") {
+      const subscriptionIdRaw = search.get("subscription_id") || "";
+      return {
+        view: "checkout-renew",
+        subscriptionId: /^\d+$/.test(subscriptionIdRaw) ? Number(subscriptionIdRaw) : null,
+        device: "",
+        path: accountDashboardReturnPath(),
+        autoCheckout: true,
+      };
+    }
     if (queryView === "instructions") {
       const device = String(search.get("device") || "").trim().toLowerCase();
       return {
@@ -1856,6 +1893,12 @@
       }
 
       if (route.view === "checkout-buy" || route.view === "checkout-renew") {
+        if (autoCheckoutWasRecentlyStarted(route)) {
+          window.history.replaceState({}, "", accountDashboardReturnPath());
+          await loadCurrentView();
+          releaseMountHeight();
+          return;
+        }
         renderCheckoutProgress(route);
         bindSharedInteractions();
         try {
@@ -1863,6 +1906,7 @@
           const body = route.view === "checkout-renew" && route.subscriptionId ? { subscription_id: route.subscriptionId } : {};
           const result = await apiFetch(endpoint, { method: "POST", body: body });
           if (result && result.redirect_url) {
+            markAutoCheckoutStarted(route);
             openCheckoutRedirect(result.redirect_url);
             return;
           }
