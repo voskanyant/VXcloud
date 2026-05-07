@@ -4802,68 +4802,6 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   color: #ffffff;
 }
 
-.vx-account-bot .vx-bot-more {
-  margin-top: 2px;
-}
-
-.vx-account-bot .vx-bot-more summary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: var(--vx-bot-button-radius);
-  background: var(--vx-bot-secondary);
-  color: var(--vx-bot-text);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.15;
-  text-align: center;
-  text-wrap: balance;
-  word-break: normal;
-  list-style: none;
-  cursor: pointer;
-  outline: none;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
-}
-
-.vx-account-bot .vx-bot-more summary::-webkit-details-marker {
-  display: none;
-}
-
-.vx-account-bot .vx-bot-more summary::after {
-  content: "";
-  width: 7px;
-  height: 7px;
-  margin-left: 8px;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: translateY(-2px) rotate(45deg);
-}
-
-.vx-account-bot .vx-bot-more[open] summary::after {
-  transform: translateY(2px) rotate(225deg);
-}
-
-.vx-account-bot .vx-bot-more[open] summary {
-  background: var(--vx-bot-secondary-hover);
-}
-
-.vx-account-bot .vx-bot-more summary:hover {
-  background: var(--vx-bot-secondary-hover);
-}
-
-.vx-account-bot .vx-bot-more summary:active {
-  transform: translateY(1px);
-}
-
-.vx-account-bot .vx-bot-more summary:focus-visible {
-  box-shadow: 0 0 0 2px rgba(36, 129, 204, 0.28);
-}
-
 .vx-account-bot .vx-bot-url-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 44px;

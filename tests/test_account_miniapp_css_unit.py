@@ -58,15 +58,6 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-button:active", self.css)
         self.assertIn("transform: translateY(1px);", self.css)
 
-    def test_embed_more_controls_are_polished_tap_targets(self):
-        more_rule = self.css[self.css.index(".vx-account-bot .vx-bot-more summary {") :]
-        more_rule = more_rule[: more_rule.index("}")]
-
-        self.assertIn("min-height: 44px;", more_rule)
-        self.assertIn("text-wrap: balance;", more_rule)
-        self.assertIn("-webkit-tap-highlight-color: transparent;", more_rule)
-        self.assertIn("transition: background-color 0.15s ease", more_rule)
-
     def test_embed_subscription_list_hides_expanded_details(self):
         self.assertIn(
             "body.vx-account-embed #account-subscriptions .account-inline-form",
@@ -84,10 +75,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
 
     def test_embed_subscription_actions_remain_available(self):
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-actions-secondary", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions-utility", self.css)
         self.assertIn(".vx-account-bot .vx-bot-button-icon", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions-utility .vx-bot-button", self.css)
-        self.assertIn(".vx-account-bot .vx-bot-more summary", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions > .vx-bot-button:only-child", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions:not(:has(> .vx-bot-button-primary:first-child))", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions > .vx-bot-button-primary:first-child + .vx-bot-button:last-child", self.css)

@@ -34,15 +34,12 @@
             ><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
             <a class="account-secondary-button vx-bot-button" href="{{ backend_config_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">📱</span><span>QR и доступ</span></a>
           </div>
-          <details class="vx-bot-more">
-            <summary>Ещё</summary>
-            <div class="vx-bot-actions vx-bot-actions-secondary">
-              {% if row.can_renew %}
-                <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">🔄</span><span>Продлить</span></a>
-              {% endif %}
-              <a class="account-secondary-button vx-bot-button" href="{{ backend_install_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">⚙</span><span>Настроить вручную</span></a>
-            </div>
-          </details>
+          <div class="vx-bot-actions vx-bot-actions-secondary">
+            {% if row.can_renew %}
+              <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">🔄</span><span>Продлить</span></a>
+            {% endif %}
+            <a class="account-secondary-button vx-bot-button" href="{{ backend_install_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">⚙</span><span>Настроить вручную</span></a>
+          </div>
         </article>
       {% endfor %}
     {% else %}
