@@ -383,6 +383,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn(streisand_url, html)
         self.assertIn(v2box_url, html)
         self.assertLess(html.find(streisand_url), html.find(v2box_url))
+        self.assertIn("Configs -> VXcloud -> Home -> Connect", html)
         self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
 
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):

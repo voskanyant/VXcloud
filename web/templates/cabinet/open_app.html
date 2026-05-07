@@ -13,6 +13,11 @@
 
   {% if deeplinks %}
     <p class="account-subtle">{{ open_app_description }}</p>
+    {% if auto_sequence %}
+      <div class="account-message account-message-info">
+        V2Box может добавить подписку, но не выбрать ее автоматически. Если открылся V2Box: Configs -> VXcloud -> Home -> Connect.
+      </div>
+    {% endif %}
     <div class="auth-actions">
       {% for item in deeplinks %}
         <a class="{% if forloop.first %}account-primary-button{% else %}account-secondary-button{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
