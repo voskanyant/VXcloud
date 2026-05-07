@@ -63,6 +63,10 @@ ALLOWED_DEEPLINK_SCHEMES = (
     "tuic://",
     "streisand://",
     "v2box://",
+    "sub://",
+    "v2raytun://",
+    "happ://",
+    "hiddify://",
 )
 PAYMENT_SUCCESS_STATUSES = {"success", "succeeded", "paid", "approved"}
 PAYMENT_CANCELLED_STATUSES = {"canceled", "cancelled", "expired", "failed"}
@@ -1972,6 +1976,22 @@ def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
         {
             "label": "V2Box",
             "url": f"v2box://install-sub?url={encoded_url}&name=VXcloud",
+        },
+        {
+            "label": "Shadowrocket",
+            "url": f"sub://{subscription_url}",
+        },
+        {
+            "label": "v2RayTun",
+            "url": f"v2raytun://import/{subscription_url}",
+        },
+        {
+            "label": "HAPP",
+            "url": f"happ://add/{subscription_url}",
+        },
+        {
+            "label": "Hiddify",
+            "url": f"hiddify://install-config/?url={encoded_url}",
         },
     ]
 

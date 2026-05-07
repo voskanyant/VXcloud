@@ -380,9 +380,21 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         html = response.content.decode("utf-8")
         streisand_url = "streisand://import/https://vxcloud.ru/account/feed/feed-token/#VXcloud"
         v2box_url = "v2box://install-sub?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F&amp;name=VXcloud"
+        shadowrocket_url = "sub://https://vxcloud.ru/account/feed/feed-token/"
+        v2raytun_url = "v2raytun://import/https://vxcloud.ru/account/feed/feed-token/"
+        happ_url = "happ://add/https://vxcloud.ru/account/feed/feed-token/"
+        hiddify_url = "hiddify://install-config/?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F"
         self.assertIn(streisand_url, html)
         self.assertIn(v2box_url, html)
+        self.assertIn(shadowrocket_url, html)
+        self.assertIn(v2raytun_url, html)
+        self.assertIn(happ_url, html)
+        self.assertIn(hiddify_url, html)
         self.assertLess(html.find(streisand_url), html.find(v2box_url))
+        self.assertLess(html.find(v2box_url), html.find(shadowrocket_url))
+        self.assertLess(html.find(shadowrocket_url), html.find(v2raytun_url))
+        self.assertLess(html.find(v2raytun_url), html.find(happ_url))
+        self.assertLess(html.find(happ_url), html.find(hiddify_url))
         self.assertIn("Configs -> VXcloud -> Home -> Connect", html)
         self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
 
