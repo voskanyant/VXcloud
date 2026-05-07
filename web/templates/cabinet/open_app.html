@@ -15,8 +15,11 @@
     <p class="account-subtle">{{ open_app_description }}</p>
     {% if auto_sequence %}
       <div class="account-message account-message-info">
-        Если Streisand или V2Box при первом запуске спросил доступ к сети и показал ошибку, разрешите WLAN & Mobile и вернитесь на эту страницу - мы попробуем открыть приложение еще раз.
+        Если приложение при первом запуске спросило доступ к сети и показало ошибку, разрешите WLAN & Mobile, вернитесь сюда и нажмите нужное приложение еще раз.
         V2Box может добавить подписку, но не выбрать ее автоматически. Если открылся V2Box: Configs -> VXcloud -> Home -> Connect.
+      </div>
+      <div class="account-message account-message-info" id="open-app-ios-note" hidden>
+        В Safari iPhone нельзя тихо проверить, какие VPN-приложения установлены. Выберите приложение, которое уже есть на телефоне, или скопируйте ссылку для ручного импорта.
       </div>
     {% endif %}
     <div class="auth-actions">
@@ -37,11 +40,11 @@
         const links = linksEl ? JSON.parse(linksEl.textContent || '[]') : [];
         const autoSequence = {% if auto_sequence %}true{% else %}false{% endif %};
         let index = 0;
-        let hiddenAt = 0;
-        const retriedLinks = {};
-        function canRetryLink(url) {
-          return url.indexOf('streisand://') === 0 || url.indexOf('v2box://') === 0;
-        }
+        const ua = navigator.userAgent || '';
+        const isIosBrowser = /iPad|iPhone|iPod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isTelegramBrowser = /Telegram/i.test(ua) || !!(window.Telegram && window.Telegram.WebApp);
+        const canAutoRun = autoSequence && (!isIosBrowser || isTelegramBrowser);
+        const iosNote = document.getElementById('open-app-ios-note');
         function openNext() {
           if (!links[index] || !links[index].url) return;
           const url = links[index].url;
@@ -53,24 +56,12 @@
             }, 1600);
           }
         }
-        if (autoSequence) {
-          document.addEventListener('visibilitychange', function () {
-            if (document.hidden) {
-              hiddenAt = Date.now();
-              return;
-            }
-            const wasJustInApp = hiddenAt && Date.now() - hiddenAt < 45000;
-            const retryIndex = index > 0 ? index - 1 : -1;
-            const retryLink = retryIndex >= 0 && links[retryIndex] && links[retryIndex].url ? links[retryIndex].url : '';
-            if (retryLink && !retriedLinks[retryLink] && wasJustInApp && canRetryLink(retryLink)) {
-              retriedLinks[retryLink] = true;
-              setTimeout(function () {
-                if (!document.hidden) window.location.href = retryLink;
-              }, 700);
-            }
-          });
+        if (autoSequence && !canAutoRun && iosNote) {
+          iosNote.hidden = false;
         }
-        setTimeout(openNext, 80);
+        if (canAutoRun) {
+          setTimeout(openNext, 80);
+        }
       })();
       function copyLink() {
         const box = document.getElementById('deeplink-box');
