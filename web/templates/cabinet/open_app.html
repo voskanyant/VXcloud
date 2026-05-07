@@ -59,6 +59,7 @@
         }
         const linksEl = document.getElementById('open-app-links');
         const links = linksEl ? JSON.parse(linksEl.textContent || '[]') : [];
+        const autoSequence = {% if auto_sequence %}true{% else %}false{% endif %};
         const titleEl = document.getElementById('open-app-title');
         const stepEl = document.getElementById('open-app-step');
         const progressEl = document.getElementById('open-app-progress');
@@ -139,6 +140,11 @@
           openCurrent();
           index += 1;
           renderState();
+          if (autoSequence && links[index]) {
+            setTimeout(function () {
+              if (!document.hidden) openNext();
+            }, 1600);
+          }
         }
 
         if (nextButton) {
@@ -168,6 +174,9 @@
         }
 
         renderState();
+        if (autoSequence) {
+          setTimeout(openNext, 80);
+        }
       })();
     </script>
   {% else %}
