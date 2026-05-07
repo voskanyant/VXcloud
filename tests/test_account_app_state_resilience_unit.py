@@ -304,7 +304,25 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("https://t.me/vxcloud_test_bot?start=trial", html)
         empty_html = html.split('class="vx-bot-card account-mini-empty"', 1)[1].split("</div>", 1)[0]
         self.assertIn("Без карты", empty_html)
+        self.assertIn("vx-bot-actions", empty_html)
+        self.assertIn("vx-bot-button-primary", empty_html)
         self.assertLess(empty_html.index("7 дней бесплатно"), empty_html.index("Купить доступ"))
+
+    def test_account_auth_edge_templates_use_bot_shell(self):
+        template_paths = [
+            "templates/registration/logged_out.html",
+            "templates/registration/password_reset_form.html",
+            "templates/registration/password_reset_done.html",
+            "templates/registration/password_reset_confirm.html",
+            "templates/registration/password_reset_complete.html",
+            "templates/registration/telegram_auth_complete.html",
+            "templates/cabinet/link_telegram.html",
+        ]
+        for relative_path in template_paths:
+            html = (WEB_ROOT / relative_path).read_text(encoding="utf-8-sig")
+            with self.subTest(template=relative_path):
+                self.assertIn("site-auth-shell vx-account-bot vx-auth-bot", html)
+                self.assertIn("vx-bot-title vx-auth-title", html)
 
     def test_account_app_config_copy_is_localized(self):
         bot_user = SimpleNamespace(id=7, client_code="VX-000007")

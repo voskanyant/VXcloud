@@ -5,11 +5,13 @@
 {% block title %}{{ logout_page_title }}{% endblock %}
 
 {% block content %}
-<section class="surface-card auth-shell site-auth-shell">
-  <div class="account-eyebrow">VXcloud account</div>
+<section class="surface-card auth-shell site-auth-shell vx-account-bot vx-auth-bot">
+  <p class="vx-bot-eyebrow">Аккаунт VXcloud</p>
   {% cms_text "auth.logout.heading" "Выход выполнен" as logout_heading %}
   {% cms_text "auth.logout.login_again" "Войти снова" as logout_login_again %}
-  <h1 class="account-title-compact">{{ logout_heading }}</h1>
-  <p class="account-subtle"><a class="account-inline-link" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}">{{ logout_login_again }}</a></p>
+  <h1 class="vx-bot-title vx-auth-title">{{ logout_heading }}</h1>
+  <div class="vx-bot-actions">
+    <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}">{{ logout_login_again }}</a>
+  </div>
 </section>
 {% endblock %}

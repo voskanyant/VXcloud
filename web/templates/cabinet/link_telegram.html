@@ -10,34 +10,34 @@
 {% cms_text "cabinet.link.open_bot_action" "Открыть бота и привязать" as cabinet_link_open_bot_action %}
 {% cms_text "cabinet.link.regen_action" "Сгенерировать новый код" as cabinet_link_regen_action %}
 
-<section class="surface-card auth-shell site-auth-shell">
-  <div class="account-eyebrow">Telegram link</div>
-  <h1 class="account-title-compact">{{ cabinet_link_heading }}</h1>
-  <p class="account-subtle">{{ cabinet_link_description }}</p>
+<section class="surface-card auth-shell site-auth-shell vx-account-bot vx-auth-bot">
+  <p class="vx-bot-eyebrow">Telegram</p>
+  <h1 class="vx-bot-title vx-auth-title">{{ cabinet_link_heading }}</h1>
+  <p class="vx-bot-line">{{ cabinet_link_description }}</p>
 
   {% if linked %}
     <div class="account-message">Сейчас привязан Telegram ID: <strong>{{ linked.telegram_id }}</strong></div>
   {% endif %}
 
-  <div class="auth-code-panel">
+  <div class="auth-code-panel vx-bot-key-card">
     <div class="account-summary-label">Код привязки</div>
     <div class="auth-code-value"><code>{{ link_code }}</code></div>
-    <div class="account-subtle">Код действует до: {{ expires_at|date:'d.m.Y H:i' }}</div>
+    <div class="vx-bot-line">Код действует до: {{ expires_at|date:'d.m.Y H:i' }}</div>
   </div>
 
   {% if deep_link %}
-    <div class="auth-actions">
-      <a class="account-primary-button" href="{{ deep_link }}" target="_blank" rel="noopener">{{ cabinet_link_open_bot_action }}</a>
+    <div class="vx-bot-actions">
+      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ deep_link }}" target="_blank" rel="noopener">{{ cabinet_link_open_bot_action }}</a>
     </div>
-    <p class="account-subtle auth-note">Если кнопка не сработала, отправьте боту команду: <code>/start link_{{ link_code }}</code>.</p>
+    <p class="vx-bot-line auth-note">Если кнопка не сработала, отправьте боту команду: <code>/start link_{{ link_code }}</code>.</p>
   {% else %}
     <div class="account-message account-message-error">Не задан TELEGRAM_BOT_USERNAME в окружении сайта. Укажите username бота для deep-link кнопки.</div>
-    <p class="account-subtle auth-note">Временный способ: отправьте боту команду <code>/start link_{{ link_code }}</code>.</p>
+    <p class="vx-bot-line auth-note">Временный способ: отправьте боту команду <code>/start link_{{ link_code }}</code>.</p>
   {% endif %}
 
-  <form method="post" class="auth-actions" action="{{ backend_link_url }}">
+  <form method="post" class="vx-bot-actions" action="{{ backend_link_url }}">
     {% csrf_token %}
-    <button type="submit" class="account-secondary-button">{{ cabinet_link_regen_action }}</button>
+    <button type="submit" class="account-secondary-button vx-bot-button">{{ cabinet_link_regen_action }}</button>
   </form>
 </section>
 {% endblock %}

@@ -44,14 +44,17 @@
       {% endfor %}
     {% else %}
       <div class="vx-bot-card account-mini-empty">
+        <p class="vx-bot-eyebrow">Старт</p>
         <strong>Пока нет доступа</strong>
         <span>{% if telegram_trial_url %}Без карты: активируйте 7 дней бесплатно в боте. Оплата картой останется рядом.{% else %}Купите доступ картой. После оплаты ссылка подписки появится здесь.{% endif %}</span>
+        <div class="vx-bot-actions">
         {% if telegram_trial_url %}
-          <a class="account-primary-button" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
-          <a class="account-secondary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
         {% else %}
-          <a class="account-primary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
         {% endif %}
+        </div>
       </div>
     {% endif %}
   </section>

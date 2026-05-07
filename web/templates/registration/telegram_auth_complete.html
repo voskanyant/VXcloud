@@ -5,16 +5,16 @@
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block content %}
-<section class="surface-card auth-shell site-auth-shell">
+<section class="surface-card auth-shell site-auth-shell vx-account-bot vx-auth-bot">
   {% cms_text "auth.telegram.complete_heading" "Вход подтверждён" as heading %}
   {% cms_text "auth.telegram.complete_description" "Сейчас откроем личный кабинет. Если страница не переключится автоматически, используйте кнопку ниже." as description %}
   {% cms_text "auth.telegram.complete_action" "Открыть кабинет" as action_label %}
 
-  <div class="account-eyebrow">Telegram auth</div>
-  <h1 class="account-title-compact">{{ heading }}</h1>
-  <p class="account-subtle">{{ description }}</p>
-  <div class="auth-actions">
-    <a class="account-primary-button" href="{{ target_url }}">{{ action_label }}</a>
+  <p class="vx-bot-eyebrow">Telegram</p>
+  <h1 class="vx-bot-title vx-auth-title">{{ heading }}</h1>
+  <p class="vx-bot-line">{{ description }}</p>
+  <div class="vx-bot-actions">
+    <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ target_url }}">{{ action_label }}</a>
   </div>
 </section>
 
