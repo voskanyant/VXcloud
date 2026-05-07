@@ -431,7 +431,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         html = response.content.decode("utf-8")
         streisand_url = "streisand://import/https://vxcloud.ru/account/feed/feed-token/#VXcloud"
         v2box_url = "v2box://install-sub?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F\\u0026name=VXcloud"
-        shadowrocket_url = "shadowrocket://add/https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F"
+        shadowrocket_url = "sub://https://vxcloud.ru/account/feed/feed-token/"
         v2raytun_url = "v2raytun://import/https://vxcloud.ru/account/feed/feed-token/"
         happ_url = "happ://add/https://vxcloud.ru/account/feed/feed-token/"
         hiddify_url = "hiddify://install-config/?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F"
@@ -449,7 +449,9 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("Пробуем открыть Streisand", html)
         self.assertIn("Не открылось — попробовать дальше", html)
         self.assertIn("setTimeout(openNext, 80)", html)
+        self.assertIn("renderState();\n            openCurrent();", html)
         self.assertIn("v2box://", html)
+        self.assertIn("sub://", html)
         self.assertNotIn("visibilitychange", html)
         self.assertNotIn("retriedLinks", html)
         self.assertNotIn("canRetryLink", html)
