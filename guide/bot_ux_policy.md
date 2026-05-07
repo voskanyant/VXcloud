@@ -122,10 +122,10 @@ Back/Назад button should be ignored by the bot.
   "access", not "config", "3x-ui", "node", or other execution-layer wording.
   Rename input should normalize whitespace and reject overlong names with a
   clear limit instead of silently truncating. Empty My VPN should offer the
-  7-day trial first, then card and Stars purchase actions. Active subscription
-  cards are link-first: `🔗 Скопировать ссылку` is the first action, then
-  `📱 Открыть доступ`, then QR and renewal. Expired subscription cards still
-  put `🔄 Продлить` first, then copy link, then access/QR. Subscription card
+  7-day trial first, then card and Stars purchase actions. Subscription
+  cards are connect-first: `Подключить` is the first action, then
+  `Скопировать ссылку`, then `QR и доступ`, then manual setup. Renewal and
+  management actions follow the core connection actions. Subscription card
   copy should give a short practical import hint: copy the subscription link,
   open Streisand, V2Box, or v2rayNG, press `+`, then import from clipboard.
   Do not print long subscription or raw connection links in the message body.

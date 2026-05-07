@@ -279,7 +279,9 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         actions_html = html.split('class="account-mini-actions"', 1)[1].split("</section>", 1)[0]
         self.assertIn("/open-app/?mode=ios-auto", actions_html)
         self.assertIn("u=http%3A%2F%2Ftestserver%2Faccount%2Ffeed%2Ffeed-token%2F", actions_html)
+        self.assertIn("Скопировать ссылку", actions_html)
         self.assertIn("/account-app/config/42/", actions_html)
+        self.assertIn("/account-app/install/42/", actions_html)
         self.assertLess(actions_html.index("Подключить"), actions_html.index("QR и доступ"))
 
     def test_account_app_dashboard_empty_state_is_trial_first_when_bot_exists(self):
@@ -351,7 +353,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         html = response.content.decode("utf-8")
         self.assertIn("Подключить Phone", html)
         self.assertIn("Большинства iOS-приложений нет в российском App Store", html)
-        self.assertIn("https://support.apple.com/en-us/118283", html)
+        self.assertIn("/instructions/app-store-country/", html)
+        self.assertIn("Инструкция VXcloud", html)
         self.assertIn("Streisand", html)
         self.assertIn('"manual_note"', html)
         self.assertIn("v2box://install-sub", html)
@@ -400,12 +403,15 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertLess(html.find(shadowrocket_url), html.find(v2raytun_url))
         self.assertLess(html.find(v2raytun_url), html.find(happ_url))
         self.assertLess(html.find(happ_url), html.find(hiddify_url))
-        self.assertIn("нажмите нужное приложение ниже еще раз", html)
+        self.assertIn("мы попробуем открыть его еще раз", html)
         self.assertIn("setTimeout(openNext, 80)", html)
         self.assertIn("v2box://", html)
-        self.assertNotIn("visibilitychange", html)
-        self.assertNotIn("retriedLinks", html)
-        self.assertNotIn("canRetryLink", html)
+        self.assertIn("visibilitychange", html)
+        self.assertIn("retriedLinks", html)
+        self.assertIn("canRetryLink", html)
+        self.assertIn("v2raytun://", html)
+        self.assertIn("happ://", html)
+        self.assertIn("hiddify://", html)
         self.assertNotIn("canAutoRun", html)
         self.assertNotIn("В Safari iPhone нельзя тихо проверить", html)
         self.assertNotIn("streisandRetried", html)
@@ -413,6 +419,15 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertNotIn("window.location.href = 'streisand://'", html)
         self.assertIn("Configs -> VXcloud -> Home -> Connect", html)
         self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
+
+    def test_app_store_country_instruction_page_is_vxcloud_owned(self):
+        response = self.client.get("/instructions/app-store-country/")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Как временно сменить страну App Store", html)
+        self.assertIn("Вернитесь в VXcloud", html)
+        self.assertNotIn("support.apple.com", html)
 
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):
         with patch.object(sys.modules["cabinet.views"].settings, "VPN_PUBLIC_HOST", ""), patch.object(

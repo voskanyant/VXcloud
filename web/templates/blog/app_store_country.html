@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}Как сменить страну App Store - VXcloud{% endblock %}
+
+{% block content %}
+<section class="surface-card">
+  <p class="account-kicker">iPhone</p>
+  <h1 class="post-page-title mb-2">Как временно сменить страну App Store</h1>
+  <p class="hero-copy mb-0">
+    Большинства VPN-приложений нет в российском App Store. Смените страну Apple Account на US, скачайте приложение, затем можно вернуть страну обратно.
+  </p>
+</section>
+
+<section class="surface-card mt-3">
+  <h2 class="post-preview-title mb-3">Шаги</h2>
+  <ol class="account-mini-steps">
+    <li>Откройте App Store и нажмите на аватар профиля.</li>
+    <li>Нажмите на имя аккаунта, затем выберите «Страна/регион».</li>
+    <li>Нажмите «Изменить страну или регион» и выберите United States.</li>
+    <li>Примите условия. В адресе можно указать любой реальный US-адрес, платежный метод - None, если он доступен.</li>
+    <li>Скачайте Streisand, V2Box, Shadowrocket, v2RayTun, HAPP или Hiddify.</li>
+    <li>Вернитесь в VXcloud и нажмите «Подключить».</li>
+  </ol>
+</section>
+
+<section class="surface-card mt-3">
+  <h2 class="post-preview-title mb-2">Если не получилось</h2>
+  <p class="post-preview-copy mb-3">
+    Иногда Apple не дает сменить страну из-за активных подписок, остатка баланса или семейного доступа. В таком случае используйте другое приложение, которое уже доступно в вашем App Store, или напишите в поддержку VXcloud.
+  </p>
+  <a class="account-primary-button" href="/account/">Мой VPN</a>
+</section>
+{% endblock %}
