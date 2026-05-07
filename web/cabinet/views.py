@@ -2807,13 +2807,48 @@ async def _notify_user_after_card_activation(
             subscriptions=subscriptions,
         )
         reply_markup = _telegram_my_vpn_reply_markup(subscriptions)
-    await asyncio.to_thread(
-        _send_telegram_message_sync,
-        telegram_bot_token,
-        telegram_id,
-        message_text,
-        reply_markup,
-    )
+    try:
+        await asyncio.to_thread(
+            _send_telegram_message_sync,
+            telegram_bot_token,
+            telegram_id,
+            message_text,
+            reply_markup,
+        )
+    except Exception:
+        LOGGER.exception("card_activation_bot_notification_failed", extra={"order_id": order_id, "user_id": user_id})
+        await _clear_order_notified(db, order_id)
+        if not target_subscription:
+            raise
+        fallback_text = (
+            message_text
+            + "\n\n"
+            + "Если кнопка копирования не появилась, скопируйте ссылку вручную:\n"
+            + _telegram_subscription_url(target_subscription, site_url=site_url)
+        )
+        fallback_markup = _telegram_config_card_reply_markup(
+            target_subscription,
+            site_url=site_url,
+            rich_buttons=False,
+        )
+        await asyncio.to_thread(
+            _send_telegram_message_sync,
+            telegram_bot_token,
+            telegram_id,
+            fallback_text,
+            fallback_markup,
+        )
+        await db.mark_order_notified_if_pending(order_id)
+
+
+async def _clear_order_notified(db, order_id: int) -> None:
+    clear_method = getattr(db, "clear_order_notified", None)
+    if not callable(clear_method):
+        return
+    try:
+        await clear_method(order_id)
+    except Exception:
+        LOGGER.exception("clear_order_notified_failed", extra={"order_id": order_id})
 
 
 def _telegram_find_subscription(
@@ -2874,7 +2909,12 @@ def _telegram_config_card_text_after_card_activation(
     )
 
 
-def _telegram_config_card_reply_markup(sub: dict[str, object], *, site_url: str) -> dict[str, object]:
+def _telegram_config_card_reply_markup(
+    sub: dict[str, object],
+    *,
+    site_url: str,
+    rich_buttons: bool = True,
+) -> dict[str, object]:
     subscription_id = int(sub.get("id") or 0)
     subscription_url = _telegram_subscription_url(sub, site_url=site_url)
     rows: list[list[dict[str, object]]] = []
@@ -2887,14 +2927,19 @@ def _telegram_config_card_reply_markup(sub: dict[str, object], *, site_url: str)
                 }
             ]
         )
-    if subscription_url:
+    if subscription_url and rich_buttons:
         rows.append([{"text": "🔗 Скопировать ссылку", "copy_text": {"text": subscription_url}}])
     if subscription_id > 0:
+        config_url = _telegram_mini_app_url(f"/account-app/config/{subscription_id}/", site_url=site_url)
+        renew_url = _telegram_mini_app_url(
+            f"/account-app/renew/?subscription_id={subscription_id}",
+            site_url=site_url,
+        )
         rows.append(
             [
                 {
                     "text": "📱 QR и доступ",
-                    "web_app": {"url": _telegram_mini_app_url(f"/account-app/config/{subscription_id}/", site_url=site_url)},
+                    ("web_app" if rich_buttons else "url"): ({"url": config_url} if rich_buttons else config_url),
                 }
             ]
         )
@@ -2903,12 +2948,7 @@ def _telegram_config_card_reply_markup(sub: dict[str, object], *, site_url: str)
                 {"text": "QR", "callback_data": f"act|cfg_qr:{subscription_id}|_"},
                 {
                     "text": "🔄 Продлить",
-                    "web_app": {
-                        "url": _telegram_mini_app_url(
-                            f"/account-app/renew/?subscription_id={subscription_id}",
-                            site_url=site_url,
-                        )
-                    },
+                    ("web_app" if rich_buttons else "url"): ({"url": renew_url} if rich_buttons else renew_url),
                 },
             ]
         )

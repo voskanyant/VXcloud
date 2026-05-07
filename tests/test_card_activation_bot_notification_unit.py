@@ -26,6 +26,7 @@ from cabinet.views import (  # noqa: E402
 class FakeActivationNotifyDB:
     def __init__(self) -> None:
         self.notified = False
+        self.clear_calls = 0
         self.subscriptions = [
             {
                 "id": 42,
@@ -56,6 +57,12 @@ class FakeActivationNotifyDB:
         if self.notified:
             return False
         self.notified = True
+        return True
+
+    async def clear_order_notified(self, order_id: int) -> bool:
+        self.order_id = order_id
+        self.clear_calls += 1
+        self.notified = False
         return True
 
     async def get_user_client_code(self, user_id: int) -> str:
@@ -99,6 +106,35 @@ class CardActivationBotNotificationUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reply_markup["inline_keyboard"][2][0]["text"], "📱 QR и доступ")
         self.assertEqual(reply_markup["inline_keyboard"][3][0]["callback_data"], "act|cfg_qr:42|_")
         self.assertEqual(reply_markup["inline_keyboard"][4][0]["callback_data"], "act|cfg_rename:42|_")
+
+    async def test_card_activation_notification_falls_back_if_rich_keyboard_fails(self):
+        db = FakeActivationNotifyDB()
+        sent: list[tuple[str, int, str, dict[str, object] | None]] = []
+
+        def fake_send(token, chat_id, text, reply_markup=None):
+            if not sent:
+                sent.append((token, chat_id, text, reply_markup))
+                raise RuntimeError("telegram rejected rich keyboard")
+            sent.append((token, chat_id, text, reply_markup))
+
+        with patch("cabinet.views._send_telegram_message_sync", side_effect=fake_send):
+            await _notify_user_after_card_activation(
+                db=db,
+                order_id=1001,
+                telegram_bot_token="token",
+                user_id=123,
+                subscription_id=42,
+            )
+
+        self.assertEqual(len(sent), 2)
+        self.assertEqual(db.clear_calls, 1)
+        fallback_markup = sent[1][3]
+        self.assertIn("https://vxcloud.ru/account/feed/feed-42/", sent[1][2])
+        self.assertEqual(fallback_markup["inline_keyboard"][0][0]["text"], "⚡ Подключить")
+        self.assertNotIn("copy_text", fallback_markup["inline_keyboard"][1][0])
+        self.assertIn("url", fallback_markup["inline_keyboard"][1][0])
+        self.assertIn("url", fallback_markup["inline_keyboard"][2][1])
+        self.assertTrue(db.notified)
 
     async def test_card_activation_notification_is_sent_once(self):
         db = FakeActivationNotifyDB()

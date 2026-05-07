@@ -2038,6 +2038,19 @@ class DB:
         )
         return row is not None
 
+    async def clear_order_notified(self, order_id: int) -> bool:
+        assert self.pool is not None
+        row = await self.pool.fetchrow(
+            """
+            UPDATE orders
+            SET notified_at = NULL
+            WHERE id = $1
+            RETURNING id
+            """,
+            order_id,
+        )
+        return row is not None
+
     async def create_ticket(self, user_id: int | None, subject: str | None) -> int:
         assert self.pool is not None
         row = await self.pool.fetchrow(
