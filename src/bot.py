@@ -733,7 +733,7 @@ class VPNBot:
     def _start_message_text(status_summary: str | None = None) -> str:
         text = (
             "VXcloud\n\n"
-            "Выберите действие в меню ниже.\n"
+            "Выберите действие ниже.\n"
             "Кабинет внутри Telegram открывает QR, оплату картой, инструкции и настройки."
         )
         if status_summary:
@@ -766,14 +766,14 @@ class VPNBot:
                 ]
             )
 
-        next_sub = min(active, key=lambda item: item["expires_at"])
-        next_expires_at = next_sub.get("expires_at")
-        next_expires_text = self._format_local_dt(next_expires_at) if isinstance(next_expires_at, datetime) else "-"
         lines = [
             "Ваш VPN",
             f"✅ Активных: {len(active)}",
-            f"Ближайшее окончание: {self._subscription_name(next_sub)} · {next_expires_text}",
         ]
+        for idx, sub in enumerate(self._sorted_subscriptions(active), start=1):
+            expires_at = sub.get("expires_at")
+            expires_text = self._format_local_dt(expires_at) if isinstance(expires_at, datetime) else "-"
+            lines.append(f"{idx}. {self._subscription_name(sub)} · до {expires_text}")
         expiring_soon = sum(1 for sub in active if self._subscription_expiring_soon(sub, now))
         if expiring_soon:
             lines.append(f"⏳ Скоро закончится: {expiring_soon}")
@@ -781,12 +781,28 @@ class VPNBot:
             lines.append(f"⚠️ Истекло: {len(expired)}")
         return "\n".join(lines)
 
+    def _start_inline_markup(self) -> InlineKeyboardMarkup:
+        return InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton(text="🛡 Мой VPN", callback_data="act|start_mysub|_")],
+                [
+                    InlineKeyboardButton(text="🎁 7 дней бесплатно", callback_data="act|start_trial|_"),
+                    InlineKeyboardButton(text="💳 Купить", callback_data="act|buy_new|_"),
+                ],
+                [
+                    InlineKeyboardButton(text="📖 Инструкция", callback_data="nav|menu_instructions|_"),
+                    InlineKeyboardButton(text="🆘 Поддержка", callback_data="act|support_start|_"),
+                ],
+                [self._mini_app_button("📱 Кабинет")],
+            ]
+        )
+
     async def _send_start_screen(self, message: Message, user_id: int) -> None:
         subscriptions = await self.db.list_subscriptions(user_id)
         await self._replace_or_reply(
             message,
             self._start_message_text(self._start_status_summary(subscriptions)),
-            reply_markup=await self._menu_keyboard_for_user(user_id),
+            reply_markup=self._start_inline_markup(),
         )
 
     def _trial_offer_markup(self) -> InlineKeyboardMarkup:

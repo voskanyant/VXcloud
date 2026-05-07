@@ -266,7 +266,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
             commands.update(getattr(handler, "commands", set()))
         self.assertTrue({"start", "menu", "myvpn", "trial", "buy", "renew", "instructions", "support", "app", "cabinet"}.issubset(commands))
 
-    async def test_start_screen_sends_minimal_persistent_reply_keyboard(self):
+    async def test_start_screen_sends_compact_inline_actions(self):
         bot = make_bot()
         message = FakeMessage()
 
@@ -276,15 +276,19 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         text = message.replies[0][0]
         self.assertIn("VXcloud", text)
         self.assertIn("Кабинет внутри Telegram", text)
-        self.assertIn("меню ниже", text)
+        self.assertIn("действие ниже", text)
         self.assertNotIn("Как подключить", text)
         self.assertNotIn("Бот помогает", text)
         reply_markup = message.replies[0][1]
-        self.assertIsInstance(reply_markup, ReplyKeyboardMarkup)
-        self.assertNotIsInstance(reply_markup, InlineKeyboardMarkup)
-        labels = [button.text for row in reply_markup.keyboard for button in row]
-        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "🔄 Продлить", "📖 Инструкция", "🆘 Поддержка", "📱 Кабинет"])
-        open_app_button = reply_markup.keyboard[-1][0]
+        self.assertIsInstance(reply_markup, InlineKeyboardMarkup)
+        labels = [button.text for row in reply_markup.inline_keyboard for button in row]
+        self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "📖 Инструкция", "🆘 Поддержка", "📱 Кабинет"])
+        self.assertEqual(reply_markup.inline_keyboard[0][0].callback_data, "act|start_mysub|_")
+        self.assertEqual(reply_markup.inline_keyboard[1][0].callback_data, "act|start_trial|_")
+        self.assertEqual(reply_markup.inline_keyboard[1][1].callback_data, "act|buy_new|_")
+        self.assertEqual(reply_markup.inline_keyboard[2][0].callback_data, "nav|menu_instructions|_")
+        self.assertEqual(reply_markup.inline_keyboard[2][1].callback_data, "act|support_start|_")
+        open_app_button = reply_markup.inline_keyboard[-1][0]
         self.assertIsNotNone(open_app_button.web_app)
         self.assertEqual(open_app_button.web_app.url, "https://vxcloud.ru/account-app/?embed=1")
 
@@ -416,6 +420,20 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
                 "revoked_at": None,
             },
             {
+                "id": 44,
+                "display_name": "iPhone",
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=12),
+                "is_active": True,
+                "revoked_at": None,
+            },
+            {
+                "id": 45,
+                "display_name": "MacBook",
+                "expires_at": datetime.now(timezone.utc) + timedelta(days=30),
+                "is_active": True,
+                "revoked_at": None,
+            },
+            {
                 "id": 43,
                 "display_name": "Old phone",
                 "expires_at": datetime.now(timezone.utc) - timedelta(days=1),
@@ -430,11 +448,15 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         text = message.replies[0][0]
         self.assertIn("Ваш VPN", text)
-        self.assertIn("✅ Активных: 1", text)
-        self.assertIn("Ближайшее окончание: Work laptop", text)
+        self.assertIn("✅ Активных: 3", text)
+        self.assertIn("1. Work laptop · до", text)
+        self.assertIn("2. iPhone · до", text)
+        self.assertIn("3. MacBook · до", text)
+        self.assertLess(text.index("1. Work laptop"), text.index("2. iPhone"))
+        self.assertLess(text.index("2. iPhone"), text.index("3. MacBook"))
         self.assertIn("⏳ Скоро закончится: 1", text)
         self.assertIn("⚠️ Истекло: 1", text)
-        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
+        self.assertIsInstance(message.replies[0][1], InlineKeyboardMarkup)
 
     async def test_start_screen_shows_expired_status_without_active_subscriptions(self):
         db = FakeDB()
@@ -449,8 +471,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Активных доступов нет", text)
         self.assertIn("⚠️ Истекло: 2", text)
         self.assertIn("🔄 Продлить", text)
-        self.assertIsInstance(reply_markup, ReplyKeyboardMarkup)
-        self.assertNotIsInstance(reply_markup, InlineKeyboardMarkup)
+        self.assertIsInstance(reply_markup, InlineKeyboardMarkup)
 
     async def test_open_app_text_fallback_is_mini_app_first_and_tracked(self):
         db = FakeDB()
