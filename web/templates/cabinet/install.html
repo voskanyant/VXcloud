@@ -285,9 +285,9 @@
       card.append(copy, actions);
 
       if (!compact && selectedPlatform === 'ios') {
-        const note = document.createElement('p');
+        const note = document.createElement('div');
         note.className = 'vx-bot-line account-install-note-inline';
-        note.innerHTML = 'Большинства iOS-приложений нет в российском App Store. Временно смените страну на US, это занимает пару минут. <a href="{{ apple_country_help_url }}" target="_blank" rel="noopener">Инструкция</a>';
+        note.innerHTML = '<strong>App Store</strong><span>Большинства iOS-приложений нет в российском App Store. Временно смените страну на US, это занимает пару минут.</span><a href="{{ apple_country_help_url }}" target="_blank" rel="noopener">Инструкция VXcloud</a>';
         card.append(note);
       }
 

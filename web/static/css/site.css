@@ -5309,10 +5309,30 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-install-note-inline {
-  margin-top: 0;
-  padding-top: 8px;
+  display: grid;
+  gap: 4px;
+  margin-top: 1px;
+  padding: 9px 10px;
   border-top: 1px solid var(--vx-bot-line);
+  border-radius: var(--vx-bot-button-radius);
+  background: #ffffff;
+  color: var(--vx-bot-muted);
   line-height: 1.35;
+}
+
+.vx-account-bot .account-install-note-inline strong {
+  color: var(--vx-bot-text);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+.vx-account-bot .account-install-note-inline a {
+  justify-self: start;
+  color: var(--vx-bot-blue);
+  font-weight: 700;
 }
 
 .vx-account-bot.vx-auth-bot {

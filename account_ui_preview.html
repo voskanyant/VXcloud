@@ -355,11 +355,29 @@
   }
   .app-badge.primary { background: #e6f1fb; color: #1f74ba; }
   .app-note {
+    display: grid;
+    gap: 4px;
     margin-top: 0;
-    padding-top: 8px;
+    padding: 9px 10px;
     border-top: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: #ffffff;
     color: var(--muted);
     font-size: 13px;
+    line-height: 1.35;
+  }
+  .app-note strong {
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    line-height: 1.1;
+    text-transform: uppercase;
+  }
+  .app-note a {
+    justify-self: start;
+    color: var(--accent);
+    font-weight: 700;
   }
 
   /* progress strip for auto-import */
@@ -742,7 +760,11 @@
               <div class="kb" style="margin-top:0;">
                 <div class="row"><a class="btn primary" style="min-height:46px;"><span class="btn-icon">↓</span><span>Установить Streisand</span></a></div>
               </div>
-              <div class="app-note">App Store: большинства VPN-приложений нет в RU. Смените страну на US — пара минут. <a href="#" style="color:var(--accent);">Инструкция</a></div>
+              <div class="app-note">
+                <strong>App Store</strong>
+                <span>Большинства iOS-приложений нет в российском App Store. Смените страну на US — пара минут.</span>
+                <a href="#">Инструкция VXcloud</a>
+              </div>
             </div>
           </div>
 

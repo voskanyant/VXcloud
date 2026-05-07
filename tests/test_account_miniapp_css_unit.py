@@ -110,6 +110,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .account-install-app-badge-paid", self.css)
         self.assertIn(".vx-account-bot .account-install-app-card-flat .account-install-app-mark", self.css)
         self.assertIn("border: 1px solid var(--vx-bot-line);", self.css)
+        self.assertIn(".vx-account-bot .account-install-note-inline strong", self.css)
+        self.assertIn(".vx-account-bot .account-install-note-inline a", self.css)
+        self.assertIn("Инструкция VXcloud", (REPO_ROOT / "web" / "templates" / "cabinet" / "install.html").read_text(encoding="utf-8"))
 
     def test_embed_config_page_is_qr_and_link_first(self):
         self.assertIn("body.vx-account-embed .account-page-shell-config", self.css)
