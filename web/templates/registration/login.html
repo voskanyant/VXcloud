@@ -33,7 +33,7 @@
         {{ form.password }}
         {% for error in form.password.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
       </div>
-      <button type="submit" class="account-primary-button auth-submit">{{ login_submit }}</button>
+      <button type="submit" class="account-primary-button auth-submit"><span class="vx-bot-button-icon" aria-hidden="true">›</span><span>{{ login_submit }}</span></button>
     </form>
     <div class="auth-meta auth-meta-actions">
       <a class="account-secondary-button vx-bot-button auth-meta-button" href="{% if account_embed_mode %}{{ account_embed_password_reset_url }}{% else %}/accounts/password_reset/{% endif %}"><span class="vx-bot-button-icon" aria-hidden="true">?</span><span>{{ login_forgot_password }}</span></a>

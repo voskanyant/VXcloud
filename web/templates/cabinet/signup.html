@@ -42,7 +42,7 @@
         {{ form.password_confirm }}
         {% for error in form.password_confirm.errors %}<div class="auth-field-error">{{ error }}</div>{% endfor %}
       </div>
-      <button type="submit" class="account-primary-button auth-submit">{{ signup_submit }}</button>
+      <button type="submit" class="account-primary-button auth-submit"><span class="vx-bot-button-icon" aria-hidden="true">+</span><span>{{ signup_submit }}</span></button>
     </form>
     <div class="auth-meta auth-meta-actions">
       <a class="account-secondary-button vx-bot-button auth-meta-button" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}"><span class="vx-bot-button-icon" aria-hidden="true">‹</span><span>{{ signup_login_action }}</span></a>

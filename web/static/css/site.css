@@ -5568,6 +5568,10 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot.vx-auth-bot .auth-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
   height: 54px;
   min-height: 54px;
   border: 0;
@@ -5576,6 +5580,12 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   color: #ffffff;
   font-size: 15px;
   font-weight: 700;
+}
+
+.vx-account-bot.vx-auth-bot .auth-submit .vx-bot-button-icon {
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .vx-account-bot.vx-auth-bot .auth-submit:hover,

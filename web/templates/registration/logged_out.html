@@ -11,7 +11,7 @@
   {% cms_text "auth.logout.login_again" "Войти снова" as logout_login_again %}
   <h1 class="vx-bot-title vx-auth-title">{{ logout_heading }}</h1>
   <div class="vx-bot-actions">
-    <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}">{{ logout_login_again }}</a>
+    <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}"><span class="vx-bot-button-icon" aria-hidden="true">›</span><span>{{ logout_login_again }}</span></a>
   </div>
 </section>
 {% endblock %}
