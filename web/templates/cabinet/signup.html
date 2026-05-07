@@ -44,8 +44,8 @@
       </div>
       <button type="submit" class="account-primary-button auth-submit">{{ signup_submit }}</button>
     </form>
-    <div class="auth-meta">
-      <p class="account-subtle">{{ signup_has_account }} <a class="account-inline-link" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}">{{ signup_login_action }}</a></p>
+    <div class="auth-meta auth-meta-actions">
+      <a class="account-secondary-button vx-bot-button auth-meta-button" href="{% if account_embed_mode %}{{ account_embed_login_url }}{% else %}/accounts/login/{% endif %}"><span class="vx-bot-button-icon" aria-hidden="true">‹</span><span>{{ signup_login_action }}</span></a>
     </div>
   </div>
 </section>

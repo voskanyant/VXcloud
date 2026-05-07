@@ -296,6 +296,9 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("setButtonContent(nextButton, '⧉', 'Скопировать ссылку')", open_app)
 
     def test_auth_edges_use_polished_bot_controls(self):
+        login = (REPO_ROOT / "web" / "templates" / "registration" / "login.html").read_text(encoding="utf-8")
+        signup = (REPO_ROOT / "web" / "templates" / "cabinet" / "signup.html").read_text(encoding="utf-8")
+
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-shell", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-copy", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-mark", self.css)
@@ -305,6 +308,15 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-code-value", self.css)
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-divider", self.css)
         self.assertIn("text-transform: uppercase;", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-meta-actions", self.css)
+        auth_meta_actions_rule = self.css[self.css.index(".vx-account-bot.vx-auth-bot .auth-meta-actions {") :]
+        auth_meta_actions_rule = auth_meta_actions_rule[: auth_meta_actions_rule.index("}")]
+        self.assertIn("grid-template-columns: minmax(0, 1fr);", auth_meta_actions_rule)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-meta-actions .auth-meta-button", self.css)
+        self.assertIn(".vx-account-bot.vx-auth-bot .auth-meta-actions .auth-meta-button:only-child", self.css)
+        self.assertIn('aria-hidden="true">?</span><span>{{ login_forgot_password }}', login)
+        self.assertIn('aria-hidden="true">+</span><span>{{ login_signup_action }}', login)
+        self.assertIn('aria-hidden="true">‹</span><span>{{ signup_login_action }}', signup)
 
 
 if __name__ == "__main__":
