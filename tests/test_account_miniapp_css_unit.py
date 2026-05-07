@@ -116,6 +116,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .account-config-link-section", self.css)
         self.assertIn(".vx-account-bot .account-config-data-actions", self.css)
         self.assertIn(".vx-account-bot .vx-bot-rename-form", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-key-row span", self.css)
+        self.assertIn("align-items: center;", self.css)
 
     def test_embed_url_rows_are_polished_copy_controls(self):
         self.assertIn(".vx-account-bot .vx-bot-url-row .account-link-input", self.css)
@@ -129,6 +131,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("font-weight: 800;", self.css)
         self.assertIn("background: #fbfbfc;", self.css)
         self.assertIn(".vx-account-bot .vx-bot-qr-frame .account-qr-image", self.css)
+        self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);", self.css)
+        self.assertIn("padding: 6px;", self.css)
 
     def test_embed_open_app_progress_is_visible(self):
         progress_rule = self.css[self.css.index(".vx-account-bot .vx-open-progress {") :]

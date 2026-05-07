@@ -4866,18 +4866,23 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 
 .vx-account-bot .vx-bot-qr-frame {
   min-height: 0;
-  max-height: 180px;
-  padding: 8px;
+  max-height: 188px;
+  padding: 10px;
   border: 1px solid var(--vx-bot-line);
   border-radius: var(--vx-bot-button-radius);
-  background: #fbfbfc;
+  background: #f7f8fa;
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
 }
 
 .vx-account-bot .vx-bot-qr-frame .account-qr-image {
+  display: block;
   width: auto;
   max-width: 170px;
-  max-height: 164px;
+  max-height: 168px;
+  padding: 6px;
+  border-radius: 6px;
+  background: #ffffff;
 }
 
 .vx-account-bot .account-config-list {
@@ -4919,12 +4924,19 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 
 .vx-account-bot .vx-bot-key-row {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
-  padding: 10px;
+  min-width: 0;
+  padding: 10px 11px;
   color: var(--vx-bot-muted);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1.2;
+}
+
+.vx-account-bot .vx-bot-key-row span {
+  min-width: 0;
 }
 
 .vx-account-bot .vx-bot-key-row + .vx-bot-key-row {
@@ -4933,7 +4945,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 
 .vx-account-bot .vx-bot-key-row strong {
   color: var(--vx-bot-text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   text-align: right;
   overflow-wrap: anywhere;
