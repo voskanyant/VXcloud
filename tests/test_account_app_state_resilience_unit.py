@@ -354,6 +354,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("account-page-shell-config", html)
         self.assertIn("account-config-link-section", html)
         self.assertIn("vx-bot-status-strip", html)
+        self.assertIn("vx-bot-access-meta", html)
         self.assertNotIn("QR import", html)
         self.assertNotIn("Subscription URL", html)
         self.assertNotIn("Status", html)

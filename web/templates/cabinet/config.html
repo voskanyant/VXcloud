@@ -8,10 +8,10 @@
   <section class="vx-bot-card vx-bot-status-strip vx-config-hero-card">
     <p class="vx-bot-eyebrow">Доступ</p>
     <h1 class="vx-bot-title vx-bot-title-large">{{ display_name }}</h1>
-    <p class="vx-bot-line">
+    <div class="vx-bot-access-meta">
+      <span>{% if subscription.expires_at %}действует до {{ subscription.expires_at|date:'d.m.Y H:i' }}{% else %}бессрочный доступ{% endif %}</span>
       <span class="vx-bot-pill{% if has_active %} vx-bot-pill-active{% endif %}">{% if has_active %}Активен{% else %}Истёк{% endif %}</span>
-      {% if subscription.expires_at %} действует до <strong>{{ subscription.expires_at|date:'d.m.Y H:i' }}</strong>{% else %} бессрочный доступ{% endif %}
-    </p>
+    </div>
   </section>
 
   <article class="vx-bot-card account-config-link-section">
