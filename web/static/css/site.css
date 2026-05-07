@@ -3684,6 +3684,120 @@ body.vx-account-shell #footer {
   width: min(100%, 240px);
 }
 
+.account-page-shell-install {
+  gap: 14px;
+}
+
+.account-install-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: start;
+  padding: clamp(18px, 4vw, 34px);
+  border: 1px solid var(--account-hairline);
+  background: #ffffff;
+}
+
+.account-install-section {
+  display: grid;
+  gap: 14px;
+  padding: clamp(16px, 3vw, 22px);
+  border: 1px solid var(--account-hairline);
+  background: #ffffff;
+}
+
+.account-install-device-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.account-install-device-tabs .account-secondary-button {
+  min-width: 0;
+  padding-inline: 8px;
+}
+
+.account-install-note,
+.account-install-status,
+.account-install-manual {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--account-hairline);
+  background: #f7fafc;
+  color: var(--account-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.account-install-note[hidden],
+.account-install-manual[hidden] {
+  display: none;
+}
+
+.account-install-note strong,
+.account-install-manual strong {
+  color: var(--account-ink);
+  font-weight: 800;
+}
+
+.account-install-note a {
+  color: var(--account-link);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.account-install-note a:hover {
+  text-decoration: underline;
+}
+
+.account-install-apps {
+  display: grid;
+  gap: 10px;
+}
+
+.account-install-app-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--account-hairline);
+  background: #ffffff;
+}
+
+.account-install-app-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.account-install-app-copy strong {
+  color: var(--account-ink);
+  font-size: 16px;
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.account-install-app-copy span {
+  color: var(--account-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
+.account-install-app-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(96px, 1fr));
+  gap: 8px;
+}
+
+.account-install-more {
+  justify-self: start;
+}
+
+.account-install-more[hidden] {
+  display: none;
+}
+
 body.wp-theme-flatsome.vx-account-shell,
 body.theme-flatsome.vx-account-shell {
   background: #ffffff !important;
@@ -4178,6 +4292,63 @@ body.vx-account-embed .account-page-shell-config .account-qr-frame {
 
 body.vx-account-embed .account-page-shell-config .account-qr-image {
   width: min(100%, 240px);
+}
+
+body.vx-account-embed .account-page-shell-install {
+  gap: 10px;
+  padding: 10px 10px 24px;
+}
+
+body.vx-account-embed .account-install-hero,
+body.vx-account-embed .account-install-section,
+body.vx-account-embed .account-install-app-card,
+body.vx-account-embed .account-install-note,
+body.vx-account-embed .account-install-status,
+body.vx-account-embed .account-install-manual {
+  border-radius: var(--account-mini-radius);
+}
+
+body.vx-account-embed .account-install-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 12px;
+}
+
+body.vx-account-embed .account-install-hero .account-title {
+  font-size: 24px;
+  line-height: 1.08;
+}
+
+body.vx-account-embed .account-install-section {
+  padding: 12px;
+}
+
+body.vx-account-embed .account-install-device-tabs {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.vx-account-embed .account-install-app-card {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+body.vx-account-embed .account-install-app-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+body.vx-account-embed .account-install-app-actions > * {
+  min-width: 0;
+}
+
+body.vx-account-embed .account-install-app-actions .account-primary-button {
+  grid-column: 1 / -1;
+}
+
+body.vx-account-embed .account-install-note,
+body.vx-account-embed .account-install-status,
+body.vx-account-embed .account-install-manual {
+  font-size: 13px;
 }
 
 body.vx-account-embed .account-page-shell-instructions {

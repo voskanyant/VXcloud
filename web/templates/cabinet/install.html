@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}Подключить - VXcloud{% endblock %}
+
+{% block content %}
+<div
+  class="account-page-shell account-page-shell-install"
+  id="account-install"
+  data-access-url="{{ copy_text }}"
+>
+  <section class="account-install-hero">
+    <div>
+      <p class="account-kicker">Подключение</p>
+      <h1 class="account-title account-title-compact">Подключить {{ display_name }}</h1>
+      <p class="account-intro">Выберите приложение. Мы скопируем ссылку доступа и откроем импорт, если приложение это поддерживает.</p>
+    </div>
+    <div class="account-config-hero-actions">
+      <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
+      <a class="account-secondary-button" href="{{ config_url }}">QR и ссылка</a>
+      {% if can_renew %}
+        <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if not is_active %}
+    <div class="account-message account-message-warning">Этот доступ неактивен. Продлите его перед подключением.</div>
+  {% endif %}
+
+  <section class="account-section account-install-section">
+    <div class="account-section-head">
+      <div>
+        <p class="account-kicker">Устройство</p>
+        <h2 class="account-section-title">Подберем приложение</h2>
+      </div>
+      <div class="account-section-meta" id="install-platform-label">Определяем устройство</div>
+    </div>
+
+    <div class="account-install-device-tabs" aria-label="Выбор устройства">
+      <button type="button" class="account-secondary-button" data-platform-choice="ios">iPhone</button>
+      <button type="button" class="account-secondary-button" data-platform-choice="android">Android</button>
+      <button type="button" class="account-secondary-button" data-platform-choice="windows">Windows</button>
+      <button type="button" class="account-secondary-button" data-platform-choice="macos">Mac</button>
+    </div>
+
+    <div class="account-install-note account-install-note-ios" id="install-ios-note" hidden>
+      <strong>App Store</strong>
+      <span>Большинства этих приложений нет в российском App Store. Смените страну App Store - обычно это занимает пару минут.</span>
+      <a href="{{ apple_country_help_url }}" target="_blank" rel="noopener">Инструкция Apple</a>
+    </div>
+
+    <div class="account-install-status" id="install-status" role="status" aria-live="polite">
+      Ссылка доступа будет скопирована перед открытием приложения.
+    </div>
+
+    <div class="account-install-apps" id="install-apps"></div>
+
+    <button type="button" class="account-secondary-button account-install-more" id="install-show-more">
+      У меня другое приложение
+    </button>
+
+    <div class="account-install-manual" id="install-manual" hidden>
+      <strong>Если приложение не открылось</strong>
+      <span>Ссылка уже скопирована. Откройте приложение, нажмите «+» и выберите импорт из буфера.</span>
+      <div class="account-link-row">
+        <input id="install-copy-input" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
+        <button type="button" class="account-icon-button" id="install-copy-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+          <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
+        </button>
+      </div>
+    </div>
+  </section>
+</div>
+
+{{ install_app_matrix|json_script:"install-app-matrix" }}
+
+<script>
+  (function initInstallPage() {
+    const shell = document.getElementById('account-install');
+    const appsRoot = document.getElementById('install-apps');
+    const statusEl = document.getElementById('install-status');
+    const platformLabel = document.getElementById('install-platform-label');
+    const showMoreButton = document.getElementById('install-show-more');
+    const manualEl = document.getElementById('install-manual');
+    const iosNote = document.getElementById('install-ios-note');
+    const matrixEl = document.getElementById('install-app-matrix');
+    if (!shell || !appsRoot || !matrixEl) return;
+
+    const accessUrl = shell.dataset.accessUrl || '';
+    const appMatrix = JSON.parse(matrixEl.textContent || '{}');
+    const platformLabels = {
+      ios: 'iPhone',
+      android: 'Android',
+      windows: 'Windows',
+      macos: 'Mac',
+    };
+    let selectedPlatform = detectPlatform();
+    let showAllApps = false;
+
+    function detectPlatform() {
+      const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+      const tgPlatform = String((tg && tg.platform) || '').toLowerCase();
+      if (tgPlatform === 'ios') return 'ios';
+      if (tgPlatform === 'android') return 'android';
+      if (tgPlatform === 'macos') return 'macos';
+      const ua = navigator.userAgent || '';
+      if (/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+      if (/Android/i.test(ua)) return 'android';
+      if (/Windows/i.test(ua)) return 'windows';
+      if (/Macintosh|Mac OS X/i.test(ua)) return 'macos';
+      return 'ios';
+    }
+
+    async function copyAccessUrl() {
+      if (!accessUrl) return false;
+      try {
+        await navigator.clipboard.writeText(accessUrl);
+        return true;
+      } catch (_error) {
+        const input = document.getElementById('install-copy-input');
+        if (!input) return false;
+        input.focus();
+        input.select();
+        return document.execCommand('copy');
+      }
+    }
+
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = text;
+    }
+
+    function showManual() {
+      if (manualEl) manualEl.hidden = false;
+    }
+
+    function appSubtitle(app) {
+      const bits = [];
+      if (app.recommended) bits.push('рекомендуем');
+      if (app.paid) bits.push('платное');
+      if (app.import_url_template) bits.push('быстрый импорт');
+      return bits.length ? bits.join(' · ') : 'импорт из буфера';
+    }
+
+    function buildImportUrl(template) {
+      return String(template || '').replace('{url}', encodeURIComponent(accessUrl));
+    }
+
+    async function handleAppOpen(app) {
+      await copyAccessUrl();
+      if (app.import_url_template) {
+        let leftPage = false;
+        const markHidden = () => {
+          if (document.hidden) leftPage = true;
+        };
+        document.addEventListener('visibilitychange', markHidden, { once: true });
+        setStatus('Ссылка скопирована. Пробуем открыть ' + app.name + '.');
+        window.location.href = buildImportUrl(app.import_url_template);
+        window.setTimeout(() => {
+          if (!leftPage) {
+            setStatus(app.name + ' не открылся автоматически. Импортируйте ссылку из буфера.');
+            showManual();
+          }
+        }, 1500);
+        return;
+      }
+      setStatus('Ссылка скопирована. Откройте ' + app.name + ' и выберите импорт из буфера.');
+      showManual();
+    }
+
+    function renderApps() {
+      const apps = appMatrix[selectedPlatform] || [];
+      const visibleApps = showAllApps ? apps : apps.slice(0, 1);
+      appsRoot.innerHTML = '';
+      if (platformLabel) platformLabel.textContent = platformLabels[selectedPlatform] || 'Устройство';
+      if (iosNote) iosNote.hidden = selectedPlatform !== 'ios';
+
+      document.querySelectorAll('[data-platform-choice]').forEach((button) => {
+        const isCurrent = button.dataset.platformChoice === selectedPlatform;
+        button.classList.toggle('account-secondary-button-current', isCurrent);
+      });
+
+      visibleApps.forEach((app) => {
+        const card = document.createElement('article');
+        card.className = 'account-install-app-card';
+
+        const copy = document.createElement('div');
+        copy.className = 'account-install-app-copy';
+        const title = document.createElement('strong');
+        title.textContent = app.label || app.name;
+        const meta = document.createElement('span');
+        meta.textContent = appSubtitle(app);
+        copy.append(title, meta);
+
+        const actions = document.createElement('div');
+        actions.className = 'account-install-app-actions';
+        const openButton = document.createElement('button');
+        openButton.type = 'button';
+        openButton.className = app.recommended ? 'account-primary-button' : 'account-secondary-button';
+        openButton.textContent = app.import_url_template ? 'Подключить' : 'Скопировать';
+        openButton.addEventListener('click', () => handleAppOpen(app));
+        actions.append(openButton);
+
+        if (app.install_url) {
+          const installLink = document.createElement('a');
+          installLink.className = 'account-secondary-button';
+          installLink.href = app.install_url;
+          installLink.target = '_blank';
+          installLink.rel = 'noopener';
+          installLink.textContent = 'Установить';
+          actions.append(installLink);
+        }
+
+        card.append(copy, actions);
+        appsRoot.appendChild(card);
+      });
+
+      if (showMoreButton) {
+        showMoreButton.hidden = apps.length <= 1 || showAllApps;
+      }
+    }
+
+    document.querySelectorAll('[data-platform-choice]').forEach((button) => {
+      button.addEventListener('click', () => {
+        selectedPlatform = button.dataset.platformChoice || selectedPlatform;
+        showAllApps = false;
+        setStatus('Ссылка доступа будет скопирована перед открытием приложения.');
+        renderApps();
+      });
+    });
+
+    if (showMoreButton) {
+      showMoreButton.addEventListener('click', () => {
+        showAllApps = true;
+        renderApps();
+      });
+    }
+
+    const copyButton = document.getElementById('install-copy-icon');
+    if (copyButton) {
+      copyButton.addEventListener('click', async () => {
+        await copyAccessUrl();
+        setStatus('Ссылка скопирована.');
+      });
+    }
+
+    renderApps();
+  })();
+</script>
+{% endblock %}

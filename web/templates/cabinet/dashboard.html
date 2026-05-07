@@ -22,7 +22,16 @@
   </section>
 
   <section class="account-mini-actions" aria-label="Основные действия">
-    <a class="account-primary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+    {% if primary_active_subscription %}
+      <a class="account-primary-button" href="{{ backend_install_prefix }}{{ primary_active_subscription.id }}/">Подключить</a>
+      <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ primary_active_subscription.id }}/">QR и доступ</a>
+      <a class="account-secondary-button" href="{{ backend_buy_url }}" target="_top">Купить ещё</a>
+    {% elif telegram_trial_url %}
+      <a class="account-primary-button" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
+      <a class="account-secondary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+    {% else %}
+      <a class="account-primary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+    {% endif %}
     {% if renewable_configs == 1 and single_renew_url %}
       <a class="account-secondary-button" href="{{ single_renew_url }}" target="_top">Продлить</a>
     {% elif renewable_configs > 1 %}
@@ -77,12 +86,13 @@
             {% endif %}
 
             <div class="account-mini-card-actions">
+              <a class="account-primary-button" href="{{ backend_install_prefix }}{{ row.id }}/">Подключить</a>
               <button
                 type="button"
-                class="account-primary-button js-copy-config"
+                class="account-secondary-button js-copy-config"
                 data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}"
-              >Скопировать ссылку</button>
-              <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">Открыть доступ</a>
+              >Скопировать</button>
+              <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">QR и доступ</a>
               {% if row.can_renew %}
                 <a class="account-secondary-button" href="{{ row.renew_url }}" target="_top">Продлить</a>
               {% endif %}
@@ -94,8 +104,13 @@
     {% else %}
       <div class="account-mini-empty">
         <strong>Пока нет доступа</strong>
-        <span>Начните с 7 дней бесплатно в боте или купите доступ картой.</span>
-        <a class="account-primary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+        <span>{% if telegram_trial_url %}Без карты: активируйте 7 дней бесплатно в боте. Оплата картой останется рядом.{% else %}Купите доступ картой. После оплаты ссылка подписки появится здесь.{% endif %}</span>
+        {% if telegram_trial_url %}
+          <a class="account-primary-button" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
+          <a class="account-secondary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+        {% else %}
+          <a class="account-primary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
+        {% endif %}
       </div>
     {% endif %}
   </section>
@@ -115,6 +130,12 @@
           <div class="account-support-id">
             <span>ID клиента</span>
             <strong>{{ support_client_code }}</strong>
+            <button
+              type="button"
+              class="account-secondary-button js-copy-config"
+              data-copy-text="{{ support_client_code }}"
+              data-copy-success="ID скопирован"
+            >Скопировать ID</button>
           </div>
         {% endif %}
         <div class="account-device-actions">
@@ -203,7 +224,16 @@
               Все доступы, ссылки подписки, продление и помощь собраны здесь. Основной способ подключения — скопировать ссылку подписки и импортировать ее в VPN-приложение.
             </p>
             <div class="account-hero-actions">
-              <a class="account-primary-button account-primary-button-large" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+              {% if primary_active_subscription %}
+                <a class="account-primary-button account-primary-button-large" href="{{ backend_install_prefix }}{{ primary_active_subscription.id }}/">Подключить</a>
+                <a class="account-secondary-button account-secondary-button-large" href="{{ backend_config_prefix }}{{ primary_active_subscription.id }}/">QR и доступ</a>
+                <a class="account-secondary-button account-secondary-button-large" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить ещё</a>
+              {% elif telegram_trial_url %}
+                <a class="account-primary-button account-primary-button-large" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
+                <a class="account-secondary-button account-secondary-button-large" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+              {% else %}
+                <a class="account-primary-button account-primary-button-large" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+              {% endif %}
               {% if renewable_configs == 1 and single_renew_url %}
                 <a class="account-secondary-button account-secondary-button-large" href="{{ single_renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
               {% elif renewable_configs > 1 %}
@@ -263,7 +293,8 @@
                   {% endif %}
 
                   <div class="account-access-actions">
-                    <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">Открыть доступ</a>
+                    <a class="account-secondary-button" href="{{ backend_install_prefix }}{{ row.id }}/">Подключить</a>
+                    <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">QR и доступ</a>
                     {% if row.can_renew %}
                       <a class="account-secondary-button" href="{{ row.renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
                     {% endif %}
@@ -294,9 +325,14 @@
           {% else %}
             <div class="account-empty-panel">
               <strong>Пока нет доступа</strong>
-              <span>Начните с пробного периода в Telegram или купите доступ картой. После активации ссылка подписки появится в этом разделе.</span>
+              <span>{% if telegram_trial_url %}Начните с пробного доступа в Telegram: без карты, на 7 дней. После активации ссылка подписки появится в этом разделе.{% else %}Купите доступ картой. После активации ссылка подписки появится в этом разделе.{% endif %}</span>
               <div class="account-device-actions">
-                <a class="account-primary-button" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+                {% if telegram_trial_url %}
+                  <a class="account-primary-button" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
+                  <a class="account-secondary-button" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+                {% else %}
+                  <a class="account-primary-button" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить доступ</a>
+                {% endif %}
                 <a class="account-secondary-button" href="{{ backend_instructions_url }}">Как подключиться</a>
               </div>
             </div>
@@ -356,10 +392,11 @@
         const icon = btn.querySelector('.account-icon-glyph');
         const previousHtml = icon ? icon.innerHTML : '';
         const previousText = btn.textContent;
+        const successText = btn.getAttribute('data-copy-success') || 'Ссылка скопирована';
         if (icon) {
           icon.innerHTML = '&#10003;';
         } else {
-          btn.textContent = 'Ссылка скопирована';
+          btn.textContent = successText;
         }
         setTimeout(() => {
           if (icon) icon.innerHTML = previousHtml;

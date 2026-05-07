@@ -61,6 +61,109 @@ PENDING_CARD_CHECKOUT_TTL = timedelta(minutes=30)
 LOGGER = logging.getLogger(__name__)
 WEB_ORDER_SESSION_KEY = "web_order_checkout_state_v1"
 WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
+APPLE_ACCOUNT_COUNTRY_HELP_URL = "https://support.apple.com/en-us/118283"
+INSTALL_APP_MATRIX: dict[str, list[dict[str, object]]] = {
+    "ios": [
+        {
+            "key": "streisand",
+            "name": "Streisand",
+            "label": "Streisand",
+            "recommended": True,
+            "install_url": "https://apps.apple.com/us/app/streisand/id6450534064",
+            "import_url_template": "streisand://import/{url}#VXcloud",
+        },
+        {
+            "key": "v2box",
+            "name": "V2Box",
+            "label": "V2Box",
+            "install_url": "https://apps.apple.com/us/app/v2box-v2ray-client/id6446814690",
+            "import_url_template": "v2box://install-config?url={url}",
+        },
+        {
+            "key": "shadowrocket",
+            "name": "Shadowrocket",
+            "label": "Shadowrocket",
+            "paid": True,
+            "install_url": "https://apps.apple.com/us/app/shadowrocket/id932747118",
+        },
+        {
+            "key": "v2raytun",
+            "name": "v2RayTun",
+            "label": "v2RayTun",
+            "install_url": "https://apps.apple.com/us/app/v2raytun/id6476628951",
+        },
+        {
+            "key": "happ",
+            "name": "HAPP",
+            "label": "HAPP",
+            "install_url": "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215",
+        },
+        {
+            "key": "hiddify",
+            "name": "Hiddify",
+            "label": "Hiddify",
+            "install_url": "https://apps.apple.com/us/app/hiddify-proxy-vpn/id6596777532",
+        },
+    ],
+    "android": [
+        {
+            "key": "v2box",
+            "name": "V2Box",
+            "label": "V2Box",
+            "recommended": True,
+            "install_url": "https://play.google.com/store/apps/details?id=dev.hexasoftware.v2box",
+        },
+        {
+            "key": "v2rayng",
+            "name": "v2rayNG",
+            "label": "v2rayNG",
+            "install_url": "https://github.com/2dust/v2rayNG/releases",
+        },
+        {
+            "key": "v2rayrun",
+            "name": "V2RayRun",
+            "label": "V2RayRun",
+            "install_url": "https://play.google.com/store/search?q=V2RayRun&c=apps",
+        },
+        {
+            "key": "happ",
+            "name": "HAPP",
+            "label": "HAPP",
+            "install_url": "https://play.google.com/store/apps/details?id=com.happproxy",
+        },
+        {
+            "key": "hiddify",
+            "name": "Hiddify",
+            "label": "Hiddify",
+            "install_url": "https://play.google.com/store/apps/details?id=app.hiddify.com",
+        },
+    ],
+    "windows": [
+        {
+            "key": "furious",
+            "name": "Furious",
+            "label": "Furious",
+            "recommended": True,
+            "install_url": "https://github.com/LorenEteval/Furious/releases",
+        },
+    ],
+    "macos": [
+        {
+            "key": "furious",
+            "name": "Furious",
+            "label": "Furious",
+            "recommended": True,
+            "install_url": "https://github.com/LorenEteval/Furious/releases",
+        },
+        {
+            "key": "shadowrocket",
+            "name": "Shadowrocket",
+            "label": "Shadowrocket",
+            "paid": True,
+            "install_url": "https://apps.apple.com/us/app/shadowrocket/id932747118",
+        },
+    ],
+}
 
 
 def _vpn_public_host() -> str:
@@ -160,6 +263,11 @@ def _telegram_bot_username() -> str:
 def _telegram_bot_url() -> str:
     username = _telegram_bot_username()
     return f"https://t.me/{username}" if username else ""
+
+
+def _telegram_trial_url() -> str:
+    username = _telegram_bot_username()
+    return f"https://t.me/{username}?start=trial" if username else ""
 
 
 def _normalize_vless_public_endpoint(vless_url: str, *, host: str, port: int, tag: str | None = None) -> str:
@@ -339,9 +447,11 @@ def _account_template_urls(request: HttpRequest) -> dict[str, object]:
         "backend_renew_url": _account_backend_url(request, "renew/"),
         "backend_instructions_url": _account_backend_url(request, "?view=instructions"),
         "backend_config_prefix": _account_backend_base(request) + "config/",
+        "backend_install_prefix": _account_backend_base(request) + "install/",
         "backend_rename_prefix": _account_backend_base(request) + "subscriptions/",
         "support_url": _account_backend_url(request, "?view=support"),
         "support_telegram_url": _telegram_bot_url(),
+        "telegram_trial_url": _telegram_trial_url(),
         "telegram_login_enabled": bool(telegram_login_bot_username),
         "telegram_login_bot_username": telegram_login_bot_username,
         "telegram_login_auth_url": telegram_login_auth_url,
@@ -434,6 +544,7 @@ def _serialize_subscription_row(request: HttpRequest, row: dict[str, object]) ->
         "status_text": str(row["status_text"]),
         "expires_at": _format_dt_label(row.get("expires_at")),
         "config_url": _account_frontend_url(f"config/{int(row['id'])}/"),
+        "install_url": _account_frontend_url(f"install/{int(row['id'])}/"),
         "renew_url": _account_frontend_renew_url(int(row["id"])),
         "feed_url": feed_url,
         "vless_url": vless_url,
@@ -1059,6 +1170,7 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
     active_configs = sum(1 for row in subscription_rows if bool(row["is_active"]))
     inactive_configs = max(len(subscription_rows) - active_configs, 0)
     renewable_configs = sum(1 for row in subscription_rows if bool(row["can_renew"]))
+    primary_active_subscription = next((row for row in subscription_rows if bool(row["is_active"])), None)
     single_renew_url = ""
     if renewable_configs == 1:
         single_renew_url = str(next(row["renew_url"] for row in subscription_rows if bool(row["can_renew"])))
@@ -1078,6 +1190,7 @@ def account_dashboard(request: HttpRequest) -> HttpResponse:
             "active_configs": active_configs,
             "inactive_configs": inactive_configs,
             "renewable_configs": renewable_configs,
+            "primary_active_subscription": primary_active_subscription,
             "single_renew_url": single_renew_url,
             "support_view": support_view,
             "support_client_code": getattr(bot_user, "client_code", "") or "",
@@ -1180,6 +1293,45 @@ def account_config(request: HttpRequest, subscription_id: int | None = None) -> 
             "vless_url": raw_vless_url,
             "can_renew": bool(_subscription_state(sub)["can_renew"]),
             "renew_url": _account_renew_url(request, int(sub.id)),
+            **_account_template_urls(request),
+        },
+    )
+
+
+@login_required
+def account_install(request: HttpRequest, subscription_id: int) -> HttpResponse:
+    linked, bot_user = _resolve_account_bot_user(request, ensure_site_bot_user=True)
+    if not bot_user:
+        messages.error(request, "Не удалось загрузить данные аккаунта")
+        return _account_redirect(request)
+
+    subscriptions = _list_subscriptions_for_bot_user(bot_user)
+    sub = next((s for s in subscriptions if int(s.id) == int(subscription_id)), None)
+    if sub is None:
+        messages.error(request, "Доступ не найден")
+        return _account_redirect(request)
+
+    feed_url = _subscription_feed_url(request, sub)
+    raw_vless_url = str(getattr(sub, "vless_url", "") or "").strip()
+    copy_text = feed_url or raw_vless_url
+    state = _subscription_state(sub)
+
+    return render(
+        request,
+        "cabinet/install.html",
+        {
+            "subscription": sub,
+            "subscriptions": subscriptions,
+            "display_name": _subscription_display_name(sub),
+            "copy_text": copy_text,
+            "feed_url": feed_url,
+            "vless_url": raw_vless_url,
+            "is_active": bool(state["is_active"]),
+            "can_renew": bool(state["can_renew"]),
+            "renew_url": _account_renew_url(request, int(sub.id)),
+            "config_url": _account_backend_url(request, f"config/{int(sub.id)}/"),
+            "install_app_matrix": INSTALL_APP_MATRIX,
+            "apple_country_help_url": APPLE_ACCOUNT_COUNTRY_HELP_URL,
             **_account_template_urls(request),
         },
     )

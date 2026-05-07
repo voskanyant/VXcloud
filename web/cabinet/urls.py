@@ -19,6 +19,7 @@ urlpatterns = [
     path("link/", views.link_telegram, name="account_link"),
     path("config/", views.account_config, name="account_config"),
     path("config/<int:subscription_id>/", views.account_config, name="account_config_id"),
+    path("install/<int:subscription_id>/", views.account_install, name="account_install"),
     path("buy/", views.create_order_stub, name="account_buy"),
     path("renew/", views.create_order_stub, name="account_renew"),
     path("subscriptions/<int:subscription_id>/rename/", views.rename_subscription, name="account_subscription_rename"),

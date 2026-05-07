@@ -1508,6 +1508,7 @@ class VPNBot:
         renewal_first: bool = False,
     ) -> InlineKeyboardMarkup:
         cabinet_button = self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")
+        install_button = self._mini_app_button("⚡ Подключить", f"/account/install/{subscription_id}/")
         qr_button = InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")
         renew_button = self._mini_app_button("🔄 Продлить", f"/account/renew/?subscription_id={subscription_id}")
         copy_row = [InlineKeyboardButton(text="🔗 Скопировать ссылку", api_kwargs={"copy_text": {"text": copy_text}})]
@@ -1515,11 +1516,13 @@ class VPNBot:
             rows = [
                 [renew_button],
                 copy_row,
+                [install_button],
                 [cabinet_button, qr_button],
             ]
         else:
             rows = [
                 copy_row,
+                [install_button],
                 [cabinet_button],
                 [qr_button, renew_button],
             ]
@@ -3261,6 +3264,7 @@ class VPNBot:
         buttons: list[list[InlineKeyboardButton]] = []
         if isinstance(subscription_id, int) and subscription_id > 0:
             buttons.append([InlineKeyboardButton(text=copy_label, api_kwargs={"copy_text": {"text": link_for_copy}})])
+            buttons.append([self._mini_app_button("⚡ Подключить", f"/account/install/{subscription_id}/")])
             buttons.append([self._mini_app_button("📱 Открыть доступ", f"/account/config/{subscription_id}/")])
             buttons.append([self._mini_app_button("🔄 Продлить", renew_path)])
         else:
@@ -3496,4 +3500,3 @@ class VPNBot:
                 await self.db.log_reminder(sub_id, tag)
             except Exception:
                 LOGGER.exception("Failed to send reminder to telegram_id=%s", tg_id)
-

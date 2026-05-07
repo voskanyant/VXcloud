@@ -257,6 +257,45 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertNotIn("Subscription URL", html)
         self.assertNotIn("online", html)
 
+    def test_account_app_dashboard_active_user_gets_access_first(self):
+        bot_user = SimpleNamespace(id=7, client_code="VX-000007")
+        subscription = SimpleNamespace(
+            id=42,
+            display_name="Phone",
+            expires_at=timezone.now() + timedelta(days=7),
+            is_active=True,
+            revoked_at=None,
+            user=bot_user,
+            vless_url="vless://example",
+            feed_token="feed-token",
+        )
+        with patch("cabinet.views._resolve_account_bot_user", return_value=(None, bot_user)):
+            with patch("cabinet.views._get_subscription_snapshot_for_bot_user", return_value=(subscription, True, None)):
+                with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[subscription]):
+                    response = self.client.get("/account-app/?embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        actions_html = html.split('class="account-mini-actions"', 1)[1].split("</section>", 1)[0]
+        self.assertIn("/account-app/install/42/", actions_html)
+        self.assertIn("/account-app/config/42/", actions_html)
+        self.assertLess(actions_html.index("Подключить"), actions_html.index("QR и доступ"))
+
+    def test_account_app_dashboard_empty_state_is_trial_first_when_bot_exists(self):
+        bot_user = SimpleNamespace(id=7, client_code="VX-000007")
+        with patch.dict("os.environ", {"TELEGRAM_BOT_USERNAME": "vxcloud_test_bot"}):
+            with patch("cabinet.views._resolve_account_bot_user", return_value=(None, bot_user)):
+                with patch("cabinet.views._get_subscription_snapshot_for_bot_user", return_value=(None, False, None)):
+                    with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[]):
+                        response = self.client.get("/account-app/?embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("https://t.me/vxcloud_test_bot?start=trial", html)
+        empty_html = html.split('class="account-mini-empty"', 1)[1].split("</div>", 1)[0]
+        self.assertIn("Без карты", empty_html)
+        self.assertLess(empty_html.index("7 дней бесплатно"), empty_html.index("Купить доступ"))
+
     def test_account_app_config_copy_is_localized(self):
         bot_user = SimpleNamespace(id=7, client_code="VX-000007")
         subscription = SimpleNamespace(
@@ -290,6 +329,36 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertNotIn("QR import", html)
         self.assertNotIn("Subscription URL", html)
         self.assertNotIn("Status", html)
+
+    def test_account_app_install_detects_device_and_lists_requested_apps(self):
+        bot_user = SimpleNamespace(id=7, client_code="VX-000007")
+        subscription = SimpleNamespace(
+            id=42,
+            display_name="Phone",
+            expires_at=timezone.now() + timedelta(days=7),
+            is_active=True,
+            revoked_at=None,
+            user=bot_user,
+            vless_url="vless://example",
+            feed_token="feed-token",
+        )
+        with patch("cabinet.views._resolve_account_bot_user", return_value=(None, bot_user)):
+            with patch("cabinet.views._list_subscriptions_for_bot_user", return_value=[subscription]):
+                response = self.client.get("/account-app/install/42/?embed=1")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.content.decode("utf-8")
+        self.assertIn("Подключить Phone", html)
+        self.assertIn("Большинства этих приложений нет в российском App Store", html)
+        self.assertIn("https://support.apple.com/en-us/118283", html)
+        self.assertIn("Streisand", html)
+        self.assertIn("V2Box", html)
+        self.assertIn("Shadowrocket", html)
+        self.assertIn("v2rayNG", html)
+        self.assertIn("V2RayRun", html)
+        self.assertIn("Furious", html)
+        self.assertIn("У меня другое приложение", html)
+        self.assertIn("data-access-url=\"http://testserver/account/feed/feed-token/\"", html)
         self.assertNotIn("Конфиг и QR", html)
         self.assertNotIn("Состояние конфига", html)
         self.assertNotIn("Все конфиги", html)
