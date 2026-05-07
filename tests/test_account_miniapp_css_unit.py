@@ -19,6 +19,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
 
     def test_embed_dashboard_uses_compact_mobile_layout(self):
         self.assertIn("body.vx-account-embed .account-page-shell-mini", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-topbar", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-topbar-title", self.css)
         self.assertIn(".vx-account-bot .vx-bot-card", self.css)
         self.assertIn(".vx-account-bot .vx-bot-summary-row", self.css)
         self.assertIn(".vx-account-bot .vx-bot-access-meta", self.css)
@@ -27,6 +29,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-actions-utility", self.css)
+        topbar_rule = self.css[self.css.index(".vx-account-bot .vx-bot-topbar {") :]
+        topbar_rule = topbar_rule[: topbar_rule.index("}")]
+        self.assertIn("grid-template-columns: 28px minmax(0, 1fr) 28px;", topbar_rule)
+        self.assertIn("min-height: 44px;", topbar_rule)
         title_rule = self.css[self.css.index(".vx-account-bot .vx-bot-title {") :]
         title_rule = title_rule[: title_rule.index("}")]
         self.assertIn("font-size: 17px;", title_rule)

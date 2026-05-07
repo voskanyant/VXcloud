@@ -5,6 +5,11 @@
 {% block content %}
 {% if not support_view and not instructions_view %}
 <div class="account-page-shell account-page-shell-mini vx-account-bot">
+  <header class="vx-bot-topbar" aria-label="Мой VPN">
+    <span class="vx-bot-topbar-back" aria-hidden="true">‹</span>
+    <h1 class="vx-bot-topbar-title">Мой VPN</h1>
+    <a class="vx-bot-topbar-action" href="{{ support_url }}" aria-label="Поддержка">⋯</a>
+  </header>
   <section class="vx-bot-card vx-bot-identity">
     {% if bot_user and bot_user.client_code %}
       <div class="vx-bot-summary-row"><span>ID клиента</span><strong>{{ bot_user.client_code }}</strong></div>

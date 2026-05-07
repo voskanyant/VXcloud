@@ -4506,6 +4506,48 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   background: var(--vx-bot-bg);
 }
 
+.vx-account-bot .vx-bot-topbar {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  color: var(--vx-bot-text);
+}
+
+.vx-account-bot .vx-bot-topbar-title {
+  margin: 0;
+  overflow: hidden;
+  color: var(--vx-bot-text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-account-bot .vx-bot-topbar-back,
+.vx-account-bot .vx-bot-topbar-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  border-radius: 8px;
+  color: var(--vx-bot-blue);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+}
+
+.vx-account-bot .vx-bot-topbar-action {
+  color: #9a9aa0;
+  letter-spacing: 2px;
+}
+
 .vx-account-bot .vx-bot-stack {
   display: grid;
   gap: 10px;
