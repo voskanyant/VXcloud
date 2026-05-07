@@ -30,6 +30,13 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("background: var(--vx-bot-blue);", self.css)
         self.assertIn("grid-column: 1 / -1;", self.css)
 
+    def test_embed_empty_dashboard_state_is_polished(self):
+        self.assertIn(".vx-account-bot .account-mini-empty", self.css)
+        self.assertIn(".vx-account-bot .account-mini-empty-mark", self.css)
+        self.assertIn(".vx-account-bot .account-mini-empty > strong", self.css)
+        self.assertIn(".vx-account-bot .account-mini-empty > span:not(.account-mini-empty-mark)", self.css)
+        self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);", self.css)
+
     def test_embed_bot_buttons_wrap_cleanly(self):
         self.assertIn("gap: 7px;", self.css)
         self.assertIn("text-wrap: balance;", self.css)

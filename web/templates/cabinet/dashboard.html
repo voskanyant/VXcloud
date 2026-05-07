@@ -47,6 +47,7 @@
       {% endfor %}
     {% else %}
       <div class="vx-bot-card account-mini-empty">
+        <span class="account-mini-empty-mark" aria-hidden="true">{% if telegram_trial_url %}7{% else %}VPN{% endif %}</span>
         <p class="vx-bot-eyebrow">Старт</p>
         <strong>Пока нет доступа</strong>
         <span>{% if telegram_trial_url %}Без карты: активируйте 7 дней бесплатно в боте. Оплата картой останется рядом.{% else %}Купите доступ картой. После оплаты ссылка подписки появится здесь.{% endif %}</span>
