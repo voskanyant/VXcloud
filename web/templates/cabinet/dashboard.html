@@ -149,11 +149,14 @@
             <p class="vx-bot-eyebrow">Доступ</p>
             <h2 class="vx-bot-title">{{ instructions_payload.primary_subscription.display_name }}</h2>
             <p class="vx-bot-line">Скопируйте ссылку подписки для этого доступа. QR — запасной способ.</p>
-            <button
-              type="button"
-              class="account-primary-button vx-bot-button vx-bot-button-primary js-copy-config"
-              data-copy-text="{{ instructions_payload.primary_subscription.feed_url|default:instructions_payload.primary_subscription.vless_url|default:'' }}"
-            ><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ссылку</span></button>
+            <div class="vx-bot-actions account-instructions-access-actions">
+              <button
+                type="button"
+                class="account-primary-button vx-bot-button vx-bot-button-primary js-copy-config"
+                data-copy-text="{{ instructions_payload.primary_subscription.feed_url|default:instructions_payload.primary_subscription.vless_url|default:'' }}"
+              ><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ссылку</span></button>
+              <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.primary_subscription.config_url }}"><span class="vx-bot-button-icon" aria-hidden="true">▦</span><span>QR и доступ</span></a>
+            </div>
           {% else %}
             <p class="vx-bot-eyebrow">Доступ</p>
             <h2 class="vx-bot-title">Пока нет активного доступа</h2>

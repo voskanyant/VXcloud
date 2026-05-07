@@ -5140,7 +5140,7 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
 }
 
-.vx-account-bot .account-instructions-access .vx-bot-button {
+.vx-account-bot .account-instructions-access-actions {
   margin-top: 1px;
 }
 

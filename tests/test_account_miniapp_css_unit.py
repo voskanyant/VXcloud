@@ -200,7 +200,12 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .account-support-id .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .account-instructions-access .vx-bot-line", self.css)
         self.assertIn(".vx-account-bot .account-device-headline", self.css)
-        self.assertIn(".vx-account-bot .account-instructions-access .vx-bot-button", self.css)
+        self.assertIn(".vx-account-bot .account-instructions-access-actions", self.css)
+        self.assertIn("QR и доступ", dashboard)
+        self.assertLess(
+            dashboard.index("account-instructions-access-actions"),
+            dashboard.index("account-guide-card"),
+        )
         self.assertLess(
             dashboard.index("account-support-actions"),
             dashboard.index("account-support-hint"),
