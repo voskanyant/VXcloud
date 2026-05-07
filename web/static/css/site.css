@@ -4600,9 +4600,13 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   justify-content: space-between;
   gap: 8px;
   min-width: 0;
+  padding: 9px 10px;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
   color: var(--vx-bot-muted);
   font-size: 14px;
   line-height: 1.25;
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
 }
 
 .vx-account-bot .vx-bot-access-meta > span:first-child {

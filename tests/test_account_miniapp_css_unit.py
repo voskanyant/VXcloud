@@ -24,6 +24,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-access-meta", self.css)
         self.assertIn(".vx-account-bot .vx-bot-title", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
+        access_meta_rule = self.css[self.css.index(".vx-account-bot .vx-bot-access-meta {") :]
+        access_meta_rule = access_meta_rule[: access_meta_rule.index("}")]
+        self.assertIn("padding: 9px 10px;", access_meta_rule)
+        self.assertIn("background: #f7f8fa;", access_meta_rule)
 
     def test_embed_dashboard_is_connect_first(self):
         self.assertIn(".vx-account-bot .vx-bot-button-primary", self.css)
