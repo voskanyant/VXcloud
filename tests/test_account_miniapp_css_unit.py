@@ -5,6 +5,9 @@ import unittest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITE_CSS = REPO_ROOT / "web" / "static" / "css" / "site.css"
 DASHBOARD_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "dashboard.html"
+CONFIG_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "config.html"
+INSTALL_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "install.html"
+OPEN_APP_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "open_app.html"
 
 
 class AccountMiniAppCssTests(unittest.TestCase):
@@ -133,6 +136,18 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn('aria-hidden="true">▦</span><span>QR и доступ', template)
         self.assertIn('aria-hidden="true">↻</span><span>Продлить', template)
         self.assertIn('aria-hidden="true">₽</span><span>Купить', template)
+
+    def test_connected_account_pages_share_action_glyphs(self):
+        config = CONFIG_TEMPLATE.read_text(encoding="utf-8")
+        install = INSTALL_TEMPLATE.read_text(encoding="utf-8")
+        open_app = OPEN_APP_TEMPLATE.read_text(encoding="utf-8")
+
+        self.assertIn('aria-hidden="true">⧉</span><span>Скопировать ссылку', config)
+        self.assertIn('aria-hidden="true">↻</span><span>Продлить', config)
+        self.assertIn('aria-hidden="true">⧉</span><span>Скопировать ссылку', install)
+        self.assertIn('aria-hidden="true">i</span><span>Подробная инструкция', install)
+        self.assertIn('aria-hidden="true">i</span><span>Открыть инструкцию', open_app)
+        self.assertIn('aria-hidden="true">?</span><span>Поддержка', open_app)
         self.assertIn("width: 24px;", self.css)
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.04);", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions-utility .vx-bot-button", self.css)

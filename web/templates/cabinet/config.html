@@ -20,7 +20,7 @@
     <p class="vx-bot-line">Нажмите «Подключить». Если приложение не открылось, скопируйте ссылку.</p>
     <div class="vx-bot-actions">
       <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}" aria-label="⚡ Подключить"><span class="vx-bot-button-icon" aria-hidden="true">⚡</span><span>Подключить</span></a>
-      <button type="button" class="account-secondary-button vx-bot-button account-config-copy-main" id="copy-config-main"><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
+      <button type="button" class="account-secondary-button vx-bot-button account-config-copy-main" id="copy-config-main"><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ссылку</span></button>
     </div>
     <div class="vx-bot-url-row">
       <input id="cfg" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
@@ -55,7 +55,7 @@
     </div>
     <div class="vx-bot-actions account-config-data-actions">
       {% if can_renew %}
-        <a class="account-secondary-button vx-bot-button" href="{{ renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">🔄</span><span>Продлить</span></a>
+        <a class="account-secondary-button vx-bot-button" href="{{ renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">↻</span><span>Продлить</span></a>
       {% endif %}
       <button type="button" class="account-secondary-button vx-bot-button" id="cfg-rename-toggle"><span class="vx-bot-button-icon" aria-hidden="true">✎</span><span>Переименовать</span></button>
     </div>
