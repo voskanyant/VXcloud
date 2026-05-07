@@ -24,6 +24,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-access-meta", self.css)
         self.assertIn(".vx-account-bot .vx-bot-title", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-line", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-utility .vx-bot-actions-utility", self.css)
         access_meta_rule = self.css[self.css.index(".vx-account-bot .vx-bot-access-meta {") :]
         access_meta_rule = access_meta_rule[: access_meta_rule.index("}")]
         self.assertIn("padding: 9px 10px;", access_meta_rule)
