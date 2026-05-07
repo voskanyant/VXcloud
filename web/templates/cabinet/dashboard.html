@@ -36,12 +36,12 @@
               type="button"
               class="account-secondary-button vx-bot-button js-copy-config"
               data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}"
-            ><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
-            <a class="account-secondary-button vx-bot-button" href="{{ backend_config_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">📱</span><span>QR и доступ</span></a>
+            ><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ссылку</span></button>
+            <a class="account-secondary-button vx-bot-button" href="{{ backend_config_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">▦</span><span>QR и доступ</span></a>
           </div>
           <div class="vx-bot-actions vx-bot-actions-secondary">
             {% if row.can_renew %}
-              <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">🔄</span><span>Продлить</span></a>
+              <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">↻</span><span>Продлить</span></a>
             {% endif %}
             <a class="account-secondary-button vx-bot-button" href="{{ backend_install_prefix }}{{ row.id }}/"><span class="vx-bot-button-icon" aria-hidden="true">⚙</span><span>Настроить вручную</span></a>
           </div>
@@ -56,9 +56,9 @@
         <div class="vx-bot-actions">
         {% if telegram_trial_url %}
           <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ telegram_trial_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">7</span><span>7 дней бесплатно</span></a>
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">💳</span><span>Купить доступ</span></a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">₽</span><span>Купить доступ</span></a>
         {% else %}
-          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">💳</span><span>Купить доступ</span></a>
+          <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">₽</span><span>Купить доступ</span></a>
         {% endif %}
         </div>
       </div>
@@ -69,9 +69,9 @@
     <p class="vx-bot-eyebrow">Быстрые действия</p>
     <p class="vx-bot-line">Покупка, инструкция и поддержка рядом.</p>
     <div class="vx-bot-actions vx-bot-actions-utility">
-      <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">💳</span><span>Купить</span></a>
-      <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📖</span><span>Инструкция</span></a>
-      <a class="account-secondary-button vx-bot-button" href="{{ support_url }}"><span class="vx-bot-button-icon" aria-hidden="true">🆘</span><span>Поддержка</span></a>
+      <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top"><span class="vx-bot-button-icon" aria-hidden="true">₽</span><span>Купить</span></a>
+      <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">i</span><span>Инструкция</span></a>
+      <a class="account-secondary-button vx-bot-button" href="{{ support_url }}"><span class="vx-bot-button-icon" aria-hidden="true">?</span><span>Поддержка</span></a>
     </div>
   </section>
 </div>
@@ -111,9 +111,9 @@
         {% endif %}
         <div class="vx-bot-actions">
           {% if support_telegram_url %}
-            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}><span class="vx-bot-button-icon" aria-hidden="true">💬</span><span>Написать в Telegram</span></a>
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}><span class="vx-bot-button-icon" aria-hidden="true">›</span><span>Написать в Telegram</span></a>
           {% endif %}
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📖</span><span>Открыть инструкцию</span></a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}"><span class="vx-bot-button-icon" aria-hidden="true">i</span><span>Открыть инструкцию</span></a>
           <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}"><span class="vx-bot-button-icon" aria-hidden="true">⌂</span><span>Мой VPN</span></a>
         </div>
       </div>
@@ -143,7 +143,7 @@
               type="button"
               class="account-primary-button vx-bot-button vx-bot-button-primary js-copy-config"
               data-copy-text="{{ instructions_payload.primary_subscription.feed_url|default:instructions_payload.primary_subscription.vless_url|default:'' }}"
-            ><span class="vx-bot-button-icon" aria-hidden="true">🔗</span><span>Скопировать ссылку</span></button>
+            ><span class="vx-bot-button-icon" aria-hidden="true">⧉</span><span>Скопировать ссылку</span></button>
           {% else %}
             <p class="vx-bot-eyebrow">Доступ</p>
             <h2 class="vx-bot-title">Пока нет активного доступа</h2>
@@ -174,11 +174,11 @@
           </ol>
           <div class="vx-bot-actions account-instruction-actions">
             {% if instructions_payload.primary_subscription %}
-              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}"><span class="vx-bot-button-icon" aria-hidden="true">📱</span><span>Открыть доступ</span></a>
+              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}"><span class="vx-bot-button-icon" aria-hidden="true">▦</span><span>Открыть доступ</span></a>
             {% else %}
               <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.dashboard_url }}"><span class="vx-bot-button-icon" aria-hidden="true">⌂</span><span>Мой VPN</span></a>
             {% endif %}
-            <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}"><span class="vx-bot-button-icon" aria-hidden="true">💬</span><span>Поддержка</span></a>
+            <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}"><span class="vx-bot-button-icon" aria-hidden="true">?</span><span>Поддержка</span></a>
           </div>
         </article>
       </div>

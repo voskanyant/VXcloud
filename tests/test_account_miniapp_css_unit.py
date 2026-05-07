@@ -4,6 +4,7 @@ import unittest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SITE_CSS = REPO_ROOT / "web" / "static" / "css" / "site.css"
+DASHBOARD_TEMPLATE = REPO_ROOT / "web" / "templates" / "cabinet" / "dashboard.html"
 
 
 class AccountMiniAppCssTests(unittest.TestCase):
@@ -118,6 +119,20 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-bot-actions-utility", self.css)
         self.assertIn(".vx-account-bot .vx-bot-button-icon", self.css)
         self.assertIn(".vx-account-bot .vx-bot-button:not(.vx-bot-button-primary) .vx-bot-button-icon", self.css)
+        icon_rule = self.css[self.css.index(".vx-account-bot .vx-bot-button-icon {") :]
+        icon_rule = icon_rule[: icon_rule.index("}")]
+        self.assertIn("font-weight: 800;", icon_rule)
+        secondary_icon_rule = self.css[self.css.index(".vx-account-bot .vx-bot-button:not(.vx-bot-button-primary) .vx-bot-button-icon {") :]
+        secondary_icon_rule = secondary_icon_rule[: secondary_icon_rule.index("}")]
+        self.assertIn("font-size: 14px;", secondary_icon_rule)
+
+    def test_dashboard_action_icons_are_visually_consistent(self):
+        template = DASHBOARD_TEMPLATE.read_text(encoding="utf-8")
+
+        self.assertIn('aria-hidden="true">⧉</span><span>Скопировать ссылку', template)
+        self.assertIn('aria-hidden="true">▦</span><span>QR и доступ', template)
+        self.assertIn('aria-hidden="true">↻</span><span>Продлить', template)
+        self.assertIn('aria-hidden="true">₽</span><span>Купить', template)
         self.assertIn("width: 24px;", self.css)
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.04);", self.css)
         self.assertIn(".vx-account-bot .vx-bot-actions-utility .vx-bot-button", self.css)
