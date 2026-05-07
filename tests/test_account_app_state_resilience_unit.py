@@ -355,7 +355,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn('"manual_note"', html)
         self.assertIn("v2box://install-config", html)
         self.assertIn("\"autostart\": true", html)
-        self.assertIn("shouldAutoStart", html)
+        self.assertNotIn("shouldAutoStart", html)
         self.assertIn("V2Box", html)
         self.assertIn("Shadowrocket", html)
         self.assertIn("v2rayNG", html)

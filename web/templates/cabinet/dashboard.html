@@ -23,7 +23,7 @@
 
   <section class="account-mini-actions" aria-label="Основные действия">
     {% if primary_active_subscription %}
-      <a class="account-primary-button" href="{{ backend_install_prefix }}{{ primary_active_subscription.id }}/?autostart=1">Подключить</a>
+      <a class="account-primary-button" href="{{ backend_install_prefix }}{{ primary_active_subscription.id }}/">Подключить</a>
       <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ primary_active_subscription.id }}/">QR и доступ</a>
       <a class="account-secondary-button" href="{{ backend_buy_url }}" target="_top">Купить ещё</a>
     {% elif telegram_trial_url %}
@@ -86,7 +86,7 @@
             {% endif %}
 
             <div class="account-mini-card-actions">
-              <a class="account-primary-button" href="{{ backend_install_prefix }}{{ row.id }}/?autostart=1">Подключить</a>
+              <a class="account-primary-button" href="{{ backend_install_prefix }}{{ row.id }}/">Подключить</a>
               <button
                 type="button"
                 class="account-secondary-button js-copy-config"
@@ -225,7 +225,7 @@
             </p>
             <div class="account-hero-actions">
               {% if primary_active_subscription %}
-                <a class="account-primary-button account-primary-button-large" href="{{ backend_install_prefix }}{{ primary_active_subscription.id }}/?autostart=1">Подключить</a>
+                <a class="account-primary-button account-primary-button-large" href="{{ backend_install_prefix }}{{ primary_active_subscription.id }}/">Подключить</a>
                 <a class="account-secondary-button account-secondary-button-large" href="{{ backend_config_prefix }}{{ primary_active_subscription.id }}/">QR и доступ</a>
                 <a class="account-secondary-button account-secondary-button-large" href="{{ backend_buy_url }}"{% if embed_mode %} target="_top"{% endif %}>Купить ещё</a>
               {% elif telegram_trial_url %}
@@ -293,7 +293,7 @@
                   {% endif %}
 
                   <div class="account-access-actions">
-                    <a class="account-secondary-button" href="{{ backend_install_prefix }}{{ row.id }}/?autostart=1">Подключить</a>
+                    <a class="account-secondary-button" href="{{ backend_install_prefix }}{{ row.id }}/">Подключить</a>
                     <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">QR и доступ</a>
                     {% if row.can_renew %}
                       <a class="account-secondary-button" href="{{ row.renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>

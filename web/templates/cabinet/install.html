@@ -94,11 +94,8 @@
       windows: 'Windows',
       macos: 'Mac',
     };
-    const searchParams = new URLSearchParams(window.location.search || '');
-    const shouldAutoStart = searchParams.get('autostart') === '1';
     let selectedPlatform = detectPlatform();
     let showAllApps = false;
-    let autoStarted = false;
 
     function detectPlatform() {
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -179,34 +176,15 @@
       return String(template || '').replace('{url}', encodeURIComponent(accessUrl));
     }
 
-    function handleAppOpen(app, options) {
-      const isAutomatic = Boolean(options && options.automatic);
+    function handleAppOpen(app) {
       copyAccessUrlFast();
-      const openTemplate = app.import_url_template || app.open_url_template || '';
-      if (openTemplate) {
-        let leftPage = false;
-        const markHidden = () => {
-          if (document.hidden) leftPage = true;
-        };
-        document.addEventListener('visibilitychange', markHidden, { once: true });
-        setStatus('Ссылка скопирована. Пробуем открыть ' + app.name + '.');
-        window.location.href = buildAppUrl(openTemplate);
-        window.setTimeout(() => {
-          if (!leftPage) {
-            setStatus(app.name + ' не открылся автоматически. Импортируйте ссылку из буфера.');
-            showManual();
-          }
-        }, isAutomatic ? 1800 : 1400);
+      if (app.import_url_template || app.open_url_template) {
+        setStatus('Ссылка скопирована. Открываем ' + app.name + '.');
+        window.setTimeout(showManual, 1800);
         return;
       }
       setStatus(app.manual_note || ('Ссылка скопирована. Откройте ' + app.name + ' и выберите импорт из буфера.'));
       showManual();
-    }
-
-    function getAutostartApp(apps) {
-      return apps.find((app) => app.autostart) ||
-        apps.find((app) => app.import_url_template || app.open_url_template) ||
-        apps[0];
     }
 
     function renderApps() {
@@ -235,8 +213,15 @@
 
         const actions = document.createElement('div');
         actions.className = 'account-install-app-actions';
-        const openButton = document.createElement('button');
-        openButton.type = 'button';
+        const openTemplate = app.import_url_template || app.open_url_template || '';
+        const openButton = openTemplate ? document.createElement('a') : document.createElement('button');
+        if (openTemplate) {
+          openButton.href = buildAppUrl(openTemplate);
+          openButton.target = '_top';
+          openButton.rel = 'noopener';
+        } else {
+          openButton.type = 'button';
+        }
         openButton.className = app.recommended ? 'account-primary-button' : 'account-secondary-button';
         openButton.textContent = app.import_url_template || app.open_url_template ? 'Подключить' : 'Скопировать';
         openButton.addEventListener('click', () => handleAppOpen(app));
@@ -260,10 +245,6 @@
         showMoreButton.hidden = apps.length <= 1 || showAllApps;
       }
 
-      if (shouldAutoStart && !autoStarted && apps.length) {
-        autoStarted = true;
-        window.setTimeout(() => handleAppOpen(getAutostartApp(apps), { automatic: true }), 120);
-      }
     }
 
     document.querySelectorAll('[data-platform-choice]').forEach((button) => {
