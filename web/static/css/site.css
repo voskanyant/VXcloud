@@ -4530,6 +4530,31 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   gap: 4px;
 }
 
+.vx-account-bot .vx-bot-summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  color: var(--vx-bot-muted);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.vx-account-bot .vx-bot-summary-row + .vx-bot-summary-row {
+  padding-top: 6px;
+  border-top: 1px solid var(--vx-bot-line);
+}
+
+.vx-account-bot .vx-bot-summary-row strong {
+  min-width: 0;
+  color: var(--vx-bot-text);
+  font-size: 15px;
+  font-weight: 800;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
 .vx-account-bot .vx-bot-eyebrow {
   margin: 0;
   color: var(--vx-bot-eyebrow);

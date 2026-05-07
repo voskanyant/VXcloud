@@ -127,6 +127,27 @@
     margin: 4px 0 0;
   }
   .card-line strong { color: var(--ink); font-weight: 600; }
+  .summary-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.25;
+  }
+  .summary-row + .summary-row {
+    padding-top: 6px;
+    border-top: 1px solid var(--line);
+  }
+  .summary-row strong {
+    min-width: 0;
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 800;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
 
   /* status pill */
   .pill {
@@ -382,8 +403,9 @@
         <div class="body">
 
           <div class="card tight">
-            <div class="card-line">ID клиента: <strong>VX-7K3M-4P</strong></div>
-            <div class="card-line">Активных доступов: <strong>2</strong> · ближайший до <strong>21.05</strong></div>
+            <div class="summary-row"><span>ID клиента</span><strong>VX-7K3M-4P</strong></div>
+            <div class="summary-row"><span>Активных доступов</span><strong>2</strong></div>
+            <div class="summary-row"><span>Ближайший до</span><strong>21.05</strong></div>
           </div>
 
           <div class="card">

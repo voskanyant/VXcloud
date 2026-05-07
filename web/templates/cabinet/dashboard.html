@@ -7,9 +7,12 @@
 <div class="account-page-shell account-page-shell-mini vx-account-bot">
   <section class="vx-bot-card vx-bot-identity">
     {% if bot_user and bot_user.client_code %}
-      <p class="vx-bot-line">ID клиента: <strong>{{ bot_user.client_code }}</strong></p>
+      <div class="vx-bot-summary-row"><span>ID клиента</span><strong>{{ bot_user.client_code }}</strong></div>
     {% endif %}
-    <p class="vx-bot-line">Активных доступов: <strong>{{ active_configs }}</strong>{% if primary_active_subscription and primary_active_subscription.expires_at %} · ближайший до <strong>{{ primary_active_subscription.expires_at|date:'d.m' }}</strong>{% endif %}</p>
+    <div class="vx-bot-summary-row"><span>Активных доступов</span><strong>{{ active_configs }}</strong></div>
+    {% if primary_active_subscription and primary_active_subscription.expires_at %}
+      <div class="vx-bot-summary-row"><span>Ближайший до</span><strong>{{ primary_active_subscription.expires_at|date:'d.m' }}</strong></div>
+    {% endif %}
   </section>
 
   <section class="vx-bot-stack" id="account-subscriptions" aria-label="Ваши доступы">
