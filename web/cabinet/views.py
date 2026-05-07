@@ -1966,12 +1966,12 @@ def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
     encoded_url = quote(subscription_url, safe="")
     return [
         {
-            "label": "V2Box",
-            "url": f"v2box://install-sub?url={encoded_url}&name=VXcloud",
-        },
-        {
             "label": "Streisand",
             "url": f"streisand://import/{subscription_url}#VXcloud",
+        },
+        {
+            "label": "V2Box",
+            "url": f"v2box://install-sub?url={encoded_url}&name=VXcloud",
         },
     ]
 
