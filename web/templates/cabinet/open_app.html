@@ -15,7 +15,7 @@
     <p class="account-subtle">{{ open_app_description }}</p>
     {% if auto_sequence %}
       <div class="account-message account-message-info">
-        Если Streisand при первом запуске спросил доступ к сети и показал ошибку, разрешите WLAN & Mobile и вернитесь на эту страницу - мы попробуем открыть его еще раз.
+        Если Streisand или V2Box при первом запуске спросил доступ к сети и показал ошибку, разрешите WLAN & Mobile и вернитесь на эту страницу - мы попробуем открыть приложение еще раз.
         V2Box может добавить подписку, но не выбрать ее автоматически. Если открылся V2Box: Configs -> VXcloud -> Home -> Connect.
       </div>
     {% endif %}
@@ -38,7 +38,10 @@
         const autoSequence = {% if auto_sequence %}true{% else %}false{% endif %};
         let index = 0;
         let hiddenAt = 0;
-        let streisandRetried = false;
+        const retriedLinks = {};
+        function canRetryLink(url) {
+          return url.indexOf('streisand://') === 0 || url.indexOf('v2box://') === 0;
+        }
         function openNext() {
           if (!links[index] || !links[index].url) return;
           const url = links[index].url;
@@ -56,12 +59,13 @@
               hiddenAt = Date.now();
               return;
             }
-            const firstLink = links[0] && links[0].url ? links[0].url : '';
             const wasJustInApp = hiddenAt && Date.now() - hiddenAt < 45000;
-            if (!streisandRetried && index === 1 && wasJustInApp && firstLink.indexOf('streisand://') === 0) {
-              streisandRetried = true;
+            const retryIndex = index > 0 ? index - 1 : -1;
+            const retryLink = retryIndex >= 0 && links[retryIndex] && links[retryIndex].url ? links[retryIndex].url : '';
+            if (retryLink && !retriedLinks[retryLink] && wasJustInApp && canRetryLink(retryLink)) {
+              retriedLinks[retryLink] = true;
               setTimeout(function () {
-                if (!document.hidden) window.location.href = firstLink;
+                if (!document.hidden) window.location.href = retryLink;
               }, 700);
             }
           });
