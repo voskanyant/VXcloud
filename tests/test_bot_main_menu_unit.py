@@ -556,10 +556,44 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(markup.inline_keyboard[0][0].text, "💳 Купить ещё устройство · 249 RUB")
         self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].text, "🔄 Продлить этот доступ")
-        self.assertEqual(markup.inline_keyboard[1][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
+        self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|buy_existing_renew:42|_")
         self.assertEqual(markup.inline_keyboard[2][0].text, "⭐ Купить ещё за Stars · 250 Stars")
         self.assertEqual(markup.inline_keyboard[2][0].callback_data, "act|buy_stars_continue|_")
         self.assertEqual(len(markup.inline_keyboard), 3)
+
+    async def test_buy_existing_renew_opens_bot_renew_flow_for_same_access(self):
+        db = FakeDB()
+        db.subscriptions[42] = active_subscription(42, name="Work laptop")
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|buy_existing_renew:42|_")
+        context = SimpleNamespace(user_data={})
+
+        await bot.inline_callback(make_callback_update(query), context)
+
+        self.assertEqual(context.user_data["selected_subscription_id"], 42)
+        text, markup = query.message.replies[-1]
+        self.assertIn("Продлить доступ", text)
+        self.assertIn("Устройство: Work laptop", text)
+        self.assertEqual(markup.inline_keyboard[0][0].text, "💳 Продлить картой · 249 RUB")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/renew/?subscription_id=42&embed=1")
+        self.assertEqual(db.events[-1]["event_name"], "renew_clicked")
+        self.assertEqual(db.events[-1]["subscription_id"], 42)
+
+    async def test_buy_existing_renew_missing_access_falls_back_to_buy_screen(self):
+        db = FakeDB()
+        bot = make_bot(db)
+        query = FakeCallbackQuery("act|buy_existing_renew:42|_")
+        context = SimpleNamespace(user_data={})
+
+        await bot.inline_callback(make_callback_update(query), context)
+
+        self.assertNotIn("selected_subscription_id", context.user_data)
+        text, markup = query.message.replies[-1]
+        self.assertIn("Купить доступ", text)
+        self.assertEqual(markup.inline_keyboard[0][0].text, "💳 Купить картой · 249 RUB")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/buy/?embed=1")
+        self.assertEqual(db.events[-1]["event_name"], "buy_clicked")
+        self.assertEqual(db.events[-1]["metadata"]["source"], "renew_missing_subscription")
 
     async def test_legacy_card_markups_keep_mini_app_primary(self):
         bot = make_bot()

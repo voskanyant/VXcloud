@@ -935,9 +935,9 @@ class VPNBot:
         if isinstance(active_subscription_id, int) and active_subscription_id > 0:
             rows.append(
                 [
-                    self._mini_app_button(
+                    InlineKeyboardButton(
                         "🔄 Продлить этот доступ",
-                        f"/account/renew/?subscription_id={active_subscription_id}",
+                        callback_data=f"act|buy_existing_renew:{active_subscription_id}|_",
                     )
                 ]
             )
@@ -2260,10 +2260,27 @@ class VPNBot:
                     await self._track_event(user_id, "buy_clicked", update, metadata={"source": "inline"})
                     await self._show_buy_offer(query.message, user_id)
                 return
-            if target == "buy_existing_renew":
+            if target == "buy_existing_renew" or target.startswith("buy_existing_renew:"):
                 await query.answer()
                 if query.message is not None:
                     user_id = await self._ensure_user(update)
+                    target_subscription_id = None
+                    if target.startswith("buy_existing_renew:"):
+                        raw_subscription_id = target.split(":", 1)[1]
+                        if raw_subscription_id.isdigit():
+                            target_subscription_id = int(raw_subscription_id)
+                            target_sub = await self.db.get_subscription(user_id, target_subscription_id)
+                            if target_sub and target_sub.get("revoked_at") is None:
+                                context.user_data["selected_subscription_id"] = target_subscription_id
+                            else:
+                                await self._show_buy_checkout_options(query.message, user_id)
+                                await self._track_event(
+                                    user_id,
+                                    "buy_clicked",
+                                    update,
+                                    metadata={"source": "renew_missing_subscription"},
+                                )
+                                return
                     await self._show_renew_offer(query.message, user_id, context)
                     target_subscription_id, _target_sub = await self._resolve_renew_target(user_id, context)
                     await self._track_event(
