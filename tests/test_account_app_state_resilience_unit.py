@@ -431,19 +431,18 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         html = response.content.decode("utf-8")
         streisand_url = "streisand://import/https://vxcloud.ru/account/feed/feed-token/#VXcloud"
         v2box_url = "v2box://install-sub?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F\\u0026name=VXcloud"
-        shadowrocket_url = "sub://https://vxcloud.ru/account/feed/feed-token/"
         v2raytun_url = "v2raytun://import/https://vxcloud.ru/account/feed/feed-token/"
         happ_url = "happ://add/https://vxcloud.ru/account/feed/feed-token/"
         hiddify_url = "hiddify://install-config/?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F"
         self.assertIn(streisand_url, html)
         self.assertIn(v2box_url, html)
-        self.assertIn(shadowrocket_url, html)
+        self.assertNotIn("sub://https://vxcloud.ru/account/feed/feed-token/", html)
+        self.assertNotIn("Shadowrocket", html.split('id="open-app-links"', 1)[0])
         self.assertIn(v2raytun_url, html)
         self.assertIn(happ_url, html)
         self.assertIn(hiddify_url, html)
         self.assertLess(html.find(streisand_url), html.find(v2box_url))
-        self.assertLess(html.find(v2box_url), html.find(shadowrocket_url))
-        self.assertLess(html.find(shadowrocket_url), html.find(v2raytun_url))
+        self.assertLess(html.find(v2box_url), html.find(v2raytun_url))
         self.assertLess(html.find(v2raytun_url), html.find(happ_url))
         self.assertLess(html.find(happ_url), html.find(hiddify_url))
         self.assertIn("Пробуем открыть Streisand", html)
@@ -453,7 +452,6 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("renderState();\n            openCurrent();", html)
         self.assertIn("leftPage || document.hidden || index !== launchedIndex", html)
         self.assertIn("v2box://", html)
-        self.assertIn("sub://", html)
         self.assertNotIn("retriedLinks", html)
         self.assertNotIn("canRetryLink", html)
         self.assertNotIn("canAutoRun", html)

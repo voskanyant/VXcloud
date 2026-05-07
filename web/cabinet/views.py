@@ -2051,10 +2051,6 @@ def _build_ios_auto_import_links(subscription_url: str) -> list[dict[str, str]]:
             "url": f"v2box://install-sub?url={encoded_url}&name=VXcloud",
         },
         {
-            "label": "Shadowrocket",
-            "url": f"sub://{subscription_url}",
-        },
-        {
             "label": "v2RayTun",
             "url": f"v2raytun://import/{subscription_url}",
         },
