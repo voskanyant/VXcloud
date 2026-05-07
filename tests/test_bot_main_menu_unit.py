@@ -558,11 +558,13 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         paid_markup = bot._post_payment_ready_markup(42, account_url)
         renew_markup = bot._renew_success_markup(42, account_url)
 
-        self.assertEqual(paid_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(paid_markup.inline_keyboard[0][0].text, "📱 Настроить")
+        self.assertEqual(paid_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
         self.assertEqual(paid_markup.inline_keyboard[1][0].text, "QR")
         self.assertEqual(paid_markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
         self.assertEqual(len(paid_markup.inline_keyboard), 2)
-        self.assertEqual(renew_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(renew_markup.inline_keyboard[0][0].text, "📱 Настроить")
+        self.assertEqual(renew_markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
         self.assertEqual(renew_markup.inline_keyboard[1][0].text, "QR")
         self.assertEqual(renew_markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
         self.assertEqual(len(renew_markup.inline_keyboard), 2)
@@ -653,13 +655,13 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("vless://", message.replies[-1][0])
         self.assertNotIn("Connection link", message.replies[-1][0])
 
-    async def test_trial_success_markup_uses_mini_app_config_first(self):
+    async def test_trial_success_markup_uses_mini_app_setup_first(self):
         bot = make_bot()
 
         markup = bot._trial_success_markup(42)
 
-        self.assertEqual(markup.inline_keyboard[0][0].text, "📱 QR и доступ")
-        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/config/42/?embed=1")
+        self.assertEqual(markup.inline_keyboard[0][0].text, "📱 Настроить")
+        self.assertEqual(markup.inline_keyboard[0][0].web_app.url, "https://vxcloud.ru/account-app/install/42/?embed=1")
         self.assertEqual(markup.inline_keyboard[1][0].callback_data, "act|cfg_qr:42|_")
         self.assertEqual(markup.inline_keyboard[2][0].callback_data, "nav|menu_instructions|_")
 

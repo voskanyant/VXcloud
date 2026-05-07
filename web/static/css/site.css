@@ -3730,6 +3730,33 @@ body.vx-account-shell #footer {
   line-height: 1.4;
 }
 
+.account-install-connect {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--account-hairline);
+  background: #ffffff;
+}
+
+.account-install-connect div {
+  display: grid;
+  gap: 4px;
+}
+
+.account-install-connect strong {
+  color: var(--account-ink);
+  font-weight: 800;
+}
+
+.account-install-connect span,
+.account-install-app-hint {
+  color: var(--account-muted);
+  font-size: 13px;
+  line-height: 1.35;
+}
+
 .account-install-note[hidden],
 .account-install-manual[hidden] {
   display: none;
@@ -3791,6 +3818,10 @@ body.vx-account-shell #footer {
 }
 
 .account-install-more {
+  justify-self: start;
+}
+
+.account-install-guide-link {
   justify-self: start;
 }
 
@@ -4302,6 +4333,7 @@ body.vx-account-embed .account-page-shell-install {
 body.vx-account-embed .account-install-hero,
 body.vx-account-embed .account-install-section,
 body.vx-account-embed .account-install-app-card,
+body.vx-account-embed .account-install-connect,
 body.vx-account-embed .account-install-note,
 body.vx-account-embed .account-install-status,
 body.vx-account-embed .account-install-manual {
@@ -4333,8 +4365,13 @@ body.vx-account-embed .account-install-app-card {
   gap: 10px;
 }
 
+body.vx-account-embed .account-install-connect {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
 body.vx-account-embed .account-install-app-actions {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
 }
 
 body.vx-account-embed .account-install-app-actions > * {

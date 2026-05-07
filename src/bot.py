@@ -816,7 +816,7 @@ class VPNBot:
     def _trial_success_markup(self, subscription_id: int) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")],
                 [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
                 [InlineKeyboardButton(text="📖 Как подключить", callback_data="nav|menu_instructions|_")],
             ]
@@ -867,7 +867,7 @@ class VPNBot:
     def _post_payment_ready_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")],
                 [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
             ]
         )
@@ -974,7 +974,7 @@ class VPNBot:
     def _renew_success_markup(self, subscription_id: int, account_url: str) -> InlineKeyboardMarkup:
         return InlineKeyboardMarkup(
             [
-                [self._mini_app_button("📱 QR и доступ", f"/account/config/{subscription_id}/")],
+                [self._mini_app_button("📱 Настроить", f"/account/install/{subscription_id}/")],
                 [InlineKeyboardButton(text="QR", callback_data=f"act|cfg_qr:{subscription_id}|_")],
             ]
         )

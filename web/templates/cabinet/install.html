@@ -7,15 +7,16 @@
   class="account-page-shell account-page-shell-install"
   id="account-install"
   data-access-url="{{ copy_text }}"
+  data-auto-import-url="{{ auto_import_url }}"
+  data-instructions-url="{{ backend_instructions_url }}"
 >
   <section class="account-install-hero">
     <div>
-      <p class="account-kicker">Подключение</p>
+      <p class="account-kicker">Быстрая настройка</p>
       <h1 class="account-title account-title-compact">Подключить {{ display_name }}</h1>
-      <p class="account-intro">Выберите приложение. Мы скопируем ссылку доступа и откроем импорт, если приложение это поддерживает.</p>
+      <p class="account-intro">Мы определим устройство, покажем подходящие приложения и откроем импорт одной кнопкой.</p>
     </div>
     <div class="account-config-hero-actions">
-      <a class="account-primary-button" href="{{ auto_import_url }}">Подключить автоматически</a>
       <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
       <a class="account-secondary-button" href="{{ config_url }}">QR и ссылка</a>
       {% if can_renew %}
@@ -31,8 +32,8 @@
   <section class="account-section account-install-section">
     <div class="account-section-head">
       <div>
-        <p class="account-kicker">Устройство</p>
-        <h2 class="account-section-title">Подберем приложение</h2>
+        <p class="account-kicker">Шаг 1</p>
+        <h2 class="account-section-title">Ваше устройство</h2>
       </div>
       <div class="account-section-meta" id="install-platform-label">Определяем устройство</div>
     </div>
@@ -46,29 +47,41 @@
 
     <div class="account-install-note account-install-note-ios" id="install-ios-note" hidden>
       <strong>App Store</strong>
-      <span>Большинства этих приложений нет в российском App Store. Смените страну App Store - обычно это занимает пару минут.</span>
+      <span>Большинства iOS-приложений нет в российском App Store. Временно смените страну на US, это занимает пару минут.</span>
       <a href="{{ apple_country_help_url }}" target="_blank" rel="noopener">Инструкция Apple</a>
     </div>
 
-    <div class="account-install-status" id="install-status" role="status" aria-live="polite">
-      Ссылка доступа будет скопирована перед открытием приложения.
-    </div>
+    <div class="account-install-status" id="install-status" role="status" aria-live="polite"></div>
 
     <div class="account-install-apps" id="install-apps"></div>
 
-    <button type="button" class="account-secondary-button account-install-more" id="install-show-more">
-      У меня другое приложение
+    <div class="account-install-connect">
+      <div>
+        <strong>Если одно из приложений уже установлено</strong>
+        <span>Нажмите кнопку ниже. Мы откроем импорт и переберем поддерживаемые приложения автоматически.</span>
+      </div>
+      <a class="account-primary-button" href="{{ auto_import_url }}">Подключить</a>
+    </div>
+
+    <button type="button" class="account-secondary-button account-install-more" id="install-show-manual">
+      У меня другое приложение / ручная установка
     </button>
 
     <div class="account-install-manual" id="install-manual" hidden>
-      <strong>Если приложение не открылось</strong>
-      <span>Ссылка уже скопирована. Откройте приложение, нажмите «+» и выберите импорт из буфера.</span>
+      <strong>Ручная установка</strong>
+      <span>Скопируйте ссылку, откройте свое VPN-приложение, нажмите «+» и выберите импорт из буфера.</span>
       <div class="account-link-row">
         <input id="install-copy-input" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
         <button type="button" class="account-icon-button" id="install-copy-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
           <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
         </button>
       </div>
+      <ol class="account-mini-steps account-install-manual-steps">
+        <li>Нажмите кнопку копирования.</li>
+        <li>Откройте свое приложение.</li>
+        <li>Нажмите «+» и выберите импорт из буфера.</li>
+      </ol>
+      <a class="account-secondary-button account-install-guide-link" id="install-guide-link" href="{{ backend_instructions_url }}">Подробная инструкция</a>
     </div>
   </section>
 </div>
@@ -81,13 +94,15 @@
     const appsRoot = document.getElementById('install-apps');
     const statusEl = document.getElementById('install-status');
     const platformLabel = document.getElementById('install-platform-label');
-    const showMoreButton = document.getElementById('install-show-more');
+    const showManualButton = document.getElementById('install-show-manual');
     const manualEl = document.getElementById('install-manual');
     const iosNote = document.getElementById('install-ios-note');
     const matrixEl = document.getElementById('install-app-matrix');
+    const guideLink = document.getElementById('install-guide-link');
     if (!shell || !appsRoot || !matrixEl) return;
 
     const accessUrl = shell.dataset.accessUrl || '';
+    const instructionsUrl = shell.dataset.instructionsUrl || '/account/?view=instructions';
     const appMatrix = JSON.parse(matrixEl.textContent || '{}');
     const platformLabels = {
       ios: 'iPhone',
@@ -96,7 +111,6 @@
       macos: 'Mac',
     };
     let selectedPlatform = detectPlatform();
-    let showAllApps = false;
 
     function detectPlatform() {
       const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
@@ -161,46 +175,37 @@
 
     function showManual() {
       if (manualEl) manualEl.hidden = false;
+      if (manualEl && manualEl.scrollIntoView) manualEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
-    function appSubtitle(app) {
+    function appBadges(app) {
       const bits = [];
       if (app.recommended) bits.push('рекомендуем');
-      if (app.autostart) bits.push('авто-импорт');
+      if (app.autostart || app.import_url_template || app.open_url_template) bits.push('быстрый импорт');
       if (app.paid) bits.push('платное');
-      if (app.import_url_template) bits.push('быстрый импорт');
-      if (app.open_url_template) bits.push('откроем приложение');
-      return bits.length ? bits.join(' · ') : 'импорт из буфера';
+      return bits.length ? bits.join(' · ') : 'ручной импорт';
     }
 
-    function buildAppUrl(template) {
-      return String(template || '').replace('{url}', encodeURIComponent(accessUrl));
-    }
-
-    function handleAppOpen(app) {
-      copyAccessUrlFast();
-      if (app.import_url_template || app.open_url_template) {
-        setStatus('Ссылка скопирована. Открываем ' + app.name + '.');
-        window.setTimeout(showManual, 1800);
-        return;
-      }
-      setStatus(app.manual_note || ('Ссылка скопирована. Откройте ' + app.name + ' и выберите импорт из буфера.'));
-      showManual();
+    function platformGuideUrl(platform) {
+      const device = platform === 'ios' ? 'iphone' : platform === 'macos' || platform === 'windows' ? 'desktop' : platform;
+      const joiner = instructionsUrl.indexOf('?') === -1 ? '?' : '&';
+      return instructionsUrl + joiner + 'device=' + encodeURIComponent(device);
     }
 
     function renderApps() {
       const apps = appMatrix[selectedPlatform] || [];
-      const visibleApps = showAllApps ? apps : apps.slice(0, 1);
       appsRoot.innerHTML = '';
       if (platformLabel) platformLabel.textContent = platformLabels[selectedPlatform] || 'Устройство';
       if (iosNote) iosNote.hidden = selectedPlatform !== 'ios';
+      if (guideLink) guideLink.href = platformGuideUrl(selectedPlatform);
+      setStatus('Установите одно из приложений ниже. Если оно уже есть, нажмите «Подключить».');
 
       document.querySelectorAll('[data-platform-choice]').forEach((button) => {
         const isCurrent = button.dataset.platformChoice === selectedPlatform;
         button.classList.toggle('account-secondary-button-current', isCurrent);
       });
 
-      visibleApps.forEach((app) => {
+      apps.forEach((app) => {
         const card = document.createElement('article');
         card.className = 'account-install-app-card';
 
@@ -209,25 +214,11 @@
         const title = document.createElement('strong');
         title.textContent = app.label || app.name;
         const meta = document.createElement('span');
-        meta.textContent = appSubtitle(app);
+        meta.textContent = appBadges(app);
         copy.append(title, meta);
 
         const actions = document.createElement('div');
         actions.className = 'account-install-app-actions';
-        const openTemplate = app.import_url_template || app.open_url_template || '';
-        const openButton = openTemplate ? document.createElement('a') : document.createElement('button');
-        if (openTemplate) {
-          openButton.href = buildAppUrl(openTemplate);
-          openButton.target = '_top';
-          openButton.rel = 'noopener';
-        } else {
-          openButton.type = 'button';
-        }
-        openButton.className = app.recommended ? 'account-primary-button' : 'account-secondary-button';
-        openButton.textContent = app.import_url_template || app.open_url_template ? 'Подключить' : 'Скопировать';
-        openButton.addEventListener('click', () => handleAppOpen(app));
-        actions.append(openButton);
-
         if (app.install_url) {
           const installLink = document.createElement('a');
           installLink.className = 'account-secondary-button';
@@ -237,30 +228,28 @@
           installLink.textContent = 'Установить';
           actions.append(installLink);
         }
+        if (!app.install_url) {
+          const unavailable = document.createElement('span');
+          unavailable.className = 'account-install-app-hint';
+          unavailable.textContent = 'Установите из официального источника';
+          actions.append(unavailable);
+        }
 
         card.append(copy, actions);
         appsRoot.appendChild(card);
       });
-
-      if (showMoreButton) {
-        showMoreButton.hidden = apps.length <= 1 || showAllApps;
-      }
-
     }
 
     document.querySelectorAll('[data-platform-choice]').forEach((button) => {
       button.addEventListener('click', () => {
         selectedPlatform = button.dataset.platformChoice || selectedPlatform;
-        showAllApps = false;
-        setStatus('Ссылка доступа будет скопирована перед открытием приложения.');
         renderApps();
       });
     });
 
-    if (showMoreButton) {
-      showMoreButton.addEventListener('click', () => {
-        showAllApps = true;
-        renderApps();
+    if (showManualButton) {
+      showManualButton.addEventListener('click', () => {
+        showManual();
       });
     }
 
