@@ -140,22 +140,20 @@
           const launchedIndex = index;
           let leftPage = false;
           let lostFocus = false;
+          let regainedFocus = false;
+          let waitingForFocus = false;
           function markLeftPage() {
             if (document.hidden) leftPage = true;
           }
           function markLostFocus() {
             lostFocus = true;
           }
-          document.addEventListener('visibilitychange', markLeftPage);
-          window.addEventListener('blur', markLostFocus, { once: true });
-          openCurrent();
-          setTimeout(function () {
+          function cleanupListeners() {
             document.removeEventListener('visibilitychange', markLeftPage);
             window.removeEventListener('blur', markLostFocus);
-            if (leftPage || lostFocus || document.hidden || index !== launchedIndex) {
-              renderState();
-              return;
-            }
+            window.removeEventListener('focus', markRegainedFocus);
+          }
+          function advanceAfterFailedAttempt() {
             if (!links[launchedIndex + 1]) {
               renderState();
               return;
@@ -165,6 +163,35 @@
             if (autoSequence && links[index]) {
               openNext();
             }
+          }
+          function markRegainedFocus() {
+            regainedFocus = true;
+            if (!waitingForFocus) return;
+            waitingForFocus = false;
+            cleanupListeners();
+            if (leftPage || document.hidden || index !== launchedIndex) {
+              renderState();
+              return;
+            }
+            advanceAfterFailedAttempt();
+          }
+          document.addEventListener('visibilitychange', markLeftPage);
+          window.addEventListener('blur', markLostFocus, { once: true });
+          window.addEventListener('focus', markRegainedFocus);
+          openCurrent();
+          setTimeout(function () {
+            if (leftPage || document.hidden || index !== launchedIndex) {
+              cleanupListeners();
+              renderState();
+              return;
+            }
+            if (lostFocus && !regainedFocus && !document.hasFocus()) {
+              waitingForFocus = true;
+              renderState();
+              return;
+            }
+            cleanupListeners();
+            advanceAfterFailedAttempt();
           }, 1600);
         }
 
