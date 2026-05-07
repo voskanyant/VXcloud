@@ -74,7 +74,7 @@ PENDING_CARD_CHECKOUT_TTL = timedelta(minutes=30)
 LOGGER = logging.getLogger(__name__)
 WEB_ORDER_SESSION_KEY = "web_order_checkout_state_v1"
 WEB_PLACEHOLDER_TELEGRAM_ID_OFFSET = 10**12
-APPLE_ACCOUNT_COUNTRY_HELP_URL = "https://support.apple.com/en-us/118283"
+APPLE_ACCOUNT_COUNTRY_HELP_URL = "https://vxcloud.ru/app-store-us/"
 INSTALL_APP_MATRIX: dict[str, list[dict[str, object]]] = {
     "ios": [
         {
@@ -2041,6 +2041,9 @@ def open_app_link(request: HttpRequest) -> HttpResponse:
             "deeplinks": deeplinks,
             "copy_text": copy_text,
             "auto_sequence": mode == "ios-auto",
+            "recommended_install_url": str(INSTALL_APP_MATRIX["ios"][0].get("install_url") or ""),
+            "instructions_url": _account_frontend_url("?view=instructions"),
+            "support_url": _account_frontend_url("?view=support"),
         },
     )
 

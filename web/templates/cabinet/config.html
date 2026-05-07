@@ -3,6 +3,85 @@
 {% block title %}Доступ - VXcloud{% endblock %}
 
 {% block content %}
+{% if embed_mode %}
+<div class="account-page-shell account-page-shell-config vx-account-bot">
+  <section class="vx-bot-card vx-bot-status-strip">
+    <p class="vx-bot-line">
+      <span class="vx-bot-pill{% if has_active %} vx-bot-pill-active{% endif %}">{% if has_active %}Активен{% else %}Истёк{% endif %}</span>
+      {% if subscription.expires_at %} действует до <strong>{{ subscription.expires_at|date:'d.m.Y H:i' }}</strong>{% else %} бессрочный доступ{% endif %}
+    </p>
+  </section>
+
+  <article class="vx-bot-card account-config-link-section">
+    <p class="vx-bot-eyebrow">Подключение</p>
+    <h1 class="vx-bot-title">Ссылка подписки</h1>
+    <p class="vx-bot-line">Скопируйте ссылку или откройте импорт автоматически.</p>
+    <div class="vx-bot-actions">
+      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}">⚡ Подключить автоматически</a>
+      <button type="button" class="account-secondary-button vx-bot-button account-config-copy-main" id="copy-config-main">🔗 Скопировать ссылку</button>
+    </div>
+    <div class="vx-bot-url-row">
+      <input id="cfg" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
+      <button type="button" class="account-icon-button" id="copy-config-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+        <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
+      </button>
+    </div>
+  </article>
+
+  <article class="vx-bot-card account-section-qr" id="qr">
+    <p class="vx-bot-eyebrow">QR</p>
+    <h2 class="vx-bot-title">QR и доступ</h2>
+    <div class="account-qr-frame vx-bot-qr-frame">
+      <img class="account-qr-image" src="data:image/png;base64,{{ qr_b64 }}" alt="VPN QR" />
+    </div>
+    <p class="vx-bot-line">QR нужен только если приложение не умеет импортировать ссылку.</p>
+  </article>
+
+  <article class="vx-bot-card account-config-rename-section">
+    <p class="vx-bot-eyebrow">Данные</p>
+    <p class="vx-bot-line">ID доступа: <strong>#{{ subscription.id }}</strong></p>
+    {% if subscription.user and subscription.user.client_code %}
+      <p class="vx-bot-line">ID клиента: <strong>{{ subscription.user.client_code }}</strong></p>
+    {% endif %}
+    <div class="vx-bot-actions">
+      {% if can_renew %}
+        <a class="account-secondary-button vx-bot-button" href="{{ renew_url }}" target="_top">🔄 Продлить</a>
+      {% endif %}
+      <button type="button" class="account-secondary-button vx-bot-button" id="cfg-rename-toggle">Переименовать</button>
+    </div>
+    <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/?embed=1" class="account-inline-form vx-bot-rename-form" id="cfg-rename-form" hidden>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.get_full_path }}" />
+      <input id="cfg-rename" type="text" class="account-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Название доступа" />
+      <button type="submit" class="account-primary-button vx-bot-button vx-bot-button-primary">Сохранить</button>
+    </form>
+  </article>
+
+  {% if subscriptions %}
+    <article class="vx-bot-card account-config-list-section">
+      <p class="vx-bot-eyebrow">Доступы</p>
+      <h2 class="vx-bot-title">Все доступы</h2>
+      <div class="account-config-list">
+        {% for sub_item in subscriptions %}
+          {% if sub_item.id == subscription.id %}
+            <div class="account-config-item account-config-item-current">
+              <span class="account-config-item-id">#{{ sub_item.id }}</span>
+              <span class="account-config-item-name">{{ sub_item.display_name|default:"Устройство" }}</span>
+              <span class="account-config-item-meta">{% if sub_item.expires_at %}{{ sub_item.expires_at|date:'d.m.Y H:i' }}{% else %}бессрочно{% endif %}</span>
+            </div>
+          {% else %}
+            <a class="account-config-item" href="{{ backend_config_prefix }}{{ sub_item.id }}/">
+              <span class="account-config-item-id">#{{ sub_item.id }}</span>
+              <span class="account-config-item-name">{{ sub_item.display_name|default:"Устройство" }}</span>
+              <span class="account-config-item-meta">{% if sub_item.expires_at %}{{ sub_item.expires_at|date:'d.m.Y H:i' }}{% else %}бессрочно{% endif %}</span>
+            </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </article>
+  {% endif %}
+</div>
+{% else %}
 <div class="account-page-shell account-page-shell-config">
   <section class="account-config-hero">
     <div>
@@ -14,7 +93,7 @@
       <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
       <a class="account-primary-button" href="{{ auto_import_url }}">Подключить</a>
       {% if can_renew %}
-        <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+        <a class="account-primary-button" href="{{ renew_url }}">Продлить</a>
       {% endif %}
     </div>
   </section>
@@ -112,7 +191,7 @@
             <h2 class="account-section-title">Название доступа</h2>
           </div>
         </div>
-        <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="account-inline-form">
+        <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/" class="account-inline-form">
           {% csrf_token %}
           <input type="hidden" name="next" value="{{ request.get_full_path }}" />
           <input id="cfg-rename" type="text" class="account-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Название доступа" />
@@ -139,6 +218,7 @@
     </aside>
   </section>
 </div>
+{% endif %}
 
 <script>
   async function copyCfg() {
@@ -171,6 +251,17 @@
       setTimeout(() => {
         copyMainButton.textContent = oldText;
       }, 1200);
+    });
+  }
+  const renameToggle = document.getElementById('cfg-rename-toggle');
+  const renameForm = document.getElementById('cfg-rename-form');
+  if (renameToggle && renameForm) {
+    renameToggle.addEventListener('click', () => {
+      renameForm.hidden = !renameForm.hidden;
+      if (!renameForm.hidden) {
+        const input = renameForm.querySelector('input[name="display_name"]');
+        if (input) input.focus();
+      }
     });
   }
 </script>

@@ -4,105 +4,46 @@
 
 {% block content %}
 {% if embed_mode and not support_view and not instructions_view %}
-<div class="account-page-shell account-page-shell-mini">
-  <section class="account-mini-hero">
-    <div class="account-mini-hero-main">
-      <h1 class="account-mini-title">Мой VPN</h1>
-      {% if bot_user and bot_user.client_code %}
-        <p class="account-mini-idline">ID клиента: <strong>{{ bot_user.client_code }}</strong></p>
-      {% endif %}
-      <p class="account-mini-subtitle">
-        {% if active_configs %}
-          Активных доступов: {{ active_configs }}. Сначала скопируйте ссылку подписки, потом импортируйте ее в VPN-приложение.
-        {% else %}
-          Активируйте пробный период или купите доступ. После этого ссылка подписки появится здесь.
-        {% endif %}
-      </p>
-    </div>
+<div class="account-page-shell account-page-shell-mini vx-account-bot">
+  <section class="vx-bot-card vx-bot-identity">
+    {% if bot_user and bot_user.client_code %}
+      <p class="vx-bot-line">ID клиента: <strong>{{ bot_user.client_code }}</strong></p>
+    {% endif %}
+    <p class="vx-bot-line">Активных доступов: <strong>{{ active_configs }}</strong>{% if primary_active_subscription and primary_active_subscription.expires_at %} · ближайший до <strong>{{ primary_active_subscription.expires_at|date:'d.m' }}</strong>{% endif %}</p>
   </section>
 
-  <section class="account-mini-actions" aria-label="Основные действия">
-    {% if primary_active_subscription %}
-      <a class="account-primary-button" href="{{ primary_active_subscription.auto_import_url }}">Подключить</a>
-      <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ primary_active_subscription.id }}/">QR и доступ</a>
-      <a class="account-secondary-button" href="{{ backend_buy_url }}" target="_top">Купить ещё</a>
-    {% elif telegram_trial_url %}
-      <a class="account-primary-button" href="{{ telegram_trial_url }}" target="_top">7 дней бесплатно</a>
-      <a class="account-secondary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
-    {% else %}
-      <a class="account-primary-button" href="{{ backend_buy_url }}" target="_top">Купить доступ</a>
-    {% endif %}
-    {% if renewable_configs == 1 and single_renew_url %}
-      <a class="account-secondary-button" href="{{ single_renew_url }}" target="_top">Продлить</a>
-    {% elif renewable_configs > 1 %}
-      <a class="account-secondary-button" href="#account-subscriptions">Продлить</a>
-    {% else %}
-      <a class="account-secondary-button" href="{{ backend_instructions_url }}">Инструкция</a>
-    {% endif %}
-    <a class="account-secondary-button" href="{{ support_url }}">Поддержка</a>
-  </section>
-
-  <section class="account-mini-section" id="account-subscriptions">
-    <div class="account-mini-section-head">
-      <h2>Ваши доступы</h2>
-      <span>Активных: {{ active_configs }} · Неактивных: {{ inactive_configs }}</span>
-    </div>
-
+  <section class="vx-bot-stack" id="account-subscriptions" aria-label="Ваши доступы">
     {% if subscription_rows %}
-      <div class="account-mini-access-list">
-        {% for row in subscription_rows %}
-          <article class="account-mini-access-card">
-            <div class="account-mini-access-head">
-              <div>
-                <h3>{{ row.display_name }}</h3>
-                <p>
-                  {% if row.expires_at %}
-                    действует до {{ row.expires_at|date:'d.m.Y H:i' }}
-                  {% else %}
-                    бессрочный доступ
-                  {% endif %}
-                </p>
-              </div>
-              <span class="account-mini-pill{% if row.is_active %} account-mini-pill-active{% endif %}">
-                {% if row.is_active %}Активен{% else %}Неактивен{% endif %}
-              </span>
-            </div>
-
-            {% if row.is_active %}
-              <div class="account-mini-copy-panel">
-                <strong>Подключение через ссылку</strong>
-                <span>Это основной способ. QR оставлен как запасной вариант.</span>
-              </div>
-              <ol class="account-mini-steps">
-                <li>Нажмите «Скопировать ссылку» ниже.</li>
-                <li>Откройте Streisand, V2Box или v2rayNG.</li>
-                <li>Нажмите «+» и выберите импорт из буфера.</li>
-              </ol>
-            {% else %}
-              <div class="account-mini-copy-panel account-mini-copy-panel-muted">
-                <strong>Доступ неактивен</strong>
-                <span>Продлите его, чтобы снова подключаться по ссылке подписки.</span>
-              </div>
-            {% endif %}
-
-            <div class="account-mini-card-actions">
-              <a class="account-primary-button" href="{{ row.auto_import_url }}">Подключить</a>
-              <button
-                type="button"
-                class="account-secondary-button js-copy-config"
-                data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}"
-              >Скопировать</button>
-              <a class="account-secondary-button" href="{{ backend_config_prefix }}{{ row.id }}/">QR и доступ</a>
+      {% for row in subscription_rows %}
+        <article class="vx-bot-card vx-bot-access-card">
+          <p class="vx-bot-eyebrow">Доступ</p>
+          <h2 class="vx-bot-title">{{ row.display_name }}</h2>
+          <p class="vx-bot-line">
+            {% if row.expires_at %}действует до {{ row.expires_at|date:'d.m.Y' }}{% else %}бессрочный доступ{% endif %}
+            · <span class="vx-bot-pill{% if row.is_active %} vx-bot-pill-active{% endif %}">{% if row.is_active %}Активен{% else %}Истёк{% endif %}</span>
+          </p>
+          <div class="vx-bot-actions">
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ row.auto_import_url }}">⚡ Подключить</a>
+            <button
+              type="button"
+              class="account-secondary-button vx-bot-button js-copy-config"
+              data-copy-text="{{ row.feed_url|default:row.vless_url|default:'' }}"
+            >🔗 Скопировать ссылку</button>
+            <a class="account-secondary-button vx-bot-button" href="{{ backend_config_prefix }}{{ row.id }}/">📱 QR и доступ</a>
+          </div>
+          <details class="vx-bot-more">
+            <summary>Ещё</summary>
+            <div class="vx-bot-actions vx-bot-actions-secondary">
               {% if row.can_renew %}
-                <a class="account-secondary-button" href="{{ row.renew_url }}" target="_top">Продлить</a>
+                <a class="account-secondary-button vx-bot-button" href="{{ row.renew_url }}" target="_top">🔄 Продлить</a>
               {% endif %}
-              <a class="account-secondary-button" href="{{ backend_instructions_url }}">Инструкция</a>
+              <a class="account-secondary-button vx-bot-button" href="{{ backend_install_prefix }}{{ row.id }}/">Настроить вручную</a>
             </div>
-          </article>
-        {% endfor %}
-      </div>
+          </details>
+        </article>
+      {% endfor %}
     {% else %}
-      <div class="account-mini-empty">
+      <div class="vx-bot-card account-mini-empty">
         <strong>Пока нет доступа</strong>
         <span>{% if telegram_trial_url %}Без карты: активируйте 7 дней бесплатно в боте. Оплата картой останется рядом.{% else %}Купите доступ картой. После оплаты ссылка подписки появится здесь.{% endif %}</span>
         {% if telegram_trial_url %}
@@ -113,6 +54,15 @@
         {% endif %}
       </div>
     {% endif %}
+  </section>
+
+  <section class="vx-bot-card vx-bot-utility">
+    <p class="vx-bot-line">Купить ещё доступ или открыть инструкцию.</p>
+    <div class="vx-bot-actions">
+      <a class="account-secondary-button vx-bot-button" href="{{ backend_buy_url }}" target="_top">💳 Купить</a>
+      <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}">📖 Инструкция</a>
+      <a class="account-secondary-button vx-bot-button" href="{{ support_url }}">Поддержка</a>
+    </div>
   </section>
 </div>
 {% else %}

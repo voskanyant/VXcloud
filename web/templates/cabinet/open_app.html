@@ -1,31 +1,45 @@
-﻿{% extends 'base.html' %}
+{% extends 'base.html' %}
 {% load cms %}
 
 {% cms_text "cabinet.open_app.page_title" "Открытие в приложении - VXcloud" as open_app_page_title %}
 {% block title %}{{ open_app_page_title }}{% endblock %}
 
 {% block content %}
-<section class="surface-card auth-shell site-auth-shell">
-  {% cms_text "cabinet.open_app.heading" "Открытие в приложении" as open_app_heading %}
-  {% cms_text "cabinet.open_app.description" "Сейчас откроем конфиг в приложении автоматически. Если не открылось, используйте кнопку ниже." as open_app_description %}
-  <div class="account-eyebrow">Открытие приложения</div>
-  <h1 class="account-title-compact">{{ open_app_heading }}</h1>
-
+<section class="surface-card auth-shell site-auth-shell vx-account-bot vx-open-app-shell">
   {% if deeplinks %}
-    <p class="account-subtle">{{ open_app_description }}</p>
-    {% if auto_sequence %}
-      <div class="account-message account-message-info">
-        Если Streisand или V2Box при первом запуске спросил доступ к сети и показал ошибку, разрешите WLAN & Mobile и нажмите нужное приложение ниже еще раз.
-        V2Box может добавить подписку, но не выбрать ее автоматически. Если открылся V2Box: Configs -> VXcloud -> Home -> Connect.
+    <article class="vx-bot-card vx-open-app-active">
+      <p class="vx-bot-eyebrow" id="open-app-step">Шаг 1 из {{ deeplinks|length }}</p>
+      <h1 class="vx-bot-title" id="open-app-title">Пробуем открыть {{ deeplinks.0.label }}</h1>
+      <div class="vx-open-progress" aria-hidden="true"><span id="open-app-progress"></span></div>
+      <p class="vx-bot-line">Если приложение установлено, импорт откроется автоматически. Если нет, попробуем следующее.</p>
+      <div class="vx-bot-actions">
+        <a class="account-primary-button vx-bot-button vx-bot-button-primary" id="open-app-current" href="{{ deeplinks.0.url }}">Открыть {{ deeplinks.0.label }}</a>
+        <button type="button" class="account-secondary-button vx-bot-button" id="open-app-next">Не открылось — попробовать дальше</button>
       </div>
-    {% endif %}
-    <div class="auth-actions">
-      {% for item in deeplinks %}
-        <a class="{% if forloop.first %}account-primary-button{% else %}account-secondary-button{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
-      {% endfor %}
-      <button class="account-secondary-button" type="button" onclick="copyLink()">Скопировать ссылку</button>
-    </div>
-    <textarea id="deeplink-box" class="account-input auth-textarea" rows="5" readonly>{{ copy_text }}</textarea>
+    </article>
+
+    <details class="vx-bot-card vx-bot-more vx-open-app-manual">
+      <summary>Ручная установка</summary>
+      <p class="vx-bot-line">Скопируйте ссылку, откройте свое приложение, нажмите «+» и выберите импорт из буфера.</p>
+      <div class="vx-bot-url-row">
+        <input id="deeplink-box" class="account-input account-link-input" type="text" readonly value="{{ copy_text }}">
+        <button class="account-icon-button" type="button" id="copy-open-app-link" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+          <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
+        </button>
+      </div>
+    </details>
+
+    <article class="vx-bot-card vx-open-app-rescue">
+      <p class="vx-bot-eyebrow">Если ничего не помогло</p>
+      <div class="vx-bot-actions">
+        {% if recommended_install_url %}
+          <a class="account-secondary-button vx-bot-button" href="{{ recommended_install_url }}" target="_blank" rel="noopener">Установить рекомендуемое приложение</a>
+        {% endif %}
+        <a class="account-secondary-button vx-bot-button" href="{{ instructions_url }}">📖 Открыть инструкцию</a>
+        <a class="account-secondary-button vx-bot-button" href="{{ support_url }}">Поддержка</a>
+      </div>
+    </article>
+
     {{ deeplinks|json_script:"open-app-links" }}
     <script>
       (function () {
@@ -36,28 +50,106 @@
         const linksEl = document.getElementById('open-app-links');
         const links = linksEl ? JSON.parse(linksEl.textContent || '[]') : [];
         const autoSequence = {% if auto_sequence %}true{% else %}false{% endif %};
+        const titleEl = document.getElementById('open-app-title');
+        const stepEl = document.getElementById('open-app-step');
+        const progressEl = document.getElementById('open-app-progress');
+        const currentLink = document.getElementById('open-app-current');
+        const nextButton = document.getElementById('open-app-next');
         let index = 0;
+
+        function renderState() {
+          const item = links[index];
+          const total = Math.max(links.length, 1);
+          if (!item) {
+            if (stepEl) stepEl.textContent = 'Готово';
+            if (titleEl) titleEl.textContent = 'Не получилось автоматически';
+            if (currentLink) {
+              currentLink.hidden = true;
+              currentLink.removeAttribute('href');
+            }
+            if (nextButton) {
+              nextButton.textContent = 'Скопировать ссылку';
+            }
+            if (progressEl) progressEl.style.width = '100%';
+            return;
+          }
+          if (stepEl) stepEl.textContent = 'Шаг ' + (index + 1) + ' из ' + total;
+          if (titleEl) titleEl.textContent = 'Пробуем открыть ' + item.label;
+          if (currentLink) {
+            currentLink.hidden = false;
+            currentLink.href = item.url;
+            currentLink.textContent = 'Открыть ' + item.label;
+          }
+          if (nextButton) {
+            const next = links[index + 1];
+            nextButton.textContent = next ? 'Не открылось — попробовать ' + next.label : 'Не открылось — ручная установка';
+          }
+          if (progressEl) progressEl.style.width = String(((index + 1) / total) * 100) + '%';
+        }
+
+        function copyLink() {
+          if (!box || !box.value) return;
+          try {
+            box.focus();
+            box.select();
+            box.setSelectionRange(0, box.value.length);
+            document.execCommand('copy');
+          } catch (_error) {}
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(box.value).catch(function () {});
+          }
+        }
+
+        function openCurrent() {
+          const item = links[index];
+          if (!item || !item.url) {
+            copyLink();
+            return;
+          }
+          window.location.href = item.url;
+        }
+
         function openNext() {
-          if (!links[index] || !links[index].url) return;
-          const url = links[index].url;
+          openCurrent();
           index += 1;
-          window.location.href = url;
-          if (links[index]) {
+          renderState();
+          if (autoSequence && links[index]) {
             setTimeout(function () {
               if (!document.hidden) openNext();
             }, 1600);
           }
         }
+
+        if (nextButton) {
+          nextButton.addEventListener('click', function () {
+            if (!links[index]) {
+              copyLink();
+              nextButton.textContent = 'Ссылка скопирована';
+              return;
+            }
+            index += 1;
+            renderState();
+          });
+        }
+
+        const copyButton = document.getElementById('copy-open-app-link');
+        if (copyButton) {
+          copyButton.addEventListener('click', function () {
+            copyLink();
+            const icon = copyButton.querySelector('.account-icon-glyph');
+            const oldHtml = icon ? icon.innerHTML : '';
+            if (icon) icon.innerHTML = '&#10003;';
+            setTimeout(function () {
+              if (icon) icon.innerHTML = oldHtml;
+            }, 1200);
+          });
+        }
+
+        renderState();
         if (autoSequence) {
           setTimeout(openNext, 80);
         }
       })();
-      function copyLink() {
-        const box = document.getElementById('deeplink-box');
-        box.select();
-        box.setSelectionRange(0, 99999);
-        navigator.clipboard.writeText(box.value);
-      }
     </script>
   {% else %}
     {% cms_text "cabinet.open_app.invalid" "Некорректная ссылка. Вернитесь в бот и нажмите «Моя подписка» снова." as open_app_invalid %}

@@ -19,15 +19,14 @@ class AccountMiniAppCssTests(unittest.TestCase):
 
     def test_embed_dashboard_uses_compact_mobile_layout(self):
         self.assertIn("body.vx-account-embed .account-page-shell-mini", self.css)
-        self.assertIn("body.vx-account-embed .account-mini-title", self.css)
-        self.assertIn("body.vx-account-embed .account-mini-access-card", self.css)
-        self.assertIn("body.vx-account-embed .account-mini-card-actions", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-card", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-title", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
 
-    def test_embed_dashboard_is_link_first(self):
-        self.assertIn("body.vx-account-embed .account-mini-copy-panel", self.css)
-        self.assertIn("body.vx-account-embed .account-mini-steps", self.css)
-        self.assertIn("counter-reset: account-mini-step;", self.css)
-        self.assertIn("body.vx-account-embed .account-mini-card-actions .account-primary-button", self.css)
+    def test_embed_dashboard_is_connect_first(self):
+        self.assertIn(".vx-account-bot .vx-bot-button-primary", self.css)
+        self.assertIn("background: var(--vx-bot-blue);", self.css)
+        self.assertIn("grid-column: 1 / -1;", self.css)
 
     def test_embed_subscription_list_hides_expanded_details(self):
         self.assertIn(
@@ -45,14 +44,8 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("display: none;", self.css)
 
     def test_embed_subscription_actions_remain_available(self):
-        self.assertIn(
-            "body.vx-account-embed #account-subscriptions .account-device-actions",
-            self.css,
-        )
-        self.assertIn(
-            "body.vx-account-embed #account-subscriptions .account-device-actions .account-primary-button",
-            self.css,
-        )
+        self.assertIn(".vx-account-bot .vx-bot-actions", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-more summary", self.css)
 
     def test_embed_instructions_use_compact_device_tabs(self):
         self.assertIn("body.vx-account-embed .account-page-shell-instructions", self.css)
@@ -70,13 +63,10 @@ class AccountMiniAppCssTests(unittest.TestCase):
 
     def test_embed_config_page_is_qr_and_link_first(self):
         self.assertIn("body.vx-account-embed .account-page-shell-config", self.css)
-        self.assertIn("body.vx-account-embed .account-page-shell-config .account-section-qr", self.css)
-        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-link-section", self.css)
-        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-copy-main", self.css)
-        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-mini-steps", self.css)
-        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-status-section", self.css)
-        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-list-section", self.css)
-        self.assertIn("body.vx-account-embed .account-page-shell-config .account-config-rename-section", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-status-strip", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-url-row", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-qr-frame", self.css)
+        self.assertIn(".vx-account-bot .vx-bot-rename-form", self.css)
 
 
 if __name__ == "__main__":

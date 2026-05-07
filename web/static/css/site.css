@@ -4464,6 +4464,319 @@ body.vx-account-embed .account-page-shell-mini {
   padding: 10px 10px 24px;
 }
 
+body.vx-account-embed .vx-account-bot,
+.vx-account-bot {
+  --vx-bot-bg: #f4f4f5;
+  --vx-bot-card: #ffffff;
+  --vx-bot-text: #202124;
+  --vx-bot-muted: #5f6368;
+  --vx-bot-eyebrow: #6b6b70;
+  --vx-bot-line: #ececf0;
+  --vx-bot-blue: #2481cc;
+  --vx-bot-blue-hover: #1f74ba;
+  --vx-bot-secondary: #f0f0f3;
+  --vx-bot-secondary-hover: #e6e6eb;
+  --vx-bot-radius: 10px;
+  --vx-bot-button-radius: 8px;
+  display: grid;
+  gap: 10px;
+  color: var(--vx-bot-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.42;
+}
+
+body.vx-account-embed {
+  background: var(--vx-bot-bg, #f4f4f5);
+}
+
+body.vx-account-embed .account-page-shell.vx-account-bot {
+  width: min(100vw, 390px);
+  max-width: 390px;
+  margin: 0 auto;
+  padding: 10px 10px 24px;
+  background: var(--vx-bot-bg);
+}
+
+.vx-account-bot .vx-bot-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.vx-account-bot [hidden] {
+  display: none !important;
+}
+
+.vx-account-bot .vx-bot-card {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--vx-bot-radius);
+  background: var(--vx-bot-card);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04), 0 6px 18px rgba(0, 0, 0, 0.04);
+}
+
+.vx-account-bot .vx-bot-identity,
+.vx-account-bot .vx-bot-status-strip {
+  gap: 4px;
+}
+
+.vx-account-bot .vx-bot-eyebrow {
+  margin: 0;
+  color: var(--vx-bot-eyebrow);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.vx-account-bot .vx-bot-title {
+  margin: 0;
+  color: var(--vx-bot-text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.25;
+}
+
+.vx-account-bot .vx-bot-line {
+  margin: 0;
+  color: var(--vx-bot-muted);
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.vx-account-bot .vx-bot-line strong {
+  color: var(--vx-bot-text);
+  font-weight: 700;
+}
+
+.vx-account-bot .vx-bot-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f2f2f4;
+  color: #66666b;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.vx-account-bot .vx-bot-pill-active {
+  background: #e7f5e9;
+  color: #2e7d32;
+}
+
+.vx-account-bot .vx-bot-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.vx-account-bot .vx-bot-actions-secondary {
+  margin-top: 6px;
+}
+
+.vx-account-bot .vx-bot-button,
+.vx-account-bot .vx-bot-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  width: 100%;
+  min-width: 0;
+  padding: 12px 10px;
+  border: 0;
+  border-radius: var(--vx-bot-button-radius);
+  background: var(--vx-bot-secondary);
+  color: var(--vx-bot-text);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.15;
+  text-align: center;
+  text-decoration: none;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  box-shadow: none;
+  cursor: pointer;
+}
+
+.vx-account-bot .vx-bot-button:hover,
+.vx-account-bot .vx-bot-tab:hover {
+  background: var(--vx-bot-secondary-hover);
+  color: var(--vx-bot-text);
+  text-decoration: none;
+}
+
+.vx-account-bot .vx-bot-button-primary,
+.vx-account-bot .vx-bot-actions > .vx-bot-button-primary:first-child {
+  grid-column: 1 / -1;
+  background: var(--vx-bot-blue);
+  color: #ffffff;
+}
+
+.vx-account-bot .vx-bot-button-primary:hover {
+  background: var(--vx-bot-blue-hover);
+  color: #ffffff;
+}
+
+.vx-account-bot .account-secondary-button-current,
+.vx-account-bot .vx-bot-tab.account-secondary-button-current {
+  background: #202124;
+  color: #ffffff;
+}
+
+.vx-account-bot .vx-bot-more {
+  margin-top: 0;
+}
+
+.vx-account-bot .vx-bot-more summary {
+  color: var(--vx-bot-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.vx-account-bot .vx-bot-url-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px;
+  gap: 7px;
+  align-items: stretch;
+}
+
+.vx-account-bot .vx-bot-url-row .account-link-input {
+  height: 44px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: var(--vx-bot-button-radius);
+  overflow: hidden;
+  color: var(--vx-bot-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vx-account-bot .vx-bot-url-row .account-icon-button {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: var(--vx-bot-button-radius);
+}
+
+.vx-account-bot .vx-bot-qr-frame {
+  min-height: 0;
+  max-height: 180px;
+  padding: 8px;
+  overflow: hidden;
+}
+
+.vx-account-bot .vx-bot-qr-frame .account-qr-image {
+  width: auto;
+  max-width: 170px;
+  max-height: 164px;
+}
+
+.vx-account-bot .account-config-list {
+  gap: 6px;
+}
+
+.vx-account-bot .account-config-item {
+  border-radius: 8px;
+}
+
+.vx-account-bot .vx-bot-rename-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 7px;
+  margin-top: 4px;
+}
+
+.vx-account-bot .account-install-device-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.vx-account-bot .account-install-apps {
+  display: grid;
+  gap: 7px;
+}
+
+.vx-account-bot .account-install-apps[hidden] {
+  display: none;
+}
+
+.vx-account-bot .account-install-app-card {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.vx-account-bot .account-install-app-card-flat {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 8px 0;
+  border-top: 1px solid var(--vx-bot-line);
+}
+
+.vx-account-bot .account-install-app-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.vx-account-bot .account-install-app-copy strong {
+  color: var(--vx-bot-text);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.vx-account-bot .account-install-app-copy span,
+.vx-account-bot .account-install-note-inline {
+  color: var(--vx-bot-muted);
+  font-size: 13px;
+}
+
+.vx-account-bot .account-install-app-actions {
+  display: grid;
+}
+
+.vx-account-bot .account-install-app-card-flat .vx-bot-button {
+  min-height: 36px;
+  padding: 9px 12px;
+}
+
+.vx-open-app-shell.vx-account-bot {
+  width: min(100% - 20px, 390px);
+  margin: 10px auto;
+  padding: 0;
+  border: 0;
+  background: var(--vx-bot-bg);
+  box-shadow: none;
+}
+
+.vx-account-bot .vx-open-progress {
+  height: 5px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--vx-bot-secondary);
+}
+
+.vx-account-bot .vx-open-progress span {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--vx-bot-blue);
+  transition: width 0.2s ease;
+}
+
 body.vx-account-embed .account-mini-hero,
 body.vx-account-embed .account-mini-actions,
 body.vx-account-embed .account-mini-section,

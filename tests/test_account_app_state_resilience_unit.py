@@ -247,11 +247,13 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
-        self.assertIn("Мой VPN", html)
-        self.assertIn("Ваши доступы", html)
+        self.assertIn("ID клиента", html)
+        self.assertIn("Доступ", html)
         self.assertIn("Скопировать ссылку", html)
-        self.assertIn("Подключение через ссылку", html)
-        self.assertIn("импорт из буфера", html)
+        self.assertIn("Подключить", html)
+        self.assertIn("QR и доступ", html)
+        self.assertIn("Настроить вручную", html)
+        self.assertLess(html.index("Подключить"), html.index("Скопировать ссылку"))
         self.assertNotIn("VXcloud account", html)
         self.assertNotIn("Devices", html)
         self.assertNotIn("Subscription URL", html)
@@ -276,11 +278,12 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
-        actions_html = html.split('class="account-mini-actions"', 1)[1].split("</section>", 1)[0]
+        actions_html = html.split('class="vx-bot-actions"', 1)[1].split("</div>", 1)[0]
         self.assertIn("/open-app/?mode=ios-auto", actions_html)
         self.assertIn("u=http%3A%2F%2Ftestserver%2Faccount%2Ffeed%2Ffeed-token%2F", actions_html)
         self.assertIn("/account-app/config/42/", actions_html)
         self.assertLess(actions_html.index("Подключить"), actions_html.index("QR и доступ"))
+        self.assertLess(actions_html.index("Подключить"), actions_html.index("Скопировать ссылку"))
 
     def test_account_app_dashboard_empty_state_is_trial_first_when_bot_exists(self):
         bot_user = SimpleNamespace(id=7, client_code="VX-000007")
@@ -293,7 +296,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
         self.assertIn("https://t.me/vxcloud_test_bot?start=trial", html)
-        empty_html = html.split('class="account-mini-empty"', 1)[1].split("</div>", 1)[0]
+        empty_html = html.split('class="vx-bot-card account-mini-empty"', 1)[1].split("</div>", 1)[0]
         self.assertIn("Без карты", empty_html)
         self.assertLess(empty_html.index("7 дней бесплатно"), empty_html.index("Купить доступ"))
 
@@ -316,17 +319,17 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
-        self.assertIn("QR для импорта", html)
+        self.assertIn("QR и доступ", html)
         self.assertIn("Скопировать ссылку", html)
-        self.assertIn("Основной способ подключения", html)
-        self.assertIn("импорт из буфера", html)
-        self.assertIn("Состояние", html)
-        self.assertIn("Состояние доступа", html)
+        self.assertIn("Подключить автоматически", html)
+        self.assertLess(html.index("Подключить автоматически"), html.index("Скопировать ссылку"))
+        self.assertIn("Активен", html)
+        self.assertIn("Данные", html)
         self.assertIn("Все доступы", html)
         self.assertIn("Ссылка подписки", html)
         self.assertIn("account-page-shell-config", html)
         self.assertIn("account-config-link-section", html)
-        self.assertIn("account-config-status-section", html)
+        self.assertIn("vx-bot-status-strip", html)
         self.assertNotIn("QR import", html)
         self.assertNotIn("Subscription URL", html)
         self.assertNotIn("Status", html)
@@ -351,7 +354,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         html = response.content.decode("utf-8")
         self.assertIn("Подключить Phone", html)
         self.assertIn("Большинства iOS-приложений нет в российском App Store", html)
-        self.assertIn("https://support.apple.com/en-us/118283", html)
+        self.assertIn("https://vxcloud.ru/app-store-us/", html)
         self.assertIn("Streisand", html)
         self.assertIn('"manual_note"', html)
         self.assertIn("v2box://install-sub", html)
@@ -363,7 +366,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertIn("V2RayRun", html)
         self.assertIn("Furious", html)
         self.assertIn("У меня другое приложение", html)
-        self.assertIn("ручная установка", html)
+        self.assertIn("Ручная установка", html)
         self.assertIn("Подробная инструкция", html)
         self.assertIn("Если одно из приложений уже установлено", html)
         self.assertIn("/open-app/?mode=ios-auto", html)
@@ -384,7 +387,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         html = response.content.decode("utf-8")
         streisand_url = "streisand://import/https://vxcloud.ru/account/feed/feed-token/#VXcloud"
-        v2box_url = "v2box://install-sub?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F&amp;name=VXcloud"
+        v2box_url = "v2box://install-sub?url=https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F\\u0026name=VXcloud"
         shadowrocket_url = "shadowrocket://add/https%3A%2F%2Fvxcloud.ru%2Faccount%2Ffeed%2Ffeed-token%2F"
         v2raytun_url = "v2raytun://import/https://vxcloud.ru/account/feed/feed-token/"
         happ_url = "happ://add/https://vxcloud.ru/account/feed/feed-token/"
@@ -400,7 +403,8 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertLess(html.find(shadowrocket_url), html.find(v2raytun_url))
         self.assertLess(html.find(v2raytun_url), html.find(happ_url))
         self.assertLess(html.find(happ_url), html.find(hiddify_url))
-        self.assertIn("нажмите нужное приложение ниже еще раз", html)
+        self.assertIn("Пробуем открыть Streisand", html)
+        self.assertIn("Не открылось — попробовать дальше", html)
         self.assertIn("setTimeout(openNext, 80)", html)
         self.assertIn("v2box://", html)
         self.assertNotIn("visibilitychange", html)
@@ -411,7 +415,7 @@ class AccountAppStateResilienceUnitTests(unittest.TestCase):
         self.assertNotIn("streisandRetried", html)
         self.assertNotIn("streisandWarmupPending", html)
         self.assertNotIn("window.location.href = 'streisand://'", html)
-        self.assertIn("Configs -> VXcloud -> Home -> Connect", html)
+        self.assertIn("Ручная установка", html)
         self.assertNotIn("url=https://vxcloud.ru/account/feed/feed-token/", html)
 
     def test_vpn_public_endpoint_helpers_fallback_to_env(self):

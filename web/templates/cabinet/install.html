@@ -3,6 +3,65 @@
 {% block title %}Подключить - VXcloud{% endblock %}
 
 {% block content %}
+{% if embed_mode %}
+<div
+  class="account-page-shell account-page-shell-install vx-account-bot"
+  id="account-install"
+  data-access-url="{{ copy_text }}"
+  data-auto-import-url="{{ auto_import_url }}"
+  data-instructions-url="{{ backend_instructions_url }}"
+>
+  {% if not is_active %}
+    <div class="account-message account-message-warning">Этот доступ неактивен. Продлите его перед подключением.</div>
+  {% endif %}
+
+  <section class="vx-bot-card">
+    <p class="vx-bot-eyebrow">Устройство</p>
+    <h1 class="vx-bot-title">Подключить {{ display_name }}</h1>
+    <p class="vx-bot-line">Мы определили устройство. Можно выбрать другое ниже.</p>
+    <div class="account-install-device-tabs" aria-label="Выбор устройства">
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="ios">iPhone</button>
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="android">Android</button>
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="windows">Windows</button>
+      <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="macos">Mac</button>
+    </div>
+  </section>
+
+  <section class="vx-bot-card">
+    <p class="vx-bot-eyebrow">Шаг 1</p>
+    <h2 class="vx-bot-title">Установите приложение</h2>
+    <div class="account-install-apps" id="install-recommended-app"></div>
+  </section>
+
+  <section class="vx-bot-card">
+    <p class="vx-bot-eyebrow">Шаг 2</p>
+    <h2 class="vx-bot-title">Откройте подключение</h2>
+    <p class="vx-bot-line">Если одно из приложений уже установлено, нажмите кнопку.</p>
+    <div class="vx-bot-actions">
+      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}">⚡ Подключить</a>
+      <button type="button" class="account-secondary-button vx-bot-button" id="install-show-apps">У меня другое приложение</button>
+    </div>
+    <div class="account-install-apps account-install-apps-flat" id="install-apps" hidden></div>
+  </section>
+
+  <section class="vx-bot-card">
+    <details class="vx-bot-more" id="install-manual">
+      <summary>Ручная установка</summary>
+      <p class="vx-bot-line">Скопируйте ссылку, откройте свое VPN-приложение, нажмите «+» и выберите импорт из буфера.</p>
+      <div class="vx-bot-url-row">
+        <input id="install-copy-input" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
+        <button type="button" class="account-icon-button" id="install-copy-icon" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+          <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
+        </button>
+      </div>
+      <div class="vx-bot-actions vx-bot-actions-secondary">
+        <button type="button" class="account-primary-button vx-bot-button vx-bot-button-primary" id="install-copy-button">🔗 Скопировать ссылку</button>
+        <a class="account-secondary-button vx-bot-button" id="install-guide-link" href="{{ backend_instructions_url }}">📖 Подробная инструкция</a>
+      </div>
+    </details>
+  </section>
+</div>
+{% else %}
 <div
   class="account-page-shell account-page-shell-install"
   id="account-install"
@@ -20,7 +79,7 @@
       <a class="account-secondary-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
       <a class="account-secondary-button" href="{{ config_url }}">QR и ссылка</a>
       {% if can_renew %}
-        <a class="account-primary-button" href="{{ renew_url }}"{% if embed_mode %} target="_top"{% endif %}>Продлить</a>
+        <a class="account-primary-button" href="{{ renew_url }}">Продлить</a>
       {% endif %}
     </div>
   </section>
@@ -48,10 +107,8 @@
     <div class="account-install-note account-install-note-ios" id="install-ios-note" hidden>
       <strong>App Store</strong>
       <span>Большинства iOS-приложений нет в российском App Store. Временно смените страну на US, это занимает пару минут.</span>
-      <a href="{{ apple_country_help_url }}" target="_blank" rel="noopener">Инструкция Apple</a>
+      <a href="{{ apple_country_help_url }}" target="_blank" rel="noopener">Инструкция VXcloud</a>
     </div>
-
-    <div class="account-install-status" id="install-status" role="status" aria-live="polite"></div>
 
     <div class="account-install-apps" id="install-apps"></div>
 
@@ -76,15 +133,11 @@
           <span class="account-icon-glyph" aria-hidden="true">&#x29C9;</span>
         </button>
       </div>
-      <ol class="account-mini-steps account-install-manual-steps">
-        <li>Нажмите кнопку копирования.</li>
-        <li>Откройте свое приложение.</li>
-        <li>Нажмите «+» и выберите импорт из буфера.</li>
-      </ol>
       <a class="account-secondary-button account-install-guide-link" id="install-guide-link" href="{{ backend_instructions_url }}">Подробная инструкция</a>
     </div>
   </section>
 </div>
+{% endif %}
 
 {{ install_app_matrix|json_script:"install-app-matrix" }}
 
@@ -92,8 +145,9 @@
   (function initInstallPage() {
     const shell = document.getElementById('account-install');
     const appsRoot = document.getElementById('install-apps');
-    const statusEl = document.getElementById('install-status');
+    const recommendedRoot = document.getElementById('install-recommended-app');
     const platformLabel = document.getElementById('install-platform-label');
+    const showAppsButton = document.getElementById('install-show-apps');
     const showManualButton = document.getElementById('install-show-manual');
     const manualEl = document.getElementById('install-manual');
     const iosNote = document.getElementById('install-ios-note');
@@ -169,21 +223,11 @@
       }
     }
 
-    function setStatus(text) {
-      if (statusEl) statusEl.textContent = text;
-    }
-
-    function showManual() {
-      if (manualEl) manualEl.hidden = false;
-      if (manualEl && manualEl.scrollIntoView) manualEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-
     function appBadges(app) {
       const bits = [];
       if (app.recommended) bits.push('рекомендуем');
-      if (app.autostart || app.import_url_template || app.open_url_template) bits.push('быстрый импорт');
       if (app.paid) bits.push('платное');
-      return bits.length ? bits.join(' · ') : 'ручной импорт';
+      return bits.length ? bits.join(' · ') : 'подходит';
     }
 
     function platformGuideUrl(platform) {
@@ -192,51 +236,63 @@
       return instructionsUrl + joiner + 'device=' + encodeURIComponent(device);
     }
 
+    function renderApp(app, compact) {
+      const card = document.createElement('article');
+      card.className = compact ? 'account-install-app-card account-install-app-card-flat' : 'account-install-app-card';
+
+      const copy = document.createElement('div');
+      copy.className = 'account-install-app-copy';
+      const title = document.createElement('strong');
+      title.textContent = app.label || app.name;
+      const meta = document.createElement('span');
+      meta.textContent = appBadges(app);
+      copy.append(title, meta);
+
+      const actions = document.createElement('div');
+      actions.className = 'account-install-app-actions';
+      if (app.install_url) {
+        const installLink = document.createElement('a');
+        installLink.className = compact ? 'account-secondary-button vx-bot-button' : 'account-primary-button vx-bot-button vx-bot-button-primary';
+        installLink.href = app.install_url;
+        installLink.target = '_blank';
+        installLink.rel = 'noopener';
+        installLink.textContent = 'Установить';
+        actions.append(installLink);
+      }
+
+      card.append(copy, actions);
+
+      if (!compact && selectedPlatform === 'ios') {
+        const note = document.createElement('p');
+        note.className = 'vx-bot-line account-install-note-inline';
+        note.innerHTML = 'Большинства iOS-приложений нет в российском App Store. Временно смените страну на US, это занимает пару минут. <a href="{{ apple_country_help_url }}" target="_blank" rel="noopener">Инструкция</a>';
+        card.append(note);
+      }
+
+      return card;
+    }
+
     function renderApps() {
       const apps = appMatrix[selectedPlatform] || [];
+      const recommended = apps.find((app) => app.recommended) || apps[0];
       appsRoot.innerHTML = '';
+      if (recommendedRoot) recommendedRoot.innerHTML = '';
       if (platformLabel) platformLabel.textContent = platformLabels[selectedPlatform] || 'Устройство';
       if (iosNote) iosNote.hidden = selectedPlatform !== 'ios';
       if (guideLink) guideLink.href = platformGuideUrl(selectedPlatform);
-      setStatus('Установите одно из приложений ниже. Если оно уже есть, нажмите «Подключить».');
 
       document.querySelectorAll('[data-platform-choice]').forEach((button) => {
         const isCurrent = button.dataset.platformChoice === selectedPlatform;
         button.classList.toggle('account-secondary-button-current', isCurrent);
       });
 
+      if (recommendedRoot && recommended) {
+        recommendedRoot.appendChild(renderApp(recommended, false));
+      }
+
       apps.forEach((app) => {
-        const card = document.createElement('article');
-        card.className = 'account-install-app-card';
-
-        const copy = document.createElement('div');
-        copy.className = 'account-install-app-copy';
-        const title = document.createElement('strong');
-        title.textContent = app.label || app.name;
-        const meta = document.createElement('span');
-        meta.textContent = appBadges(app);
-        copy.append(title, meta);
-
-        const actions = document.createElement('div');
-        actions.className = 'account-install-app-actions';
-        if (app.install_url) {
-          const installLink = document.createElement('a');
-          installLink.className = 'account-secondary-button';
-          installLink.href = app.install_url;
-          installLink.target = '_blank';
-          installLink.rel = 'noopener';
-          installLink.textContent = 'Установить';
-          actions.append(installLink);
-        }
-        if (!app.install_url) {
-          const unavailable = document.createElement('span');
-          unavailable.className = 'account-install-app-hint';
-          unavailable.textContent = 'Установите из официального источника';
-          actions.append(unavailable);
-        }
-
-        card.append(copy, actions);
-        appsRoot.appendChild(card);
+        if (recommended && app.key === recommended.key) return;
+        appsRoot.appendChild(renderApp(app, true));
       });
     }
 
@@ -247,19 +303,35 @@
       });
     });
 
-    if (showManualButton) {
-      showManualButton.addEventListener('click', () => {
-        showManual();
+    if (showAppsButton) {
+      showAppsButton.addEventListener('click', () => {
+        appsRoot.hidden = !appsRoot.hidden;
       });
     }
 
-    const copyButton = document.getElementById('install-copy-icon');
-    if (copyButton) {
-      copyButton.addEventListener('click', async () => {
-        await copyAccessUrl();
-        setStatus('Ссылка скопирована.');
+    if (showManualButton) {
+      showManualButton.addEventListener('click', () => {
+        if (manualEl) manualEl.hidden = false;
+        if (manualEl && manualEl.scrollIntoView) manualEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       });
     }
+
+    const copyButtons = [
+      document.getElementById('install-copy-icon'),
+      document.getElementById('install-copy-button'),
+    ].filter(Boolean);
+    copyButtons.forEach((button) => {
+      button.addEventListener('click', async () => {
+        const oldText = button.textContent;
+        await copyAccessUrl();
+        if (oldText) {
+          button.textContent = 'Ссылка скопирована';
+          setTimeout(() => {
+            button.textContent = oldText;
+          }, 1200);
+        }
+      });
+    });
 
     renderApps();
   })();
