@@ -85,12 +85,15 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("body.vx-account-embed .account-secondary-button-current", self.css)
         self.assertIn(".account-step-list", self.css)
         self.assertIn("body.vx-account-embed #account-instructions .account-step-list", self.css)
+        self.assertIn(".vx-account-bot .account-step-list", self.css)
+        self.assertIn("display: grid;", self.css)
         self.assertIn(".vx-account-bot .account-instructions-device-actions .vx-bot-tab:hover", self.css)
         self.assertIn(
             ".vx-account-bot .account-instructions-device-actions .vx-bot-tab.account-secondary-button-current",
             self.css,
         )
         self.assertIn(".vx-account-bot .account-step-list li::marker", self.css)
+        self.assertIn(".vx-account-bot .account-support-hint", self.css)
 
     def test_embed_install_selector_and_app_cards_are_polished(self):
         self.assertIn(".vx-account-bot .vx-install-tabs", self.css)

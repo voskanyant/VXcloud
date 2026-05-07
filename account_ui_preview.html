@@ -268,12 +268,14 @@
 
   /* small list inside a card (e.g. step list) */
   .steps {
+    display: grid;
+    gap: 8px;
     margin: 8px 0 0;
     padding: 0 0 0 18px;
     color: var(--muted);
     font-size: 13px;
   }
-  .steps li { margin: 2px 0; }
+  .steps li { margin: 0; }
 
   /* device tab strip */
   .tabs {
@@ -425,6 +427,7 @@
     padding: 10px;
     border-radius: var(--radius-sm);
     background: #f7f8fa;
+    box-shadow: inset 0 0 0 1px rgba(32,33,36,.02);
   }
 
   .input {

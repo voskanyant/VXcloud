@@ -5030,7 +5030,9 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-step-list {
+  display: grid;
   gap: 8px;
+  margin: 0;
   padding: 10px 10px 10px 28px;
   border: 0;
   border-radius: var(--vx-bot-button-radius);
@@ -5047,6 +5049,11 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 
 .vx-account-bot .account-step-list li {
   padding-left: 0;
+}
+
+.vx-account-bot .account-support-hint,
+.vx-account-bot .account-guide-card .account-step-list {
+  box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);
 }
 
 .vx-account-bot .account-instruction-actions {
