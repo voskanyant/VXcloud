@@ -4894,7 +4894,10 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 }
 
 .vx-account-bot .account-support-id,
+.vx-account-bot .account-support-hint,
 .vx-account-bot .vx-bot-key-card {
+  display: grid;
+  gap: 8px;
   padding: 10px;
   border: 0;
   border-radius: var(--vx-bot-button-radius);
@@ -4910,6 +4913,14 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 .vx-account-bot .account-support-id strong {
   color: var(--vx-bot-text);
   font-size: 16px;
+  line-height: 1.15;
+}
+
+.vx-account-bot .account-support-hint .account-step-list {
+  margin: 0;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  background: #ffffff;
 }
 
 .vx-account-bot .account-instructions-device-actions {

@@ -83,6 +83,14 @@
         <p class="vx-bot-line">Опишите проблему одним сообщением: устройство, что не открывается и когда началось. Так мы быстрее найдем причину.</p>
       </div>
       <div class="vx-bot-card account-support-card">
+        <div class="account-support-hint vx-bot-key-card">
+          <p class="vx-bot-eyebrow">Что написать</p>
+          <ol class="account-step-list">
+            <li>Устройство и приложение.</li>
+            <li>Что нажали и что произошло.</li>
+            <li>Скрин ошибки, если есть.</li>
+          </ol>
+        </div>
         {% if support_client_code %}
           <div class="account-support-id vx-bot-key-card">
             <span>ID клиента</span>
@@ -92,14 +100,14 @@
               class="account-secondary-button vx-bot-button js-copy-config"
               data-copy-text="{{ support_client_code }}"
               data-copy-success="ID скопирован"
-            >Скопировать ID</button>
+            >Скопировать ID клиента</button>
           </div>
         {% endif %}
         <div class="vx-bot-actions">
           {% if support_telegram_url %}
-            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>Написать в Telegram</a>
+            <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ support_telegram_url }}"{% if embed_mode %} target="_top"{% endif %}>💬 Написать в Telegram</a>
           {% endif %}
-          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}">Открыть инструкцию</a>
+          <a class="account-secondary-button vx-bot-button" href="{{ backend_instructions_url }}">📖 Открыть инструкцию</a>
           <a class="account-secondary-button vx-bot-button" href="{{ backend_dashboard_url }}">Мой VPN</a>
         </div>
       </div>
