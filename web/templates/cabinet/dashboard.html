@@ -3,7 +3,7 @@
 {% block title %}Мой VPN - VXcloud{% endblock %}
 
 {% block content %}
-{% if embed_mode and not support_view and not instructions_view %}
+{% if not support_view and not instructions_view %}
 <div class="account-page-shell account-page-shell-mini vx-account-bot">
   <section class="vx-bot-card vx-bot-identity">
     {% if bot_user and bot_user.client_code %}

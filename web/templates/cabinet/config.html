@@ -3,7 +3,7 @@
 {% block title %}Доступ - VXcloud{% endblock %}
 
 {% block content %}
-{% if embed_mode %}
+{% if subscription %}
 <div class="account-page-shell account-page-shell-config vx-account-bot">
   <section class="vx-bot-card vx-bot-status-strip">
     <p class="vx-bot-line">
@@ -49,7 +49,7 @@
       {% endif %}
       <button type="button" class="account-secondary-button vx-bot-button" id="cfg-rename-toggle">Переименовать</button>
     </div>
-    <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/?embed=1" class="account-inline-form vx-bot-rename-form" id="cfg-rename-form" hidden>
+    <form method="post" action="{{ backend_rename_prefix }}{{ subscription.id }}/rename/{% if embed_mode %}?embed=1{% endif %}" class="account-inline-form vx-bot-rename-form" id="cfg-rename-form" hidden>
       {% csrf_token %}
       <input type="hidden" name="next" value="{{ request.get_full_path }}" />
       <input id="cfg-rename" type="text" class="account-input" name="display_name" value="{{ display_name }}" maxlength="80" placeholder="Название доступа" />

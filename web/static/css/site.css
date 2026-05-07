@@ -4498,6 +4498,14 @@ body.vx-account-embed .account-page-shell.vx-account-bot {
   background: var(--vx-bot-bg);
 }
 
+body.vx-account-shell .account-page-shell.vx-account-bot {
+  width: min(100%, 390px);
+  max-width: 390px;
+  margin: 0 auto;
+  padding: 10px 10px 24px;
+  background: var(--vx-bot-bg);
+}
+
 .vx-account-bot .vx-bot-stack {
   display: grid;
   gap: 10px;
