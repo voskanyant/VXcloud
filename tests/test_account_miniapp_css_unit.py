@@ -276,6 +276,7 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn("0 8px 16px rgba(32, 33, 36, 0.04);", self.css)
 
     def test_embed_open_app_progress_is_visible(self):
+        open_app = OPEN_APP_TEMPLATE.read_text(encoding="utf-8")
         progress_rule = self.css[self.css.index(".vx-account-bot .vx-open-progress {") :]
         progress_rule = progress_rule[: progress_rule.index("}")]
 
@@ -286,6 +287,13 @@ class AccountMiniAppCssTests(unittest.TestCase):
         self.assertIn(".vx-account-bot .vx-open-app-rescue .vx-bot-actions", self.css)
         self.assertIn(".vx-account-bot .vx-open-app-rescue .vx-bot-line", self.css)
         self.assertIn("box-shadow: inset 0 0 0 1px rgba(32, 33, 36, 0.02);", self.css)
+        self.assertIn('id="open-app-current"', open_app)
+        self.assertIn('aria-hidden="true">↗</span><span>Открыть', open_app)
+        self.assertIn('id="open-app-next"', open_app)
+        self.assertIn('aria-hidden="true">→</span><span>Не открылось', open_app)
+        self.assertIn("function setButtonContent", open_app)
+        self.assertIn("setButtonContent(currentLink, '↗', 'Открыть ' + item.label)", open_app)
+        self.assertIn("setButtonContent(nextButton, '⧉', 'Скопировать ссылку')", open_app)
 
     def test_auth_edges_use_polished_bot_controls(self):
         self.assertIn(".vx-account-bot.vx-auth-bot .auth-widget-shell", self.css)

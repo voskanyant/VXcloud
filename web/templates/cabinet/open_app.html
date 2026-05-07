@@ -21,8 +21,8 @@
         <p class="vx-bot-line">При первом запуске разрешите доступ к сети, затем вернитесь сюда.</p>
       </div>
       <div class="vx-bot-actions">
-        <a class="account-primary-button vx-bot-button vx-bot-button-primary" id="open-app-current" href="{{ deeplinks.0.url }}">↗ Открыть {{ deeplinks.0.label }}</a>
-        <button type="button" class="account-secondary-button vx-bot-button" id="open-app-next">Не открылось — попробовать дальше</button>
+        <a class="account-primary-button vx-bot-button vx-bot-button-primary" id="open-app-current" href="{{ deeplinks.0.url }}"><span class="vx-bot-button-icon" aria-hidden="true">↗</span><span>Открыть {{ deeplinks.0.label }}</span></a>
+        <button type="button" class="account-secondary-button vx-bot-button" id="open-app-next"><span class="vx-bot-button-icon" aria-hidden="true">→</span><span>Не открылось — попробовать дальше</span></button>
       </div>
     </article>
 
@@ -67,6 +67,23 @@
         const nextButton = document.getElementById('open-app-next');
         let index = 0;
 
+        function setButtonContent(button, iconText, labelText) {
+          if (!button) return;
+          let icon = button.querySelector('.vx-bot-button-icon');
+          let label = icon ? icon.nextElementSibling : null;
+          if (!icon || !label) {
+            button.textContent = '';
+            icon = document.createElement('span');
+            icon.className = 'vx-bot-button-icon';
+            icon.setAttribute('aria-hidden', 'true');
+            label = document.createElement('span');
+            button.appendChild(icon);
+            button.appendChild(label);
+          }
+          icon.textContent = iconText;
+          label.textContent = labelText;
+        }
+
         function renderState() {
           const item = links[index];
           const total = Math.max(links.length, 1);
@@ -78,7 +95,7 @@
               currentLink.removeAttribute('href');
             }
             if (nextButton) {
-              nextButton.textContent = 'Скопировать ссылку';
+              setButtonContent(nextButton, '⧉', 'Скопировать ссылку');
             }
             if (progressEl) progressEl.style.width = '100%';
             return;
@@ -88,11 +105,11 @@
           if (currentLink) {
             currentLink.hidden = false;
             currentLink.href = item.url;
-            currentLink.textContent = '↗ Открыть ' + item.label;
+            setButtonContent(currentLink, '↗', 'Открыть ' + item.label);
           }
           if (nextButton) {
             const next = links[index + 1];
-            nextButton.textContent = next ? 'Не открылось — попробовать ' + next.label : 'Не открылось — ручная установка';
+            setButtonContent(nextButton, '→', next ? 'Не открылось — попробовать ' + next.label : 'Не открылось — ручная установка');
           }
           if (progressEl) progressEl.style.width = String(((index + 1) / total) * 100) + '%';
         }
@@ -134,7 +151,7 @@
           nextButton.addEventListener('click', function () {
             if (!links[index]) {
               copyLink();
-              nextButton.textContent = 'Ссылка скопирована';
+              setButtonContent(nextButton, '✓', 'Ссылка скопирована');
               return;
             }
             index += 1;
