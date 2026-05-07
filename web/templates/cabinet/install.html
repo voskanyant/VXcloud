@@ -15,30 +15,30 @@
     <div class="account-message account-message-warning">Этот доступ неактивен. Продлите его перед подключением.</div>
   {% endif %}
 
-  <section class="vx-bot-card">
-    <p class="vx-bot-eyebrow">Устройство</p>
-    <h1 class="vx-bot-title">Подключить {{ display_name }}</h1>
-    <p class="vx-bot-line">Мы определили устройство. Можно выбрать другое ниже.</p>
-    <div class="account-install-device-tabs" aria-label="Выбор устройства">
+  <section class="vx-bot-card vx-install-start-card">
+    <div class="account-install-device-tabs vx-install-tabs" aria-label="Выбор устройства">
       <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="ios">iPhone</button>
       <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="android">Android</button>
       <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="windows">Windows</button>
       <button type="button" class="account-secondary-button vx-bot-tab" data-platform-choice="macos">Mac</button>
     </div>
+    <p class="vx-bot-eyebrow">Подключение</p>
+    <h1 class="vx-bot-title vx-install-title">Подключить {{ display_name }}</h1>
+    <p class="vx-bot-line">Если приложение уже установлено, откроем импорт одной кнопкой.</p>
+    <a class="account-primary-button vx-bot-button vx-bot-button-primary vx-install-main-cta" href="{{ auto_import_url }}">⚡ Подключить</a>
   </section>
 
   <section class="vx-bot-card">
-    <p class="vx-bot-eyebrow">Шаг 1</p>
+    <p class="vx-bot-eyebrow">Если приложения нет</p>
     <h2 class="vx-bot-title">Установите приложение</h2>
     <div class="account-install-apps" id="install-recommended-app"></div>
   </section>
 
-  <section class="vx-bot-card">
-    <p class="vx-bot-eyebrow">Шаг 2</p>
-    <h2 class="vx-bot-title">Откройте подключение</h2>
-    <p class="vx-bot-line">Если одно из приложений уже установлено, нажмите кнопку.</p>
+  <section class="vx-bot-card vx-install-other-card">
+    <p class="vx-bot-eyebrow">Если приложение другое</p>
+    <h2 class="vx-bot-title">Выберите свое приложение</h2>
+    <p class="vx-bot-line">Покажем остальные варианты для выбранного устройства.</p>
     <div class="vx-bot-actions">
-      <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ auto_import_url }}">⚡ Подключить</a>
       <button type="button" class="account-secondary-button vx-bot-button" id="install-show-apps">У меня другое приложение</button>
     </div>
     <div class="account-install-apps account-install-apps-flat" id="install-apps" hidden></div>
@@ -46,7 +46,7 @@
 
   <section class="vx-bot-card">
     <details class="vx-bot-more" id="install-manual">
-      <summary>Ручная установка</summary>
+      <summary>Настроить вручную</summary>
       <p class="vx-bot-line">Скопируйте ссылку, откройте свое VPN-приложение, нажмите «+» и выберите импорт из буфера.</p>
       <div class="vx-bot-url-row">
         <input id="install-copy-input" type="text" class="account-input account-link-input" value="{{ copy_text }}" readonly>
@@ -225,7 +225,7 @@
 
     function appBadges(app) {
       const bits = [];
-      if (app.recommended) bits.push('рекомендуем');
+      if (app.recommended) bits.push('рекомендуем для этого устройства');
       if (app.paid) bits.push('платное');
       return bits.length ? bits.join(' · ') : 'подходит';
     }
@@ -256,7 +256,7 @@
         installLink.href = app.install_url;
         installLink.target = '_blank';
         installLink.rel = 'noopener';
-        installLink.textContent = 'Установить';
+        installLink.textContent = compact ? 'Установить' : 'Установить ' + (app.label || app.name);
         actions.append(installLink);
       }
 
@@ -306,6 +306,7 @@
     if (showAppsButton) {
       showAppsButton.addEventListener('click', () => {
         appsRoot.hidden = !appsRoot.hidden;
+        showAppsButton.textContent = appsRoot.hidden ? 'У меня другое приложение' : 'Скрыть список приложений';
       });
     }
 
