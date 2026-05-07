@@ -4926,14 +4926,29 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
 .vx-account-bot .account-instructions-device-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 7px;
+  gap: 3px;
+  padding: 3px;
+  border-radius: var(--vx-bot-button-radius);
+  background: #f7f8fa;
 }
 
 .vx-account-bot .account-instructions-device-actions .vx-bot-tab {
   height: 40px;
   min-height: 40px;
   padding: 8px;
+  border-radius: 7px;
+  background: transparent;
   font-size: 13px;
+}
+
+.vx-account-bot .account-instructions-device-actions .vx-bot-tab:hover {
+  background: #ffffff;
+}
+
+.vx-account-bot .account-instructions-device-actions .vx-bot-tab.account-secondary-button-current {
+  background: var(--vx-bot-text);
+  color: #ffffff;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
 }
 
 .vx-account-bot .account-instructions-device-actions .vx-bot-tab:nth-child(3) {
@@ -4948,10 +4963,20 @@ body.vx-account-shell .account-page-shell.vx-account-bot {
   background: #f7f8fa;
   color: var(--vx-bot-text);
   font-size: 14px;
+  line-height: 1.35;
+}
+
+.vx-account-bot .account-step-list li::marker {
+  color: var(--vx-bot-muted);
+  font-weight: 800;
 }
 
 .vx-account-bot .account-step-list li {
   padding-left: 0;
+}
+
+.vx-account-bot .account-instruction-actions {
+  margin-top: 2px;
 }
 
 .vx-account-bot .account-install-device-tabs {

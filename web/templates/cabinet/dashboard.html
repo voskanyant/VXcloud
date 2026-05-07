@@ -166,13 +166,13 @@
             <li>Скопируйте ссылку подписки.</li>
             <li>В приложении нажмите «+» и импортируйте из буфера.</li>
           </ol>
-          <div class="vx-bot-actions">
+          <div class="vx-bot-actions account-instruction-actions">
             {% if instructions_payload.primary_subscription %}
-              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}">Открыть доступ</a>
+              <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.primary_subscription.config_url }}">📱 Открыть доступ</a>
             {% else %}
               <a class="account-primary-button vx-bot-button vx-bot-button-primary" href="{{ instructions_payload.dashboard_url }}">Мой VPN</a>
             {% endif %}
-            <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}">Поддержка</a>
+            <a class="account-secondary-button vx-bot-button" href="{{ instructions_payload.support_url }}">💬 Поддержка</a>
           </div>
         </article>
       </div>
