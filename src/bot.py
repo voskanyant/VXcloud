@@ -343,6 +343,12 @@ class VPNBot:
     async def _menu_keyboard_for_user(self, user_id: int) -> ReplyKeyboardMarkup:
         return self._menu_keyboard(has_active_subscription=await self._has_active_subscription(user_id))
 
+    async def _send_main_menu_keyboard(self, message: Message, user_id: int) -> None:
+        await message.reply_text(
+            self._content_text("main_menu_restored_message", "Главное меню ниже."),
+            reply_markup=await self._menu_keyboard_for_user(user_id),
+        )
+
     async def _restore_menu_after_command_input_cancel(
         self,
         update: Update,
@@ -809,6 +815,7 @@ class VPNBot:
 
     async def _send_start_screen(self, message: Message, user_id: int) -> None:
         subscriptions = await self.db.list_subscriptions(user_id)
+        await self._send_main_menu_keyboard(message, user_id)
         await self._replace_or_reply(
             message,
             self._start_message_text(self._start_status_summary(subscriptions)),
@@ -1710,6 +1717,7 @@ class VPNBot:
         await self._track_event(user_id, "start", update)
         start_arg = (context.args[0].strip() if context.args else "")
         if start_arg.strip().lower() in {"trial", "free", "7days", "7_days"}:
+            await self._send_main_menu_keyboard(update.message, user_id)
             await self._show_trial_offer(update.message, user_id)
             return
         if start_arg.startswith("link_"):

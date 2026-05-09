@@ -276,14 +276,16 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         await bot._send_start_screen(message, user_id=123)
 
-        self.assertEqual(len(message.replies), 1)
-        text = message.replies[0][0]
+        self.assertEqual(len(message.replies), 2)
+        self.assertEqual(message.replies[0][0], "Главное меню ниже.")
+        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
+        text = message.replies[1][0]
         self.assertIn("VXcloud", text)
         self.assertIn("Кабинет внутри Telegram", text)
         self.assertIn("действие ниже", text)
         self.assertNotIn("Как подключить", text)
         self.assertNotIn("Бот помогает", text)
-        reply_markup = message.replies[0][1]
+        reply_markup = message.replies[1][1]
         self.assertIsInstance(reply_markup, InlineKeyboardMarkup)
         labels = [button.text for row in reply_markup.inline_keyboard for button in row]
         self.assertEqual(labels, ["🛡 Мой VPN", "🎁 7 дней бесплатно", "💳 Купить", "📖 Инструкция", "🆘 Поддержка", "📱 Кабинет"])
@@ -450,7 +452,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         await bot._send_start_screen(message, user_id=123)
 
-        text = message.replies[0][0]
+        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
+        text = message.replies[1][0]
         self.assertIn("Ваш VPN", text)
         self.assertIn("✅ Активных: 3", text)
         self.assertIn("1. Work laptop · до", text)
@@ -460,7 +463,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(text.index("2. iPhone"), text.index("3. MacBook"))
         self.assertIn("⏳ Скоро закончится: 1", text)
         self.assertIn("⚠️ Истекло: 1", text)
-        self.assertIsInstance(message.replies[0][1], InlineKeyboardMarkup)
+        self.assertIsInstance(message.replies[1][1], InlineKeyboardMarkup)
 
     async def test_start_screen_shows_expired_status_without_active_subscriptions(self):
         db = FakeDB()
@@ -470,7 +473,8 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
 
         await bot._send_start_screen(message, user_id=123)
 
-        text, reply_markup = message.replies[0]
+        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
+        text, reply_markup = message.replies[1]
         self.assertIn("Ваш VPN", text)
         self.assertIn("Активных доступов нет", text)
         self.assertIn("⚠️ Истекло: 2", text)
@@ -776,6 +780,7 @@ class BotMainMenuUnitTests(unittest.IsolatedAsyncioTestCase):
         await bot.start(make_update(message), context)
 
         self.assertTrue(message.replies)
+        self.assertIsInstance(message.replies[0][1], ReplyKeyboardMarkup)
         self.assertIn("7 \u0434\u043d\u0435\u0439", message.replies[-1][0])
         markup = message.replies[-1][1]
         self.assertIsInstance(markup, InlineKeyboardMarkup)
