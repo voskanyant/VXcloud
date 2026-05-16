@@ -105,6 +105,210 @@
   display: none;
 }
 
+.vx-guide-shell {
+  color: #111111;
+  font-size: 16px;
+  line-height: 1.62;
+}
+
+.vx-guide-shell a {
+  color: #b91c1c;
+}
+
+.vx-guide-hero {
+  display: grid;
+  gap: 18px;
+  padding: clamp(24px, 5vw, 48px) 0 clamp(18px, 4vw, 32px);
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.vx-guide-kicker {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vx-guide-title {
+  max-width: 780px;
+  margin: 0;
+  color: #111111;
+  font-size: clamp(32px, 6vw, 64px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.vx-guide-lead {
+  max-width: 680px;
+  margin: 0;
+  color: #4b5563;
+  font-size: clamp(17px, 2vw, 21px);
+  line-height: 1.5;
+}
+
+.vx-guide-actions,
+.vx-guide-device-grid,
+.vx-guide-help-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.vx-guide-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 11px 16px;
+  border: 1px solid #111111;
+  border-radius: 8px;
+  background: #111111;
+  color: #ffffff !important;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-decoration: none !important;
+}
+
+.vx-guide-button--secondary {
+  background: #ffffff;
+  color: #111111 !important;
+}
+
+.vx-guide-main {
+  display: grid;
+  gap: 18px;
+  padding: clamp(18px, 4vw, 32px) 0;
+}
+
+.vx-guide-panel,
+.vx-guide-step,
+.vx-guide-device-card {
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.vx-guide-panel {
+  padding: clamp(16px, 3vw, 24px);
+}
+
+.vx-guide-panel h2,
+.vx-guide-panel h3,
+.vx-guide-step h2,
+.vx-guide-step h3,
+.vx-guide-device-card h2,
+.vx-guide-device-card h3 {
+  margin: 0 0 8px;
+  color: #111111;
+  line-height: 1.15;
+  letter-spacing: 0;
+}
+
+.vx-guide-panel p,
+.vx-guide-step p,
+.vx-guide-device-card p {
+  margin: 0;
+  color: #4b5563;
+}
+
+.vx-guide-checklist,
+.vx-guide-list {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: #30343b;
+}
+
+.vx-guide-steps {
+  display: grid;
+  gap: 12px;
+  counter-reset: vx-guide-step;
+}
+
+.vx-guide-step {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 18px 18px 18px 58px;
+}
+
+.vx-guide-step::before {
+  counter-increment: vx-guide-step;
+  content: counter(vx-guide-step);
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #111111;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.vx-guide-note {
+  border-left: 3px solid #b91c1c;
+  padding: 12px 14px;
+  background: #fff7f7;
+  color: #30343b;
+}
+
+.vx-guide-device-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.vx-guide-device-card {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  text-decoration: none !important;
+}
+
+.vx-guide-device-card:hover {
+  border-color: #111111;
+}
+
+.vx-guide-device-card span {
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+@media (max-width: 900px) {
+  .vx-guide-device-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .vx-guide-actions,
+  .vx-guide-help-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .vx-guide-device-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .vx-guide-step {
+    padding: 16px;
+  }
+
+  .vx-guide-step::before {
+    position: static;
+  }
+}
+
 @keyframes vxAccountSkeleton {
   0% {
     background-position: 100% 0, 0 0;
